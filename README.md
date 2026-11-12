@@ -13,8 +13,11 @@ Open `index.html` in a browser, or serve the folder (`python3 -m http.server`).
 | Move | WASD / arrows |
 | Attack (3-hit combo) | J or Z |
 | Jump | K, X or Space |
-| Dive strike | Jump, then J |
-| Ember Burst (60 mana) | L or C |
+| Dive strike | Jump, then J (on foot) |
+| Flame breath | J while riding |
+| Dragon's Wrath (60 mana) | Shift (or L / C) |
+| Ride a wyrmling | K while standing next to a free one |
+| Dismount | E |
 | CRT filter | F |
 | Mute | M |
 
@@ -33,3 +36,8 @@ Open `index.html` in a browser, or serve the folder (`python3 -m http.server`).
 Fighters are drawn from layered, cel-shaded shapes (highlight, base and shadow tones),
 then stamped with a 1px dark outline for a chunky 16-bit look. Weapons, helms, capes,
 pauldrons and ember cracks differ per enemy type. Everything is original.
+
+## Mounts, jars and Dragon's Wrath
+- **Wyrmlings:** some Ashen Husks arrive riding small ember dragons (faster, hit harder). Knock the rider off (a heavy hit or three hits) and the wyrmling is free: stand next to it and press K to ride. Riding gives speed, J breathes fire, and the wyrmling soaks hits for you until its health bar runs out.
+- **Pilferers:** a small green imp runs across the screen now and then carrying an ember jar. Hit it and it drops the jar and bolts. Pick jars up (max 3).
+- **Dragon's Wrath (Shift):** costs a full 60 mana (filled by landing hits). Storm clouds roll in, a giant dragon head descends and smashes the arena, damaging every enemy on the map (off-screen too), for 130 damage. Each jar you carry adds +15% (1 jar +15%, 2 jars +30%, 3 jars +45%) and makes the dragon bigger. Jars are spent on cast. Regular enemies die outright; the boss takes the hit but survives.

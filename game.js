@@ -14,7 +14,7 @@ const lg = lightCv.getContext('2d');
 const keys = {}, pressed = {};
 const KEYMAP = {
   left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'],
-  atk: ['KeyJ', 'KeyZ'], jump: ['KeyK', 'KeyX', 'Space'], magic: ['KeyL', 'KeyC'], start: ['Enter']
+  atk: ['KeyJ', 'KeyZ'], jump: ['KeyK', 'KeyX', 'Space'], magic: ['ShiftLeft', 'ShiftRight', 'KeyL', 'KeyC'], dismount: ['KeyE'], start: ['Enter']
 };
 addEventListener('keydown', e => {
   if (!keys[e.code]) pressed[e.code] = true;
@@ -128,6 +128,7 @@ const wallLayer = makeLayer((c, w, h) => {
 /* ---------- game state ---------- */
 let mode = 'title', cam = 0, lockX = Infinity, hero, enemies, items, parts, shake = 0, freeze = 0;
 let score = 0, waveIdx = 0, goBlink = 0, tickN = 0, lastEnemy = null, endTimer = 0, msg = '', msgT = 0;
+let mounts = [], dragon = null, impT = 240, flashA = 0;
 const WAVES = [
   { x: 260, e: ['h', 'h'] }, { x: 760, e: ['h', 'h', 'h'] }, { x: 1300, e: ['h', 'b', 'h'] },
   { x: 1850, e: ['h', 'h', 'b', 'h'] }, { x: 2300, e: ['boss', 'h', 'h'] }
@@ -136,6 +137,7 @@ const STAGE_END = 2700;
 
 const KINDS = {
   hero: { name: 'KESTREL', hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
+  imp: { name: 'PILFERER', hp: 20, spd: 1.8, scale: 0.8, h: 36, skin: '#79b04a', hair: '#3a5a22', armor: '#7a5a32', armor2: '#c9962e', cloth: '#4a3320', wlen: 12, wwid: 2, wcol: '#cfd4de', windup: 99, rng: 0, dmg: 0 },
   h: { name: 'ASHEN HUSK', hp: 44, spd: 0.8, scale: 1, h: 44, skin: '#6e6a74', hair: '#2c2a30', armor: '#4a3a3a', armor2: '#ff7a2a', cloth: '#2b2226', wlen: 22, wwid: 3, wcol: '#a8743c', windup: 22, rng: 28, dmg: 9 },
   b: { name: 'CINDER BRUTE', hp: 120, spd: 0.55, scale: 1.3, h: 58, skin: '#5a5660', hair: '#1f1c22', armor: '#5a2e2e', armor2: '#ff9a3a', cloth: '#2a1c1c', wlen: 26, wwid: 6, wcol: '#6b6f78', windup: 30, rng: 40, dmg: 18 },
   boss: { name: 'THE CINDER COLOSSUS', hp: 420, spd: 0.5, scale: 2, h: 88, skin: '#4c4852', hair: '#17141a', armor: '#3a1c1c', armor2: '#ffb04a', cloth: '#221414', wlen: 32, wwid: 8, wcol: '#8a8f99', windup: 38, rng: 62, dmg: 26 }
@@ -145,14 +147,14 @@ function makeFighter(kind, x, y) {
   const k = KINDS[kind];
   return {
     kind, k, x, y, z: 0, vx: 0, vy: 0, vz: 0, face: 1, hp: k.hp, maxhp: k.hp, st: 'idle', t: 0, anim: 0,
-    inv: 0, flash: 0, combo: 0, queued: false, hits: new Set(), cool: rnd(20, 70), armor: 70, mana: 0, dead: false, fade: 0, h: k.h
+    inv: 0, flash: 0, combo: 0, queued: false, hits: new Set(), cool: rnd(20, 70), armor: 70, mana: 0, dead: false, fade: 0, h: k.h, vases: 0, mount: null, vase: false, dir: 1, fled: false, gone: false
   };
 }
 
 function resetGame() {
   hero = makeFighter('hero', 60, 205); hero.mana = 60;
   enemies = []; items = []; parts = []; cam = 0; lockX = Infinity; score = 0; waveIdx = 0; shake = 0; freeze = 0; endTimer = 0;
-  lastEnemy = null; msg = ''; msgT = 0;
+  lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0;
 }
 resetGame();
 
@@ -175,16 +177,36 @@ function dust(x, y, n) { spawn(x, y, 0, n, { s0: 0.3, s1: 1.2, c: ['#8d7a8f', '#
 /* ---------- combat ---------- */
 function hurt(e, dmg, kind, from) {
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
-  e.hp -= dmg; e.flash = 4;
   const dir = sgn(e.x - from.x) || -from.face;
+  if (e === hero && hero.mount) { // the wyrmling takes the blow for its rider
+    const m = hero.mount; m.hp -= dmg; hero.flash = 4; hero.inv = 14;
+    sparks(hero.x, hero.y, hero.z + 20, false); SFX.hit(); shake = Math.max(shake, 3); freeze = Math.max(freeze, 2);
+    if (m.hp <= 0) {
+      hero.mount = null; hero.st = 'hurt'; hero.t = 0; hero.vx = dir * 1.6; hero.inv = 60;
+      spawn(hero.x, hero.y, 12, 26, { s0: 1, s1: 3.5, c: ['#ff8a2a', '#ffd070', '#c4452a'], l0: 14, l1: 30, add: true, size: 2 });
+      SFX.die(); msg = 'WYRMLING LOST'; msgT = 70;
+    }
+    return true;
+  }
+  e.hp -= dmg; e.flash = 4;
   sparks(e.x, e.y, e.z + e.h * 0.6, kind === 'down');
   if (e !== hero) lastEnemy = e;
   else shake = Math.max(shake, 4);
   SFX[kind === 'down' ? 'big' : 'hit']();
   freeze = Math.max(freeze, kind === 'down' ? 7 : 3);
   shake = Math.max(shake, kind === 'down' ? 6 : 2);
-  if (from === hero) hero.mana = Math.min(100, hero.mana + dmg * 0.6);
+  if (from === hero && !dragon) hero.mana = Math.min(100, hero.mana + dmg * 0.6);
+  if (e.kind === 'imp' && e.vase) { // the pilferer drops its vase and bolts
+    e.vase = false; e.fled = true; e.dir = sgn(e.x - from.x) || 1;
+    items.push({ x: e.x, y: e.y, t: 0, kind: 'vase' });
+  }
   let knock = kind === 'down' || e.hp <= 0;
+  if (e.mount && (kind === 'down' || e.hp <= 0 || e.hp <= e.maxhp * 0.55)) { // rider thrown from its wyrmling
+    const m = e.mount; e.mount = null; e.h = e.k.h;
+    m.x = e.x + dir * 6; m.y = e.y; m.z = 0.01; m.vz = 3; m.face = -dir; mounts.push(m);
+    spawn(e.x, e.y, 14, 10, { c: ['#ffd070', '#ff8a2a'], l0: 10, l1: 20, add: true });
+    knock = true;
+  }
   if (e.kind === 'boss' && e.hp > 0) { e.armor -= dmg; if (e.armor <= 0) { e.armor = 70; knock = true; } else knock = false; }
   if (knock) { e.st = 'down'; e.t = 0; e.vz = 3.2; e.vx = dir * 2.1; e.z = Math.max(e.z, 0.01); e.combo = 0; }
   else if (e.kind !== 'boss') { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
@@ -223,17 +245,22 @@ function updateHero(f) {
   if (f.dead) { if (++f.fade > 90 && mode === 'play') { mode = 'gameover'; } return; }
   if (groundPhysics(f)) return;
   const mx = (isDown('right') ? 1 : 0) - (isDown('left') ? 1 : 0), my = (isDown('down') ? 1 : 0) - (isDown('up') ? 1 : 0);
-  const foes = enemies;
+  const foes = enemies, spd = f.mount ? 2.4 : f.k.spd;
   switch (f.st) {
     case 'idle': case 'walk': {
-      const run = (isDown('left') || isDown('right')) && false;
-      f.vx = mx * f.k.spd; f.vy = my * f.k.spd * 0.65;
+      f.vx = mx * spd; f.vy = my * spd * 0.65;
       if (mx) f.face = mx;
       f.x += f.vx; f.y = clamp(f.y + f.vy, Y_MIN, Y_MAX);
-      f.st = (mx || my) ? 'walk' : 'idle'; f.anim += (mx || my) ? 0.2 : 0;
-      if (isHit('jump')) { f.st = 'jump'; f.vz = 5.4; f.vx = mx * 1.5; f.t = 0; f.hits.clear(); }
-      else if (isHit('atk')) startAttack(f, 0);
-      else if (isHit('magic') && f.mana >= 60) { f.mana -= 60; f.st = 'magic'; f.t = 0; f.inv = 60; f.hits.clear(); SFX.magic(); }
+      f.st = (mx || my) ? 'walk' : 'idle'; f.anim += (mx || my) ? (f.mount ? 0.3 : 0.2) : 0;
+      const wild = f.mount ? null : mounts.find(m => Math.abs(m.x - f.x) < 28 && Math.abs(m.y - f.y) < 12 && m.z < 3);
+      if (isHit('jump') && wild) {
+        f.mount = wild; mounts.splice(mounts.indexOf(wild), 1); SFX.pick(); sparks(f.x, f.y, 20, true);
+        msg = 'RIDE!   J: FIRE   E: DISMOUNT'; msgT = 120;
+      } else if (isHit('dismount') && f.mount) {
+        const m = f.mount; m.x = f.x - f.face * 12; m.y = f.y; m.face = f.face; m.z = 0.01; m.vz = 2; mounts.push(m); f.mount = null;
+      } else if (isHit('jump')) { f.st = 'jump'; f.vz = f.mount ? 6 : 5.4; f.vx = mx * (f.mount ? 2.2 : 1.5); f.t = 0; f.hits.clear(); }
+      else if (isHit('atk')) { if (f.mount) { f.st = 'ratk'; f.t = 0; f.hits.clear(); SFX.swing(); } else startAttack(f, 0); }
+      else if (isHit('magic') && f.mana >= 60 && !dragon) castDragon();
       break;
     }
     case 'atk': {
@@ -245,41 +272,42 @@ function updateHero(f) {
       if (f.t >= c.d) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
       break;
     }
+    case 'ratk': { // wyrmling flame breath: three pulses
+      if (f.t === 4 || f.t === 9 || f.t === 14) f.hits.clear();
+      if (f.t >= 3 && f.t <= 17) {
+        strike(f, { x0: 4, x1: 76, dy: 13, z0: 0, z1: 40 }, f.t >= 14 ? 14 : 8, f.t >= 14 ? 'down' : 'hurt', foes);
+        spawn(f.x + f.face * 30, f.y, 14, 3, { dx: f.face * 2.6, s0: 0.3, s1: 1.2, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 8, l1: 18, g: -0.01, add: true, size: 2, flat: true });
+      }
+      if (f.t >= 24) { f.st = 'idle'; f.t = 0; }
+      break;
+    }
     case 'jump': case 'jatk': {
       f.x += f.vx; f.z += f.vz; f.vz -= 0.33; f.y = clamp(f.y + my * 0.5, Y_MIN, Y_MAX);
-      if (f.st === 'jump' && isHit('atk')) { f.st = 'jatk'; f.t = 0; f.hits.clear(); SFX.swing(); }
+      if (f.st === 'jump' && isHit('atk') && !f.mount) { f.st = 'jatk'; f.t = 0; f.hits.clear(); SFX.swing(); }
       if (f.st === 'jatk') strike(f, { x0: -6, x1: 34, dy: 12, z0: -22, z1: 24 }, 11, 'down', foes);
       if (f.z <= 0) { f.z = 0; f.st = 'idle'; f.t = 0; dust(f.x, f.y, 4); SFX.land(); }
       break;
     }
-    case 'magic': {
-      if (f.t === 16) {
-        for (const e of foes) if (!e.dead && Math.hypot(e.x - f.x, (e.y - f.y) * 1.6) < 110) { hurt(e, 26, 'down', f); }
-        shake = 12; freeze = 6;
-        for (let i = 0; i < 70; i++) { const a = rnd(0, 6.283), s = rnd(1, 5); parts.push({ x: f.x, y: f.y, z: 6, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.35, vz: rnd(0, 2), life: rnd(16, 36), max: 36, g: 0.04, c: ['#fff1b0', '#ffb43a', '#ff5a1f'][i % 3], size: 2, add: true }); }
-        parts.push({ ring: true, x: f.x, y: f.y, z: 4, life: 22, max: 22 });
-      }
-      if (f.t > 38) { f.st = 'idle'; f.t = 0; }
-      break;
-    }
+    case 'magic': { if (!dragon) { f.st = 'idle'; f.t = 0; } break; }
   }
 }
 
 /* ---------- enemies ---------- */
 function updateEnemy(e) {
+  if (e.kind === 'imp') { updateImp(e); return; }
   e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
   if (e.dead) { e.fade++; return; }
   if (groundPhysics(e)) return;
-  const k = e.k, dx = hero.x - e.x, dy = hero.y - e.y;
+  const k = e.k, spdK = e.mount ? 1.7 : 1, dx = hero.x - e.x, dy = hero.y - e.y;
   const heroDown = hero.dead || hero.st === 'down';
   if (e.st === 'idle' || e.st === 'walk') {
     e.face = sgn(dx) || e.face; e.cool--;
     const rng = k.rng, inRange = Math.abs(dx) < rng + 4 && Math.abs(dy) < 9;
     if (!inRange) {
       e.st = 'walk'; e.anim += 0.14 * (k.spd / 0.8 + 0.4);
-      if (Math.abs(dy) > 5) e.y += sgn(dy) * k.spd * 0.7;
+      if (Math.abs(dy) > 5) e.y += sgn(dy) * k.spd * spdK * 0.7;
       const stand = rng * 0.8;
-      if (Math.abs(dx) > stand) e.x += sgn(dx) * k.spd; else if (Math.abs(dx) < stand - 8) e.x -= sgn(dx) * k.spd * 0.5;
+      if (Math.abs(dx) > stand) e.x += sgn(dx) * k.spd * spdK; else if (Math.abs(dx) < stand - 8) e.x -= sgn(dx) * k.spd * 0.5;
       e.y = clamp(e.y, Y_MIN, Y_MAX);
     } else e.st = 'idle';
     const attackers = enemies.filter(o => !o.dead && (o.st === 'wind' || o.st === 'eatk')).length;
@@ -288,10 +316,69 @@ function updateEnemy(e) {
     if (e.t >= k.windup) { e.st = 'eatk'; e.t = 0; e.hits.clear(); SFX.swing(); }
   } else if (e.st === 'eatk') {
     if (e.t >= 2 && e.t <= 6) {
-      strike(e, { x0: -4, x1: k.rng + 12, dy: e.kind === 'boss' ? 18 : 10, z0: 0, z1: k.h }, k.dmg, e.kind === 'h' ? 'hurt' : 'down', [hero]);
+      strike(e, { x0: -4, x1: k.rng + 12, dy: e.kind === 'boss' ? 18 : 10, z0: 0, z1: k.h }, Math.round(k.dmg * (e.mount ? 1.25 : 1)), e.kind === 'h' ? 'hurt' : 'down', [hero]);
       if (e.kind === 'boss' && e.t === 3) { shake = Math.max(shake, 9); for (let i = 0; i < 18; i++) parts.push({ x: e.x + e.face * rnd(30, 90), y: e.y + rnd(-6, 6), z: 0, vx: e.face * rnd(0.5, 3), vy: 0, vz: rnd(1, 3), life: 20, max: 20, g: 0.2, c: '#ffb04a', size: 2, add: true }); }
     }
     if (e.t >= 18) { e.st = 'idle'; e.t = 0; e.cool = rnd(45, 95) * (e.kind === 'boss' ? 0.7 : 1); }
+  }
+}
+
+/* ---------- mounts, pilferers, dragon wrath ---------- */
+function makeMount(x, y, hp) { return { isMount: true, x, y, z: 0.01, vz: 3, face: 1, hp, maxhp: 70, t: 0, anim: 0, flash: 0, h: 30 }; }
+function updateMounts() {
+  for (const m of mounts) {
+    m.t++; if (m.flash > 0) m.flash--; m.anim += 0.03;
+    m.z += m.vz; m.vz -= 0.3; if (m.z <= 0) { m.z = 0; m.vz = 0; }
+    m.face = sgn(hero.x - m.x) || m.face;
+    if (m.t % 20 === 0) spawn(m.x + m.face * 30, m.y, 30, 1, { c: '#8a7a8a', s0: 0.1, s1: 0.3, l0: 20, l1: 34, up: 0.5, g: -0.01, size: 2 });
+  }
+}
+function updateImp(e) {
+  e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
+  if (e.dead) { e.fade++; return; }
+  if (groundPhysics(e)) return;
+  e.st = 'walk'; e.anim += e.fled ? 0.5 : 0.35; e.face = e.dir;
+  e.x += e.dir * (e.fled ? 3 : 1.9); e.y = clamp(e.y + Math.sin(e.t * 0.12) * 0.35, Y_MIN, Y_MAX);
+  if (e.x < cam - 140 || e.x > cam + W + 140) e.gone = true;
+}
+function updateImpSpawn() {
+  if (mode !== 'play' || dragon) return;
+  if (enemies.some(e => e.kind === 'boss' && !e.dead)) return;
+  if (--impT > 0) return;
+  impT = rnd(900, 1500);
+  if (enemies.some(e => e.kind === 'imp')) return;
+  const d = Math.random() < 0.5 ? 1 : -1;
+  const e = makeFighter('imp', d > 0 ? cam - 30 : cam + W + 30, rnd(Y_MIN + 6, Y_MAX - 6));
+  e.dir = d; e.face = d; e.vase = true; e.st = 'walk'; enemies.push(e);
+}
+function castDragon() {
+  const v = hero.vases;
+  hero.mana -= 60; hero.vases = 0; hero.st = 'magic'; hero.t = 0; hero.inv = 190;
+  dragon = { t: 0, v, mult: 1 + 0.15 * v, size: 1 + 0.15 * v };
+  msg = v ? `DRAGON'S WRATH  +${v * 15}%` : "DRAGON'S WRATH"; msgT = 120; SFX.magic();
+}
+function stepDragon() {
+  const d = dragon; d.t++;
+  if (d.t === 6) tone('sawtooth', 55, 30, 1.2, 0.1);
+  if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; tone('square', 220, 40, 0.2, 0.05); }
+  if (d.t === 62) dragonImpact();
+  if (d.t >= 128) { hero.inv = Math.max(hero.inv, 30); dragon = null; }
+}
+function dragonImpact() {
+  const d = dragon, dmg = 130 * d.mult;
+  hero.st = 'idle'; hero.t = 0;
+  for (const e of enemies) {
+    if (e.dead) continue;
+    e.inv = 0; if (e.st === 'down' || e.st === 'getup') e.st = 'idle';
+    hurt(e, dmg, 'down', { x: cam + W / 2, face: 1 });
+  }
+  shake = 22; freeze = 8; flashA = 1;
+  SFX.big(); tone('sawtooth', 70, 20, 0.9, 0.14);
+  for (let i = 0; i < 3; i++) parts.push({ ring: true, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
+  const n = 70 + d.v * 30;
+  for (let i = 0; i < n; i++) {
+    parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 8), vx: rnd(-1.5, 1.5), vy: 0, vz: rnd(2, 6.5), life: rnd(24, 50), max: 50, g: 0.22, c: ['#4a3a50', '#6a5870', '#2a2030'][i % 3], size: i % 4 ? 2 : 3, add: false });
+    if (i % 2) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 6), vx: rnd(-1, 1), vy: 0, vz: rnd(1, 4), life: rnd(16, 34), max: 34, g: 0.05, c: ['#fff1b0', '#ffb43a', '#ff5a1f'][i % 3], size: 2, add: true });
   }
 }
 
@@ -303,11 +390,11 @@ function updateStage() {
     w.e.forEach((t, i) => {
       const side = i % 2 ? 1 : -1;
       const ex = side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22;
-      enemies.push(makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)));
+      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.4)) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } enemies.push(f); }
     });
     if (w.e.includes('boss')) { msg = 'THE CINDER COLOSSUS'; msgT = 150; }
   }
-  if (lockX !== Infinity && enemies.every(e => e.dead)) {
+  if (lockX !== Infinity && enemies.filter(e => e.kind !== 'imp').every(e => e.dead)) {
     lockX = Infinity; waveIdx++; goBlink = 240;
     if (waveIdx >= WAVES.length) { mode = 'victory'; endTimer = 0; }
   }
@@ -320,7 +407,20 @@ function updateStage() {
 }
 
 function updateItems() {
-  for (const it of items) { it.t++; if (!hero.dead && Math.abs(it.x - hero.x) < 16 && Math.abs(it.y - hero.y) < 14) { hero.hp = Math.min(hero.maxhp, hero.hp + 35); it.gone = true; SFX.pick(); spawn(it.x, it.y, 10, 12, { c: '#9dffb0', add: true, l0: 14, l1: 24, g: -0.02 }); } }
+  for (const it of items) {
+    it.t++;
+    if (it.kind === 'vase') {
+      if (it.z === undefined) { it.z = 8; it.vz = 3; }
+      it.z += it.vz; it.vz -= 0.3; if (it.z < 0) { it.z = 0; it.vz = it.vz < -1.2 ? -it.vz * 0.4 : 0; }
+    }
+    if (hero.dead || Math.abs(it.x - hero.x) > 16 || Math.abs(it.y - hero.y) > 14) continue;
+    if (it.kind === 'vase') {
+      if (it.t < 14 || hero.vases >= 3) continue;
+      hero.vases++; msg = `EMBER JAR ${hero.vases}/3    WRATH +${hero.vases * 15}%`; msgT = 100;
+    } else hero.hp = Math.min(hero.maxhp, hero.hp + 35);
+    it.gone = true; SFX.pick();
+    spawn(it.x, it.y, 10, 12, { c: it.kind === 'vase' ? '#8fd0ff' : '#9dffb0', add: true, l0: 14, l1: 24, g: -0.02 });
+  }
   items = items.filter(i => !i.gone);
 }
 
@@ -331,14 +431,15 @@ function updateParts() {
 }
 
 function step() {
-  tickN++;
+  tickN++; flashA *= 0.88; if (flashA < 0.02) flashA = 0;
   if (mode === 'title') { if (isHit('start') || isHit('atk')) { resetGame(); mode = 'play'; msg = 'ADVANCE'; msgT = 90; } updateParts(); cam += 0.3; return; }
   if (mode === 'gameover' || mode === 'victory') { endTimer++; updateParts(); if (isHit('start') && endTimer > 30) { resetGame(); mode = 'title'; } return; }
   if (freeze > 0) { freeze--; return; }
+  if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
   updateHero(hero);
   enemies.forEach(updateEnemy);
-  enemies = enemies.filter(e => !(e.dead && e.fade > 50));
-  updateItems(); updateParts(); updateStage();
+  enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
+  updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
   if (goBlink > 0) goBlink--; if (msgT > 0) msgT--;
 }
@@ -419,6 +520,8 @@ function drawWeapon(g, C, kind, len) {
     R(-2, -len + 2, 4, len + 8, '#5b3f26'); R(-2, -len + 2, 1.3, len + 8, '#7a5634');
     R(-8, -len - 10, 16, 13, '#6b6f78'); R(-8, -len - 10, 16, 3, '#a2a7b2'); R(-8, -len - 1, 16, 4, '#4a4d55'); R(-3, -len - 10, 6, 13, '#80848e');
     R(-9, -len - 7, 2, 7, '#3a3c42'); R(7, -len - 7, 2, 7, '#3a3c42');
+  } else if (kind === 'imp') {
+    R(-1.5, -3, 3, 6, '#4a3320'); P([-2.5, -3, 2.5, -3, 0, -len - 4], '#cfd4de'); R(-0.5, -len, 1, len - 3, '#ffffff');
   } else {
     R(-2.5, -len + 2, 5, len + 10, '#4a3322'); R(-2.5, -len + 2, 1.6, len + 10, '#6a4a31');
     P([2, -len + 4, 16, -len - 6, 20, -len + 8, 14, -len + 22, 2, -len + 18], '#7f8591'); P([2, -len + 5, 12, -len - 2, 12, -len + 12, 2, -len + 12], '#b7bdc9');
@@ -439,13 +542,13 @@ function drawHuman(f, sx, sy) {
   };
   const dk = c => shade(c, -0.38), lt = c => shade(c, 0.3);
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SW, SH); g.globalCompositeOperation = 'source-over';
-  g.globalAlpha = (f.dead && f.fade > 8) ? Math.max(0, 1 - (f.fade - 8) / 40) : ((f.inv > 0 && (tickN >> 2) & 1 && f === hero) ? 0.45 : 1);
+  g.globalAlpha = (f.dead && f.fade > 8) ? Math.max(0, 1 - (f.fade - 8) / 40) : ((f.inv > 0 && f.inv < 100 && (tickN >> 2) & 1 && f === hero) ? 0.45 : 1);
   g.save(); g.translate(AX, AY); g.scale(f.face * sc, sc);
-  const winding = f.st === 'wind', walking = f.st === 'walk';
+  const riding = !!f.mount, winding = f.st === 'wind', walking = f.st === 'walk' && !riding;
   const lay = f.st === 'down' && f.z === 0;
   if (lay) { g.rotate(-Math.PI / 2 * 0.92); g.translate(-4, -2); } else if (f.st === 'down') g.rotate(-0.7);
-  const air = f.z > 1 && !lay, ph = f.anim;
-  const la = air ? 4 : Math.sin(ph) * 5, lb = air ? -3 : -Math.sin(ph) * 5;
+  const air = f.z > 1 && !lay && !riding, ph = f.anim;
+  const la = riding ? 5 : air ? 4 : Math.sin(ph) * 5, lb = riding ? -4 : air ? -3 : -Math.sin(ph) * 5;
   const bob = walking ? Math.abs(Math.sin(ph)) * 1.5 : (f.st === 'idle' ? Math.sin(tickN * 0.07) * 0.6 : 0);
   const lean = winding ? -2 : f.st === 'atk' ? 2 : 0;
   const big = kind === 'b' || kind === 'boss';
@@ -457,6 +560,7 @@ function drawHuman(f, sx, sy) {
     P([-6 + lean, -35 - bob, -1 + lean, -35 - bob, -7 + sw, -6, -16 + sw, -4], k.cloth);
     R(-17 + sw, -4, 14, 1, lt(k.cloth));
   }
+  if (f.vase) { P([-15, -35 - bob, -8, -35 - bob, -7, -27 - bob, -9, -22 - bob, -14, -22 - bob, -16, -27 - bob], '#3a78c8'); R(-14, -37 - bob, 6, 3, '#e6c97a'); R(-14, -33 - bob, 2, 8, '#bfe6ff'); }
   // back arm
   const bax = -6 + lean, bay = -31 - bob, bhx = -7 + Math.sin(ph + 3) * (walking ? 4 : 1), bhy = -17 - bob;
   limb(bax, bay, bhx, bhy, 4, dk(k.skin), -1, 0); limb(bax, bay, (bax + bhx) / 2, (bay + bhy) / 2, 5, dk(k.armor), -1, 0);
@@ -495,6 +599,12 @@ function drawHuman(f, sx, sy) {
     R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));
     P([-7 + hx, -47 + hy, 7 + hx, -47 + hy, 7 + hx, -41 + hy, 5 + hx, -49 + hy, -5 + hx, -49 + hy, -7 + hx, -41 + hy], k.hair); R(-6 + hx, -50 + hy, 12, 4, k.hair); R(-6 + hx, -50 + hy, 12, 1, lt(k.hair));
     R(1 + hx, -45 + hy, 3, 2, '#ffa23a'); R(1 + hx, -45 + hy, 3, 1, '#ffe08a'); R(-1 + hx, -41 + hy, 7, 1, '#1a1418'); R(0 + hx, -40 + hy, 1, 1, '#ddd'); R(2 + hx, -40 + hy, 1, 1, '#ddd'); R(4 + hx, -40 + hy, 1, 1, '#ddd');
+  } else if (kind === 'imp') {
+    R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));
+    P([-5 + hx, -45 + hy, -13 + hx, -52 + hy, -5 + hx, -41 + hy], k.skin); P([5 + hx, -45 + hy, 13 + hx, -52 + hy, 5 + hx, -41 + hy], dk(k.skin));
+    P([-4 + hx, -48 + hy, 0 + hx, -53 + hy, 4 + hx, -48 + hy], k.hair);
+    R(0 + hx, -46 + hy, 5, 4, '#ffe27a'); R(3 + hx, -45 + hy, 2, 3, '#1a0a04'); R(-3 + hx, -46 + hy, 3, 3, '#ffe27a');
+    R(-1 + hx, -41 + hy, 7, 2, '#2a1408'); R(0 + hx, -41 + hy, 1, 1, '#fff'); R(3 + hx, -41 + hy, 1, 1, '#fff');
   } else { // helmeted: brute & boss
     const hm = kind === 'boss' ? '#3b3640' : '#5a5660';
     R(-6 + hx, -49 + hy, 12, 12, k.skin); R(-6 + hx, -49 + hy, 12, 12, dk(k.skin));
@@ -513,6 +623,7 @@ function drawHuman(f, sx, sy) {
   else if (f.st === 'eatk') ang = lerp(-2.0, 1.4, clamp(f.t / 5, 0, 1));
   else if (f.st === 'atk') { const c = COMBO[f.combo]; const p = clamp((f.t - 1) / (c.b - 1), 0, 1); ang = f.combo === 1 ? lerp(1.6, -1.8, p) : lerp(-2.2, 1.5, p); }
   else if (f.st === 'jatk') ang = 2.3;
+  else if (f.st === 'ratk') ang = 1.3;
   else if (f.st === 'magic') ang = -2.6;
   else if (walking) ang = 0.5 + Math.sin(ph) * 0.15;
   const shx = 5 + lean, shy = -32 - bob, hl = 11, bl = k.wlen;
@@ -545,21 +656,158 @@ function drawHuman(f, sx, sy) {
 
 function drawFighter(f) {
   const sx = f.x - cam, sy = f.y;
-  // shadow
-  const sh = clamp(1 - f.z / 90, 0.3, 1) * f.k.scale;
+  if (f.isMount) { drawWildMount(f, sx, sy); return; }
+  const sh = clamp(1 - f.z / 90, 0.3, 1) * f.k.scale * (f.mount ? 1.7 : 1);
   g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 12 * sh, 4 * sh, 0, 0, 7); g.fill();
-  drawHuman(f, sx, sy);
-  // windup telegraph
+  if (f.mount) {
+    drawDragon(sx, sy - f.z, { face: f.face, anim: f.anim, flash: f.flash, moving: f.st === 'walk', breathe: f.st === 'ratk' || f.st === 'wind' || f.st === 'eatk' });
+    drawHuman(f, sx, sy - 11);
+  } else drawHuman(f, sx, sy);
   if (f.st === 'wind' && (tickN >> 1) & 1) { g.fillStyle = '#ff3b2a'; g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - f.h * 1.0 - 8), 3, 6); g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - f.h - 1), 3, 2); }
+}
+
+function drawWildMount(m, sx, sy) {
+  g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 20, 5, 0, 0, 7); g.fill();
+  drawDragon(sx, sy - m.z, { face: m.face, anim: m.anim, flash: m.flash, moving: false, breathe: false });
+  if (!hero.mount && Math.abs(m.x - hero.x) < 80 && Math.abs(m.y - hero.y) < 24 && ((tickN >> 4) & 1)) text('K: RIDE', Math.round(sx), Math.round(sy - 52), 8, '#fff1b0', 'center');
+}
+
+function drawJar(x, y, on) {
+  g.fillStyle = '#0a0610'; g.fillRect(x - 5, y - 11, 10, 12);
+  g.fillStyle = on ? '#3a8ae0' : '#26324a'; g.fillRect(x - 4, y - 9, 8, 9);
+  g.fillStyle = on ? '#bfe6ff' : '#3a4866'; g.fillRect(x - 3, y - 8, 2, 6);
+  g.fillStyle = on ? '#e6c97a' : '#5a5030'; g.fillRect(x - 3, y - 12, 6, 3);
+  if (on) { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(90,170,255,0.22)'; g.fillRect(x - 9, y - 16, 18, 18); g.globalCompositeOperation = 'source-over'; }
 }
 
 function drawItems() {
   for (const it of items) {
-    const x = Math.round(it.x - cam), y = Math.round(it.y), b = Math.sin(it.t * 0.1) * 2;
+    const x = Math.round(it.x - cam), y = Math.round(it.y);
+    if (it.kind === 'vase') {
+      const z = it.z || 0, yy = y - z + Math.sin(it.t * 0.1) * 1.5;
+      g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 7, 2.5, 0, 0, 7); g.fill();
+      g.globalCompositeOperation = 'lighter';
+      const gr = g.createRadialGradient(x, yy - 8, 1, x, yy - 8, 18); gr.addColorStop(0, 'rgba(90,170,255,0.5)'); gr.addColorStop(1, 'rgba(90,170,255,0)');
+      g.fillStyle = gr; g.fillRect(x - 18, yy - 26, 36, 36); g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#0a0610'; g.fillRect(x - 6, yy - 15, 12, 15); g.fillStyle = '#3a8ae0'; g.fillRect(x - 5, yy - 13, 10, 12);
+      g.fillStyle = '#bfe6ff'; g.fillRect(x - 4, yy - 12, 2, 8); g.fillStyle = '#2a60b0'; g.fillRect(x + 1, yy - 12, 4, 11);
+      g.fillStyle = '#e6c97a'; g.fillRect(x - 4, yy - 17, 8, 3); g.fillStyle = '#fff0a8'; g.fillRect(x - 4, yy - 17, 8, 1);
+      continue;
+    }
+    const b = Math.sin(it.t * 0.1) * 2;
     g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 7, 2.5, 0, 0, 7); g.fill();
     g.fillStyle = '#c85a3a'; g.fillRect(x - 5, y - 9 + b, 10, 7); g.fillStyle = '#f0d4b0'; g.fillRect(x + 4, y - 10 + b, 5, 3); g.fillRect(x + 7, y - 12 + b, 3, 3);
     g.fillStyle = '#e8805a'; g.fillRect(x - 4, y - 9 + b, 6, 2);
   }
+}
+
+/* small ember wyrmling (original design), drawn into the sprite canvas and outlined */
+function drawDragon(sx, sy, o) {
+  const g = sg, white = o.flash > 0;
+  const C = c => white ? '#ffffff' : c;
+  const P = (pts, c) => { g.fillStyle = C(c); g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); };
+  const R = (x, y, w, h, c) => { g.fillStyle = C(c); g.fillRect(x, y, w, h); };
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SW, SH); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  g.save(); g.translate(AX, AY); g.scale(o.face, 1);
+  const body = '#c4452a', belly = '#f0b070', dark = '#7a2418', light = '#e0663c', spine = '#ffd070', wing = '#8a2c3a';
+  const sway = Math.sin(tickN * 0.1) * 3, st = o.moving ? Math.sin(o.anim) * 4 : 0;
+  const bob = (o.moving ? Math.abs(Math.sin(o.anim)) * 1.6 : 0) + Math.sin(tickN * 0.08) * 0.6;
+  P([-14, -13 - bob, -14, -7 - bob, -28 + sway, -4, -42 + sway * 1.6, -9, -38 + sway * 1.4, -15, -27 + sway, -11], dark);
+  P([-38 + sway * 1.4, -15, -45 + sway * 1.7, -19, -41 + sway * 1.5, -9], spine);
+  R(-10 - st, -9, 5, 9, dark); R(-11 - st, -2, 8, 2, '#2a1010'); R(10 + st, -9, 5, 9, dark); R(9 + st, -2, 8, 2, '#2a1010');
+  const fl = Math.sin(tickN * (o.breathe ? 0.5 : 0.12)) * 3;
+  P([-4, -22 - bob, 5, -22 - bob, 0, -38 - bob + fl, -15, -34 - bob + fl, -10, -24 - bob], wing);
+  P([-4, -22 - bob, 0, -38 - bob + fl, -8, -30 - bob + fl * 0.5], dark);
+  P([-18, -9 - bob, -13, -22 - bob, 0, -25 - bob, 12, -21 - bob, 18, -12 - bob, 13, -6 - bob, -14, -5 - bob], body);
+  P([-14, -22 - bob, 0, -25 - bob, 12, -21 - bob, 8, -19 - bob, -8, -20 - bob], light);
+  P([-12, -6 - bob, 12, -6 - bob, 15, -11 - bob, -15, -11 - bob], belly);
+  for (let i = 0; i < 5; i++) { const x0 = -11 + i * 6; P([x0, -22 - bob, x0 + 4, -23 - bob, x0 + 2, -28 - bob], spine); }
+  R(-12 + st, -9, 5, 9, body); R(-12 + st, -9, 2, 9, light); R(-13 + st, -2, 8, 2, '#2a1010');
+  R(8 - st, -9, 5, 9, body); R(8 - st, -9, 2, 9, light); R(7 - st, -2, 8, 2, '#2a1010');
+  R(-5, -26 - bob, 13, 3, '#3a2418'); R(-5, -27 - bob, 13, 1, '#c9962e');
+  P([8, -18 - bob, 14, -23 - bob, 22, -35 - bob, 17, -37 - bob, 9, -27 - bob], body);
+  P([14, -23 - bob, 22, -35 - bob, 19, -36 - bob, 12, -24 - bob], light);
+  const jaw = o.breathe ? 6 : 1;
+  P([20, -31 - bob, 33, -31 - bob + jaw, 32, -28 - bob + jaw, 19, -28 - bob], dark);
+  P([17, -39 - bob, 25, -41 - bob, 35, -37 - bob, 34, -32 - bob, 20, -31 - bob, 16, -33 - bob], body);
+  P([20, -39 - bob, 25, -41 - bob, 35, -37 - bob, 28, -37 - bob], light);
+  if (o.breathe) { R(27, -32 - bob, 6, 3, '#ffb43a'); R(28, -32 - bob, 4, 1, '#fff1b0'); }
+  R(25, -38 - bob, 3, 2, '#ffe27a'); R(27, -38 - bob, 1, 2, '#2a0a0a'); R(33, -37 - bob, 1, 1, '#2a0a0a');
+  P([18, -40 - bob, 11, -47 - bob, 21, -41 - bob], '#e6dcc4'); P([20, -39 - bob, 15, -44 - bob, 22, -40 - bob], '#bfb49a');
+  g.restore();
+  sil.setTransform(1, 0, 0, 1, 0, 0); sil.globalCompositeOperation = 'source-over'; sil.clearRect(0, 0, SW, SH); sil.globalAlpha = 1;
+  sil.drawImage(spriteCv, 0, 0); sil.globalCompositeOperation = 'source-in'; sil.fillStyle = '#0b0610'; sil.fillRect(0, 0, SW, SH);
+  const x0 = Math.round(sx) - AX, y0 = Math.round(sy) - AY;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) MAIN.drawImage(silCv, x0 + dx, y0 + dy);
+  MAIN.drawImage(spriteCv, x0, y0);
+}
+
+/* the giant dragon head that smashes the arena (original design, frontal view) */
+function drawGiantHead(cx, cy, s, glow) {
+  g.save(); g.translate(cx, cy); g.scale(s, s);
+  const lw = 2 / s;
+  const shape = (pts, fill, stroke) => {
+    g.beginPath(); g.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+    for (let i = pts.length - 2; i >= 0; i -= 2) g.lineTo(-pts[i], pts[i + 1]);
+    g.closePath(); g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = '#12060a'; g.lineWidth = lw; g.stroke(); }
+  };
+  const side = (pts, fill, m) => {
+    g.beginPath(); g.moveTo(pts[0] * m, pts[1]);
+    for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i] * m, pts[i + 1]);
+    g.closePath(); g.fillStyle = fill; g.fill(); g.strokeStyle = '#12060a'; g.lineWidth = lw; g.stroke();
+  };
+  shape([0, -420, 32, -420, 42, -90, 36, -50, 0, -44], '#4a1420', true);
+  for (let y = -400; y < -80; y += 22) { const hw = 32 + 10 * ((y + 420) / 330); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-hw, y, hw * 2, 3); g.fillStyle = 'rgba(200,80,60,0.12)'; g.fillRect(-hw, y + 3, hw * 2, 1); }
+  shape([0, -6, 34, -14, 42, 6, 28, 24, 0, 30], '#6a1c28', true);
+  shape([0, -30, 26, -30, 22, -2, 0, 2], `rgb(${50 + glow * 205 | 0},${12 + glow * 110 | 0},12)`, false);
+  g.globalCompositeOperation = 'lighter';
+  const mg = g.createRadialGradient(0, -14, 2, 0, -14, 20 + 36 * glow); mg.addColorStop(0, `rgba(255,170,60,${0.25 + 0.6 * glow})`); mg.addColorStop(1, 'rgba(255,100,20,0)');
+  g.fillStyle = mg; g.fillRect(-70, -70, 140, 120); g.globalCompositeOperation = 'source-over';
+  for (const xx of [-20, -10, 0, 10, 20]) { g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 3, -2); g.lineTo(xx + 3, -2); g.lineTo(xx, -13); g.fill(); }
+  shape([0, -150, 26, -146, 50, -120, 58, -84, 52, -52, 40, -34, 0, -30], '#8a2634', true);
+  shape([0, -146, 7, -142, 10, -92, 0, -84], '#b8483a', false);
+  shape([0, -80, 52, -76, 52, -52, 40, -34, 0, -30], 'rgba(40,6,16,0.38)', false);
+  for (const m of [1, -1]) { g.strokeStyle = 'rgba(30,4,10,0.55)'; g.lineWidth = lw; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(m * (14 + i * 9), -130 + i * 6); g.lineTo(m * (22 + i * 9), -118 + i * 9); g.stroke(); } }
+  shape([0, -78, 22, -76, 32, -56, 24, -34, 0, -32], '#b8483a', true);
+  for (const xx of [-22, -14, -6, 6, 14, 22]) { g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 3.5, -31); g.lineTo(xx + 3.5, -31); g.lineTo(xx, -18); g.fill(); }
+  for (const m of [1, -1]) {
+    side([40, -140, 70, -190, 96, -232, 88, -176, 58, -124], '#e6dcc4', m);
+    side([52, -110, 84, -138, 70, -100], '#bfb49a', m);
+    side([10, -104, 50, -112, 58, -90, 24, -86], '#2a0a10', m);
+    g.globalCompositeOperation = 'lighter';
+    const gr = g.createRadialGradient(m * 36, -94, 2, m * 36, -94, 26); gr.addColorStop(0, 'rgba(255,190,60,0.6)'); gr.addColorStop(1, 'rgba(255,120,30,0)');
+    g.fillStyle = gr; g.fillRect(m * 36 - 26, -120, 52, 52); g.globalCompositeOperation = 'source-over';
+    side([22, -96, 46, -100, 44, -90, 26, -88], '#ffd24a', m);
+    g.fillStyle = '#c8300a'; g.fillRect(m * 36 - 2, -98, 4, 7);
+    g.fillStyle = '#1a0508'; g.fillRect(m * 10 - 3, -62, 6, 4);
+  }
+  g.restore();
+}
+
+function drawDragonCast() {
+  const d = dragon, t = d.t;
+  const k = Math.min(1, t / 20, (128 - t) / 28);
+  g.fillStyle = `rgba(8,0,22,${0.58 * k})`; g.fillRect(0, 0, W, H);
+  const ca = Math.min(1, t / 24, (128 - t) / 22);
+  for (let row = 0; row < 2; row++) for (let i = -1; i < 13; i++) {
+    const x = i * 44 + (row ? 22 : 0) - (tickN * (0.5 + row * 0.3)) % 44, y = lerp(-30, row ? 22 : 10, ca);
+    g.fillStyle = row ? `rgba(34,14,48,${0.95 * ca})` : `rgba(18,6,30,${0.98 * ca})`;
+    g.beginPath(); g.arc(x, y, 30 + (i % 3) * 5, 0, 7); g.fill();
+  }
+  if (t < 62 && t % 18 < 3) {
+    g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,240,200,0.9)'; g.lineWidth = 2;
+    let px = W * (0.15 + (((t / 18) | 0) * 0.37) % 0.7), py = 20; g.beginPath(); g.moveTo(px, py);
+    while (py < 205) { px += rnd(-14, 14); py += rnd(16, 30); g.lineTo(px, py); }
+    g.stroke(); g.globalCompositeOperation = 'source-over';
+  }
+  let chin = -200;
+  if (t >= 30 && t < 62) { const p = (t - 30) / 32; chin = lerp(-120, 218, p * p); }
+  else if (t >= 62 && t < 84) chin = 218 + Math.sin(t * 2) * 1.5;
+  else if (t >= 84) { const q = clamp((t - 84) / 44, 0, 1); chin = lerp(218, -170, q * q * (3 - 2 * q)); }
+  const glow = t < 62 ? clamp((t - 30) / 32, 0, 1) : Math.max(0.25, 1 - (t - 62) / 50);
+  if (t >= 62 && t < 100) { g.fillStyle = `rgba(0,0,0,${0.45 * Math.min(1, (100 - t) / 20)})`; g.beginPath(); g.ellipse(W / 2, 220, 120 * d.size, 14, 0, 0, 7); g.fill(); }
+  if (t >= 30 && chin > -180) drawGiantHead(W / 2, chin, 0.95 * d.size, glow);
 }
 
 function drawParts(addOnly) {
@@ -606,7 +854,10 @@ function drawHUD() {
   text('KESTREL', 12, 18, 11, '#9fd0ff');
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010');
-  text('L: EMBER BURST', 12, 46, 8, hero.mana >= 60 ? '#ffd24a' : '#6a5a40');
+  text('SHIFT: DRAGON WRATH', 12, 46, 8, hero.mana >= 60 ? '#ffd24a' : '#6a5a40');
+  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 64, i < hero.vases);
+  text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 61, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
+  if (hero.mount) { text('WYRMLING', 12, 80, 8, '#ff9a6a'); bar(12, 83, 70, 4, hero.mount.hp, hero.mount.maxhp, '#ff8a3a', '#3a1a10'); }
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
   if (lastEnemy && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); }
   if (goBlink > 0 && (goBlink >> 4) & 1) { text('GO', W - 40, 120, 18, '#fff1b0', 'center'); g.fillStyle = '#fff1b0'; g.beginPath(); g.moveTo(W - 22, 105); g.lineTo(W - 8, 115); g.lineTo(W - 22, 125); g.fill(); }
@@ -622,8 +873,8 @@ function drawTitleOverlay() {
   g.fillStyle = gr; g.fillText('EMBERFALL', W / 2, y);
   text('THE ASHEN VOW', W / 2, y + 22, 12, '#c9a8ff', 'center');
   if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2, 190, 14, '#ffffff', 'center');
-  text('WASD/ARROWS MOVE   J ATTACK (x3 COMBO)   K JUMP   L EMBER BURST', W / 2, 222, 8, '#b8a8c8', 'center');
-  text('JUMP+J = DIVE STRIKE     F: CRT FILTER     M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
+  text('WASD/ARROWS MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH', W / 2, 222, 8, '#b8a8c8', 'center');
+  text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
 }
 
 function render() {
@@ -632,7 +883,7 @@ function render() {
   drawWorld(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
   drawItems();
-  const list = [...enemies, hero].sort((a, b) => a.y - b.y);
+  const list = [...enemies, ...mounts, hero].sort((a, b) => a.y - b.y);
   for (const f of list) drawFighter(f);
   drawParts(false);
   g.restore();
@@ -645,6 +896,8 @@ function render() {
     const al = clamp((Math.abs(x - W / 2) - 110) / 70, 0, 1); if (al <= 0) continue;
     g.globalAlpha = al; g.fillStyle = '#07040b'; g.fillRect(x - 12, 0, 24, H); g.fillStyle = '#120a19'; g.fillRect(x - 12, 0, 3, H); g.globalAlpha = 1;
   }
+  if (dragon) drawDragonCast();
+  if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
   else drawHUD();
   if (mode === 'gameover') { g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, W, H); text('YOU HAVE FALLEN', W / 2, 120, 22, '#e0431f', 'center'); text('SCORE ' + score, W / 2, 148, 12, '#fff1b0', 'center'); if (endTimer > 30) text('PRESS ENTER', W / 2, 180, 10, '#fff', 'center'); }
