@@ -41,3 +41,16 @@ pauldrons and ember cracks differ per enemy type. Everything is original.
 - **Wyrmlings:** some Ashen Husks arrive riding small ember dragons (faster, hit harder). Knock the rider off (a heavy hit or three hits) and the wyrmling is free: stand next to it and press K to ride. Riding gives speed, J breathes fire, and the wyrmling soaks hits for you until its health bar runs out.
 - **Pilferers:** a small green imp runs across the screen now and then carrying an ember jar. Hit it and it drops the jar and bolts. Pick jars up (max 3).
 - **Dragon's Wrath (Shift):** costs a full 60 mana (filled by landing hits). Storm clouds roll in, a giant dragon head descends and smashes the arena, damaging every enemy on the map (off-screen too), for 130 damage. Each jar you carry adds +15% (1 jar +15%, 2 jars +30%, 3 jars +45%) and makes the dragon bigger. Jars are spent on cast. Regular enemies die outright; the boss takes the hit but survives.
+
+## Story & campaign
+
+*The Ashen Vow*: the Cinder King stole the Heart-Ember and the world went dark. Play Kestrel, the last Ember Warden, through four stages, each with its own look and its own boss:
+
+| Stage | Boss | Gimmick |
+|---|---|---|
+| 1. The Broken Gate | Cinder Colossus | Heavy bruiser, enrages below 50% HP |
+| 2. The Sunken Marsh | Mire Matron | Kites you, fires spirit orbs, summons husks |
+| 3. The Ember Forge | Forgemaster | Hammer smashes with shockwaves, charge, quake rings (jump them) |
+| 4. The Obsidian Throne | Cinder King | Blink-slash combos, meteor rain in phase 2 |
+
+Story screens play between stages (Enter to advance). If you fall, Enter continues the current stage.
