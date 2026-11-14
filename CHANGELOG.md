@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.9.2] - 2026-11-14
+- Fixed the RIDE touch button: it now mounts a nearby wyrmling as well as dismounting (E on keyboard does the same).
+
 ## [1.9.1] - 2026-11-14
 - English is now the default language; Hungarian is opt-in (title screen or pause menu) and remembered.
 
