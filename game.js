@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1363,11 +1363,15 @@ function continueStage() {
   const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
 }
 function openShop(next) {
-  const mk = i => { let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r); return genItem(r); };
+  const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
+    let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r);
+    if (stageIdx >= 2 || cycle) { const x = Math.random(); if (i === 3) r = x < 0.06 ? 3 : x < 0.3 ? 2 : Math.max(1, r); else if (x < 0.02) r = 3; else if (x < 0.09) r = Math.max(r, 2); }
+    return genItem(r);
+  };
   shop = { i: 0, note: '', noteT: 0, next, stock: [
     { kind: 'heal', name: 'FULL HEAL', price: 80, info: 'RESTORES THE WHOLE PARTY' },
     { kind: 'coin', name: 'CONTINUE COIN', price: 600, info: 'AN EXTRA LIFE (MAX 3)' },
-    ...[0, 1, 2].map(i => { const it = mk(i); return { kind: 'gear', it, name: it.name, price: itemPrice(it) }; }),
+    ...[0, 1, 2, 3].map(i => { const it = mk(i); return { kind: 'gear', it, name: it.name, price: itemPrice(it), prem: i === 3 }; }),
     { kind: 'go', name: 'LEAVE THE MARKET', price: 0 }
   ] };
   mode = 'shop'; SFX.pick();
@@ -1399,16 +1403,16 @@ function drawShop() {
     const y = 62 + i * 22, sel = i === s.i;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.18)'; g.fillRect(14, y - 11, 238, 18); g.strokeStyle = '#ffb43a'; g.strokeRect(14.5, y - 10.5, 237, 17); }
     const col = o.sold ? '#5a4a6a' : o.kind === 'gear' ? RARITY[o.it.rar].col : o.kind === 'go' ? '#9fd0ff' : '#ffffff';
-    text((sel ? '> ' : '  ') + o.name, 20, y, o.name.length > 22 ? 7 : 8, col);
+    text((sel ? '> ' : '  ') + (o.prem ? '* ' : '') + o.name, 20, y, o.name.length > 20 ? 7 : 8, col);
     if (o.kind !== 'go') text(o.sold ? 'SOLD' : o.price + 'G', 246, y, 8, o.sold ? '#5a4a6a' : rpg.gold >= o.price ? '#ffd24a' : '#ff6a6a', 'right');
   });
   const o = s.stock[s.i];
-  g.fillStyle = 'rgba(20,12,34,0.9)'; g.fillRect(262, 50, 204, 150); g.strokeStyle = '#c9962e'; g.strokeRect(262.5, 50.5, 203, 149);
+  g.fillStyle = 'rgba(20,12,34,0.9)'; g.fillRect(262, 50, 204, 178); g.strokeStyle = '#c9962e'; g.strokeRect(262.5, 50.5, 203, 177);
   if (o.kind === 'gear') drawTip(o.it, rpg.eq[o.it.slot] || null, 258, 36); else if (o.info) text(o.info, 364, 130, 8, '#d9c9f0', 'center');
   else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
-  if (s.noteT > 0) text(s.note, W / 2, 224, 9, '#fff1b0', 'center');
+  if (s.noteT > 0) text(s.note, 130, 224, 9, '#fff1b0', 'center');
   text('W/S CHOOSE   ENTER BUY   I GEAR', W / 2, 250, 8, '#b8a8c8', 'center');
-  text('DUPLICATE DROPS TURN INTO GOLD AND SCORE', W / 2, 261, 7, '#8a7aa0', 'center');
+  text('* PREMIUM SHELF: BEST ODDS FOR LEGENDARY AND MYTHIC    DUPLICATES BECOME GOLD', W / 2, 261, 6, '#8a7aa0', 'center');
 }
 function stageCleared() {
   score += 3000; saveGame(); openShop(afterClear);

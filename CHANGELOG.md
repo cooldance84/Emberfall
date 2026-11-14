@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.8.1] - 2026-11-14
+- The Ember Market now has a mythic chance (about 3%) on its regular shelves from stage 3 and a fourth premium shelf with about 6% mythic and 30% legendary or better.
+
 ## [1.8.0] - 2026-11-14
 - Added a colour palette for each act (frost, crimson, violet) applied to every stage background, so stages 6 to 20 look new.
 - Added weather: rain, thunderstorms with lightning flashes, snow, blizzards, ash, forge sparks and drifting light motes.
