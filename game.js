@@ -392,7 +392,8 @@ function updateHero(f) {
       if (f.t === 4 || f.t === 9 || f.t === 14) f.hits.clear();
       if (f.t >= 3 && f.t <= 17) {
         strike(f, { x0: 4, x1: 76, dy: 13, z0: 0, z1: 40 }, f.t >= 14 ? 14 : 8, f.t >= 14 ? 'down' : 'hurt', foes);
-        spawn(f.x + f.face * 30, f.y, 14, 3, { dx: f.face * 2.6, s0: 0.3, s1: 1.2, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 8, l1: 18, g: -0.01, add: true, size: 2, flat: true });
+        // emit from the dragon's mouth (sprite mouth is ~34px ahead, ~31px up)
+        for (const dz of [28, 32, 36]) spawn(f.x + f.face * 34, f.y, f.z + dz, 3, { dx: f.face * 2.8, s0: 0.2, s1: 0.9, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 8, l1: 20, g: 0.012, add: true, size: 3, flat: true });
       }
       if (f.t >= 24) { f.st = 'idle'; f.t = 0; }
       break;
