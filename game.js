@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -45,6 +45,7 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 // player 2 (co-op): arrows + , . / (or numpad 1-3), or the second gamepad
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
+let vents = [], slashes = [];
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const areaLv = () => 4 + stageIdx * 2 + cycle * 14;          // how deep in the endless loop you are
 const hpMul = () => 1 + (areaLv() - 4) * 0.1;                // monsters get tougher every stage and cycle
@@ -731,6 +732,7 @@ function hurt(e, dmg, kind, from) {
   }
   e.hp -= dmg; e.flash = 4;
   sparks(e.x, e.y, e.z + e.h * 0.6, kind === 'down');
+  slashes.push({ x: e.x, y: e.y, z: e.z + e.h * 0.6, t: 0, big: kind === 'down', a: dir > 0 ? rnd(-0.9, -0.3) : Math.PI + rnd(0.3, 0.9) });
   if (!e.pn) lastEnemy = e;
   else shake = Math.max(shake, 4);
   SFX[kind === 'down' ? 'big' : 'hit']();
@@ -815,7 +817,7 @@ function stepSkill(f) {
   if (id === 0) { // rising slash: leaping uppercut
     if (t === 3) { f.vz = 4.6; f.hits.clear(); SFX.swing(); }
     if (t >= 3) { f.z += f.vz; f.vz -= 0.33; f.x += ff * 0.8; }
-    if (t >= 4 && t <= 12) strike(f, { x0: -8, x1: 54, dy: 16, z0: -10, z1: 70 }, 26, 'down', foes);
+    if (t >= 4 && t <= 12) strike(f, { x0: -8, x1: 64, dy: 18, z0: -10, z1: 70 }, 26, 'down', foes);
     if (t >= 4 && t % 2 === 0) spawn(f.x + ff * 22, f.y, f.z + 24, 2, { c: ['#fff1b0', '#8cc4ff'], l0: 8, l1: 16, add: true, up: 2, g: -0.02 });
     if (f.z <= 0 && t > 6) end();
   } else if (id === 1) { // dash strike
@@ -1155,7 +1157,8 @@ function beginStage(i) {
   stageIdx = i; const S = STAGES[i]; TH = THEMES[S.theme]; WAVES = S.waves; STAGE_END = S.end;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
-  intro = null;
+  intro = null; slashes = []; vents = [];
+  if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
@@ -1494,7 +1497,43 @@ function updateItems() {
   items = items.filter(i => !i.gone);
 }
 
+const VENT_P = 260;
+function updateVents() {
+  slashes = slashes.filter(s => ++s.t < (s.big ? 14 : 9));
+  for (const v of vents) {
+    const t = (tickN + v.ph) % VENT_P;
+    if (t === 0) v.hit.clear();
+    if (t >= 100 && t < 118) {
+      if (Math.abs(v.x - cam - W / 2) > W) continue;
+      if (t === 100) { SFX.land(); shake = Math.max(shake, 1); }
+      if (t % 2 === 0) spawn(v.x, v.y, 4, 3, { s0: 0.3, s1: 1, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 10, l1: 22, add: true, size: 2, up: 3.4, g: 0.1 });
+      for (const f of [...enemies, ...players()]) {
+        if (f.dead || v.hit.has(f) || f.z > 60 || f.mount) continue;
+        if (Math.abs(f.x - v.x) < 18 && Math.abs(f.y - v.y) < 10) { v.hit.add(f); hurt(f, f.pn ? 9 : 14, 'down', { x: v.x, face: 1, pn: 0 }); if (f.pn) floatText(f.x, f.y - 50, 'SCORCHED', '#ff8a2a', 8); }
+      }
+    } else if (t >= 70 && t < 100 && t % 5 === 0 && Math.abs(v.x - cam - W / 2) < W) spawn(v.x, v.y, 2, 1, { s0: 0.2, s1: 0.5, c: '#ffb43a', l0: 8, l1: 14, add: true, size: 1, up: 1, g: 0 });
+  }
+}
+function drawVentsAndSlashes(top) {
+  if (!top) for (const v of vents) {
+    const x = Math.round(v.x - cam); if (x < -30 || x > W + 30) continue;
+    const t = (tickN + v.ph) % VENT_P, warn = t >= 60 && t < 100 ? (t - 60) / 40 : 0, on = t >= 100 && t < 118;
+    g.fillStyle = 'rgba(0,0,0,0.5)'; g.beginPath(); g.ellipse(x, v.y, 15, 5, 0, 0, 7); g.fill();
+    g.fillStyle = on ? '#fff1b0' : `rgb(${95 + warn * 155 | 0},${34 + warn * 70 | 0},12)`; g.beginPath(); g.ellipse(x, v.y, 11, 3.5, 0, 0, 7); g.fill();
+    g.strokeStyle = '#1a0c0a'; g.lineWidth = 1; g.beginPath(); g.ellipse(x, v.y, 13, 4.5, 0, 0, 7); g.stroke();
+    if (warn > 0 && (tickN >> 2) & 1) { g.fillStyle = `rgba(255,180,60,${warn * 0.6})`; g.fillRect(x - 1, v.y - 8 - warn * 6, 2, 5); }
+    if (on) { const h = 70 * Math.sin((t - 100) / 18 * Math.PI) + 10; const gr = g.createLinearGradient(0, v.y - h, 0, v.y); gr.addColorStop(0, 'rgba(255,120,30,0)'); gr.addColorStop(0.5, 'rgba(255,170,60,0.85)'); gr.addColorStop(1, 'rgba(255,240,180,0.95)'); g.fillStyle = gr; g.fillRect(x - 6, v.y - h, 12, h); }
+  }
+  if (top) for (const s of slashes) {
+    const k = s.t / (s.big ? 14 : 9), x = s.x - cam, y = s.y - s.z, L = (s.big ? 34 : 22) * (0.6 + k * 0.6);
+    g.save(); g.globalCompositeOperation = 'lighter'; g.translate(x, y); g.rotate(s.a); g.globalAlpha = 1 - k;
+    g.fillStyle = '#fff6c8'; g.fillRect(-L / 2, -1, L, 2); g.fillStyle = '#ffb43a'; g.fillRect(-L / 2 - 4, -2, L + 8, 1); g.fillRect(-L / 2 - 4, 1, L + 8, 1);
+    if (s.big) { g.rotate(1.2); g.fillStyle = '#fff1b0'; g.fillRect(-L / 3, -1, L * 0.66, 2); }
+    g.restore();
+  }
+}
 function updateParts() {
+  updateVents();
   for (const p of parts) { p.life--; if (p.ring) continue; p.x += p.vx; p.y += p.vy; p.z += p.vz; p.vz -= p.g; if (p.z < 0) { p.z = 0; p.vz *= -0.3; p.vx *= 0.7; } }
   parts = parts.filter(p => p.life > 0);
   if (parts.length < 300 && Math.random() < 0.5) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 90), vx: rnd(-0.2, 0.4), vy: 0, vz: rnd(0.1, 0.4), life: rnd(60, 160), max: 160, g: -0.002, c: TH.amb, size: 1, add: true, amb: true });
@@ -1580,6 +1619,21 @@ function drawWorld() {
     const x = Math.round(tx - cam);
     g.fillStyle = T.post[0]; g.fillRect(x - 2, GROUND_TOP - 40, 4, 40);
     g.fillStyle = T.post[1]; g.fillRect(x - 5, GROUND_TOP - 44, 10, 5);
+  }
+  // god rays slanting through the hall
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < 4; i++) {
+    const bx = ((i * 190 + 60 - cam * 0.5) % (W + 260) + W + 260) % (W + 260) - 130, a = 0.035 + 0.015 * Math.sin(tickN * 0.01 + i * 2);
+    const gr = g.createLinearGradient(bx, 0, bx + 70, GROUND_TOP); gr.addColorStop(0, `rgba(${T.glow},${a * 2})`); gr.addColorStop(1, `rgba(${T.glow},0)`);
+    g.fillStyle = gr; g.beginPath(); g.moveTo(bx, 0); g.lineTo(bx + 26, 0); g.lineTo(bx + 100, GROUND_TOP); g.lineTo(bx + 40, GROUND_TOP); g.fill();
+  }
+  g.restore();
+  // hanging chains / vines near the ceiling (parallax 1.15)
+  for (let i = -1; i < 7; i++) {
+    const wx = (Math.floor(cam * 1.15 / 130) + i) * 130, h = 14 + (((wx * 2654435761) >>> 0) % 40), x = Math.round(wx - cam * 1.15 + 20), sw = Math.sin(tickN * 0.03 + wx) * 1.5;
+    g.fillStyle = 'rgba(8,4,12,0.85)';
+    for (let y = 0; y < h; y += 4) g.fillRect(Math.round(x + sw * y / h), y, 2, 3);
+    g.fillRect(Math.round(x + sw) - 1, h, 4, 4);
   }
 }
 
@@ -2119,10 +2173,10 @@ function render() {
   g.save(); g.translate(Math.round(sx), Math.round(sy));
   drawWorld(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
-  drawItems();
+  drawItems(); drawVentsAndSlashes(false);
   const list = [...enemies, ...mounts, ...players()].sort((a, b) => a.y - b.y);
   for (const f of list) drawFighter(f);
-  drawShots();
+  drawShots(); drawVentsAndSlashes(true);
   drawParts(false);
   drawFloats();
   g.restore();
