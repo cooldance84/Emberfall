@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.5.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.6.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -70,6 +70,19 @@ Every story scene now shows a framed portrait of Kestrel facing the boss of the 
 | | |
 |---|---|
 | ![Story portraits](docs/screenshots/portraits-story.jpg) | ![Cinder King wings](docs/screenshots/boss-king-wings.jpg) |
+
+### Mounts
+Wyrmlings come in three kinds, and a thrown-off rider can grab a loose one with K:
+
+| Wyrmling | Stage | Speed / jump / health | Attack |
+|---|---|---|---|
+| Ember | 1+ | medium | Three pulses of flame breath |
+| Storm | 2+ | fast, high jump, fragile | Chain lightning that leaps between up to three foes |
+| Stone | 3+ | slow, low jump, tough | Shockwave along the ground, and a stomp when it lands |
+
+You can fire while jumping. Any hit throws you off, but the wyrmling waits for you. Get thrown a second time, or wear it out, and it bolts for good.
+
+![Mounts](docs/screenshots/mounts.jpg)
 
 ## Support the game
 If you enjoyed Emberfall, donations are very welcome and go towards its further development: **[paypal.me/cooldance84](https://www.paypal.com/paypalme/cooldance84)**. The game also shows a clickable donate button on the title and end screens (or press D there).

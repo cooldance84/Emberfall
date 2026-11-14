@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.6.0] - 2026-11-14
+- Added three wyrmling kinds with different looks, speed, jump height, health and attacks: Ember, Storm (chain lightning) and Stone (shockwave and landing stomp).
+- Added firing in mid-air while riding.
+- Changed riding: a hit throws you off but the wyrmling waits so you can remount; a second fall makes it bolt for good.
+
 ## [1.5.0] - 2026-11-14
 - Added 25 seconds of loot time after each boss before the stage ends (Enter skips it).
 - Added gold from kills and a duplicate-item rule: an item you already own becomes gold and score.

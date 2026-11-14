@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.5.0';
+const VERSION = '1.6.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -725,14 +725,13 @@ function hurt(e, dmg, kind, from) {
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
   const dir = sgn(e.x - from.x) || -from.face;
   if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul()));
-  if (e.pn && e.mount) { // the wyrmling takes the blow for its rider
-    const m = e.mount; m.hp -= dmg; e.flash = 4; e.inv = 14;
-    sparks(e.x, e.y, e.z + 20, false); SFX.hit(); shake = Math.max(shake, 3); freeze = Math.max(freeze, 2);
-    if (m.hp <= 0) {
-      e.mount = null; e.st = 'hurt'; e.t = 0; e.vx = dir * 1.6; e.inv = 60;
-      spawn(e.x, e.y, 12, 26, { s0: 1, s1: 3.5, c: ['#ff8a2a', '#ffd070', '#c4452a'], l0: 14, l1: 30, add: true, size: 2 });
-      SFX.die(); msg = 'WYRMLING LOST'; msgT = 70;
-    }
+  if (e.pn && e.mount) { // the blow throws the rider off; the wyrmling waits, but bolts after the second fall
+    const m = e.mount; m.hp -= dmg; m.flash = 4; m.falls = (m.falls || 0) + 1; e.jf = 0;
+    e.mount = null; e.h = e.k.h; e.flash = 4; e.st = 'hurt'; e.t = 0; e.vx = dir * 1.8; e.vz = 2.6; e.z = Math.max(e.z, 0.01); e.inv = 55;
+    m.x = e.x - dir * 14; m.y = e.y; m.z = 0.01; m.vz = 3; m.face = dir || m.face;
+    if (m.falls >= 2 || m.hp <= 0) { m.flee = true; m.dir = -dir || 1; msg = mtype(m).name + ' BOLTED!'; msgT = 90; SFX.die(); }
+    else { msg = 'THROWN!  K NEAR THE ' + mtype(m).name.split(' ')[0] + ' TO REMOUNT  (1 FALL LEFT)'; msgT = 110; }
+    mounts.push(m); sparks(e.x, e.y, e.z + 20, true); SFX.hit(); shake = Math.max(shake, 4); freeze = Math.max(freeze, 3);
     return true;
   }
   if (e.k && e.k.ai === 'guard' && kind !== 'down' && (e.st === 'idle' || e.st === 'walk') && sgn(from.x - e.x) === e.face) { // shield up
@@ -862,6 +861,33 @@ function stepSkill(f) {
   }
 }
 
+function mountFire(f, t) {
+  const type = (f.mount && f.mount.type) || 'ember', air = f.z > 2, foes = enemies, zz = f.z;
+  if (type === 'storm') { // chain lightning: three zaps, each leaps to the nearest foes ahead
+    if (t === 4 || t === 11 || t === 18) {
+      f.hits.clear(); SFX.swing();
+      const tg = foes.filter(e => !e.dead && (e.x - f.x) * f.face > -10 && (e.x - f.x) * f.face < 150 && Math.abs(e.y - f.y) < 40).sort((a, b) => Math.abs(a.x - f.x) - Math.abs(b.x - f.x)).slice(0, 3);
+      let px = f.x + f.face * 33, py = f.y, pz = zz + 33;
+      for (const e of tg) { zap(px, py, pz, e.x, e.y, e.z + e.h * 0.6); px = e.x; py = e.y; pz = e.z + e.h * 0.6; }
+      if (!tg.length) zap(px, py, pz, px + f.face * 70, py, pz - (air ? 20 : 0));
+      strike(f, { x0: -400, x1: 400, dy: 400, z0: -400, z1: 400 }, t === 18 ? 13 : 8, t === 18 ? 'down' : 'hurt', tg);
+    }
+    return;
+  }
+  if (type === 'stone') { // ground-shaking shockwave
+    if (t === 6) {
+      SFX.big(); shake = Math.max(shake, 4); f.hits.clear(); dust(f.x + f.face * 24, f.y, 8);
+      strike(f, { x0: 0, x1: 46, dy: 16, z0: -20, z1: 50 }, 14, 'down', foes);
+      for (const dy of [-7, 7]) shots.push({ type: 'pwave', owner: f, x: f.x + f.face * 34, y: clamp(f.y + dy, Y_MIN, Y_MAX), z: 0, vx: f.face * 3, t: 0, dmg: 12, life: 40, hit: new Set() });
+    }
+    return;
+  }
+  if (t === 4 || t === 9 || t === 14) f.hits.clear();
+  if (t >= 3 && t <= 17) {
+    strike(f, { x0: 4, x1: 76, dy: 13, z0: air ? -30 : 0, z1: 40 }, t >= 14 ? 14 : 8, t >= 14 ? 'down' : 'hurt', foes);
+    for (const dz of [28, 32, 36]) spawn(f.x + f.face * 34, f.y, zz + dz, 3, { dx: f.face * 2.8, s0: 0.2, s1: 0.9, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 8, l1: 20, g: 0.012, add: true, size: 3, flat: true });
+  }
+}
 function updateHero(f) {
   f.t++; if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--; if (f.skcd > 0) f.skcd--;
   if (f.sk && f.st !== 'atk') f.sk = null;
@@ -873,7 +899,7 @@ function updateHero(f) {
   }
   if (groundPhysics(f)) return;
   const mx = (inD(f, 'right') ? 1 : 0) - (inD(f, 'left') ? 1 : 0), my = (inD(f, 'down') ? 1 : 0) - (inD(f, 'up') ? 1 : 0);
-  const foes = enemies, spd = f.mount ? 2.4 : f.k.spd;
+  const foes = enemies, spd = f.mount ? mtype(f.mount).spd : f.k.spd;
   switch (f.st) {
     case 'idle': case 'walk': {
       if (inH(f, 'swap')) cycleSkill(f);
@@ -881,13 +907,13 @@ function updateHero(f) {
       if (mx) f.face = mx;
       f.x += f.vx; f.y = clamp(f.y + f.vy, Y_MIN, Y_MAX);
       f.st = (mx || my) ? 'walk' : 'idle'; f.anim += (mx || my) ? (f.mount ? 0.3 : 0.2) : 0;
-      const wild = f.mount ? null : mounts.find(m => Math.abs(m.x - f.x) < 28 && Math.abs(m.y - f.y) < 12 && m.z < 3);
+      const wild = f.mount ? null : mounts.find(m => !m.flee && Math.abs(m.x - f.x) < 28 && Math.abs(m.y - f.y) < 12 && m.z < 3);
       if (inH(f, 'jump') && wild) {
         f.mount = wild; mounts.splice(mounts.indexOf(wild), 1); SFX.pick(); sparks(f.x, f.y, 20, true);
-        msg = 'RIDE!   J: FIRE   E: DISMOUNT'; msgT = 120;
+        msg = mtype(wild).name + '!   J: ' + mtype(wild).info + (wild.falls ? '   (1 FALL LEFT)' : '   E: DISMOUNT'); msgT = 130;
       } else if (inH(f, 'dismount') && f.mount) {
         const m = f.mount; m.x = f.x - f.face * 12; m.y = f.y; m.face = f.face; m.z = 0.01; m.vz = 2; mounts.push(m); f.mount = null;
-      } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? 6 : 5.4; f.vx = mx * (f.mount ? 2.2 : 1.5); f.t = 0; f.hits.clear(); }
+      } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? mtype(f.mount).jump : 5.4; f.vx = mx * (f.mount ? mtype(f.mount).spd * 0.92 : 1.5); f.t = 0; f.hits.clear(); }
       else if (inH(f, 'skill') && castSkill(f)) { }
       else if (inH(f, 'atk')) { if (f.mount) { f.st = 'ratk'; f.t = 0; f.hits.clear(); SFX.swing(); } else startAttack(f, 0); }
       else if (inH(f, 'magic') && f.mana >= 60 && !dragon) castDragon();
@@ -903,21 +929,22 @@ function updateHero(f) {
       if (f.t >= c.d) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
       break;
     }
-    case 'ratk': { // wyrmling flame breath: three pulses
-      if (f.t === 4 || f.t === 9 || f.t === 14) f.hits.clear();
-      if (f.t >= 3 && f.t <= 17) {
-        strike(f, { x0: 4, x1: 76, dy: 13, z0: 0, z1: 40 }, f.t >= 14 ? 14 : 8, f.t >= 14 ? 'down' : 'hurt', foes);
-        // emit from the dragon's mouth (sprite mouth is ~34px ahead, ~31px up)
-        for (const dz of [28, 32, 36]) spawn(f.x + f.face * 34, f.y, f.z + dz, 3, { dx: f.face * 2.8, s0: 0.2, s1: 0.9, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 8, l1: 20, g: 0.012, add: true, size: 3, flat: true });
-      }
-      if (f.t >= 24) { f.st = 'idle'; f.t = 0; }
+    case 'ratk': { // wyrmling attack, by type
+      mountFire(f, f.t); if (f.t >= 24) { f.st = 'idle'; f.t = 0; }
       break;
     }
     case 'jump': case 'jatk': {
       f.x += f.vx; f.z += f.vz; f.vz -= 0.33; f.y = clamp(f.y + my * 0.5, Y_MIN, Y_MAX);
       if (f.st === 'jump' && inH(f, 'atk') && !f.mount) { f.st = 'jatk'; f.t = 0; f.hits.clear(); SFX.swing(); }
+      if (f.mount && f.st === 'jump') { // wyrmlings can fire in mid-air
+        if (inH(f, 'atk') && !f.jf) { f.jf = 1; f.hits.clear(); SFX.swing(); }
+        if (f.jf) { mountFire(f, f.jf); if (++f.jf > 24) f.jf = 0; }
+      }
       if (f.st === 'jatk') strike(f, { x0: -6, x1: 34, dy: 12, z0: -22, z1: 24 }, 11, 'down', foes);
-      if (f.z <= 0) { f.z = 0; f.st = 'idle'; f.t = 0; dust(f.x, f.y, 4); SFX.land(); }
+      if (f.z <= 0) {
+        f.z = 0; f.st = 'idle'; f.t = 0; f.jf = 0; dust(f.x, f.y, 4); SFX.land();
+        if (f.mount && f.mount.type === 'stone') { f.hits.clear(); strike(f, { x0: -46, x1: 46, dy: 22, z0: -10, z1: 50 }, 13, 'down', foes); shake = Math.max(shake, 5); dust(f.x, f.y, 10); }
+      }
       break;
     }
     case 'magic': { if (!dragon) { f.st = 'idle'; f.t = 0; } break; }
@@ -1016,14 +1043,26 @@ function updateMinion(e) {
 }
 
 /* ---------- mounts, pilferers, dragon wrath ---------- */
-function makeMount(x, y, hp) { return { isMount: true, x, y, z: 0.01, vz: 3, face: 1, hp, maxhp: 70, t: 0, anim: 0, flash: 0, h: 30 }; }
+const MOUNT_TYPES = {
+  ember: { name: 'EMBER WYRMLING', hp: 70, spd: 2.4, jump: 6, sc: 1, col: '#ff9a6a', info: 'FLAME BREATH' },
+  storm: { name: 'STORM WYRMLING', hp: 55, spd: 3.0, jump: 7.4, sc: 0.92, col: '#8ab0ff', wings: true, info: 'CHAIN LIGHTNING', pal: { body: '#3a5ac8', belly: '#bfd0ff', dark: '#1c2a6a', light: '#6a8aff', spine: '#c8f0ff', wing: '#4a2a9a' } },
+  stone: { name: 'STONE WYRMLING', hp: 120, spd: 1.9, jump: 5, sc: 1.15, col: '#b8c8a8', horns: true, info: 'SHOCKWAVE + STOMP', pal: { body: '#5a6a58', belly: '#c8c0a0', dark: '#2a3228', light: '#7a8a76', spine: '#e6dcc4', wing: '#4a5a48' } }
+};
+function pickMountType() { const a = ['ember']; if (stageIdx >= 1 || cycle) a.push('storm'); if (stageIdx >= 2 || cycle) a.push('stone'); return a[Math.random() * a.length | 0]; }
+function makeMount(x, y, hp, type) { type = type || 'ember'; const T = MOUNT_TYPES[type]; return { isMount: true, type, x, y, z: 0.01, vz: 3, face: 1, hp: hp || T.hp, maxhp: T.hp, falls: 0, t: 0, anim: 0, flash: 0, h: 30 }; }
+const mtype = m => MOUNT_TYPES[(m && m.type) || 'ember'];
+function zap(x0, y0, z0, x1, y1, z1) {
+  for (let i = 0; i <= 9; i++) { const k = i / 9; parts.push({ x: x0 + (x1 - x0) * k + rnd(-3, 3), y: y0 + (y1 - y0) * k, z: z0 + (z1 - z0) * k + rnd(-4, 4), vx: 0, vy: 0, vz: 0, life: rnd(5, 10), max: 12, g: 0, c: i % 2 ? '#ffffff' : '#8ab0ff', size: 2, add: true }); }
+}
 function updateMounts() {
   for (const m of mounts) {
+    if (m.flee) { m.t++; m.anim += 0.45; m.x += m.dir * 3.4; m.face = m.dir; m.z += m.vz; m.vz -= 0.3; if (m.z <= 0) { m.z = 0; m.vz = 0; } if (m.t % 4 === 0) dust(m.x, m.y, 1); if (m.x < cam - 140 || m.x > cam + W + 140) m.gone = true; continue; }
     m.t++; if (m.flash > 0) m.flash--; m.anim += 0.03;
     m.z += m.vz; m.vz -= 0.3; if (m.z <= 0) { m.z = 0; m.vz = 0; }
     m.face = sgn(nearestPlayer(m.x).x - m.x) || m.face;
     if (m.t % 20 === 0) spawn(m.x + m.face * 30, m.y, 30, 1, { c: '#8a7a8a', s0: 0.1, s1: 0.3, l0: 20, l1: 34, up: 0.5, g: -0.01, size: 2 });
   }
+  mounts = mounts.filter(m => !m.gone);
 }
 function updateImp(e) {
   e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
@@ -1574,7 +1613,7 @@ function updateStage() {
     list.forEach((t, i) => {
       const side = i % 2 ? 1 : -1;
       const ex = side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22;
-      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.3 + 0.1 * Math.min(stageIdx + cycle, 5))) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
+      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.3 + 0.1 * Math.min(stageIdx + cycle, 5))) { f.mount = makeMount(0, 0, 0, pickMountType()); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
     });
     const bk = w.e.find(t => BOSSES[t]);
     if (bk) {
@@ -1996,7 +2035,7 @@ function drawFighter(f) {
   g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 12 * sh, 4 * sh, 0, 0, 7); g.fill();
   if (f.glow && !f.dead) { g.globalCompositeOperation = 'lighter'; glowDot(g, Math.round(sx), Math.round(sy) - 2, 26 + Math.sin(tickN * 0.1) * 3, f.glow, 0.32); g.globalCompositeOperation = 'source-over'; }
   if (f.mount) {
-    drawDragon(sx, sy - f.z, { face: f.face, anim: f.anim, flash: f.flash, moving: f.st === 'walk', breathe: f.st === 'ratk' || f.st === 'wind' || f.st === 'eatk' });
+    drawDragon(sx, sy - f.z, mountLook(f.mount, { face: f.face, anim: f.anim, flash: f.flash, moving: f.st === 'walk', breathe: f.st === 'ratk' || f.jf > 0 || f.st === 'wind' || f.st === 'eatk' }));
     drawHuman(f, sx, sy - 11);
   } else {
     const hv = f.hov || 0, ai = f.k.ai;
@@ -2009,10 +2048,12 @@ function drawFighter(f) {
   if (f.st === 'wind' && (tickN >> 1) & 1) { g.fillStyle = '#ff3b2a'; g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - f.h * 1.0 - 8), 3, 6); g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - f.h - 1), 3, 2); }
 }
 
+function mountLook(m, o) { const T = mtype(m); o.type = (m && m.type) || 'ember'; if (T.sc !== 1) o.sc = T.sc; if (T.pal) o.pal = T.pal; if (T.wings) o.wings = true; if (T.horns) o.horns = true; return o; }
 function drawWildMount(m, sx, sy) {
   g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 20, 5, 0, 0, 7); g.fill();
-  drawDragon(sx, sy - m.z, { face: m.face, anim: m.anim, flash: m.flash, moving: false, breathe: false });
-  if (!hero.mount && Math.abs(m.x - hero.x) < 80 && Math.abs(m.y - hero.y) < 24 && ((tickN >> 4) & 1)) text('K: RIDE', Math.round(sx), Math.round(sy - 52), 8, '#fff1b0', 'center');
+  drawDragon(sx, sy - m.z, mountLook(m, { face: m.face, anim: m.anim, flash: m.flash, moving: !!m.flee, breathe: false }));
+  if (m.falls && !m.flee && ((tickN >> 3) & 1)) text('1 FALL LEFT', Math.round(sx), Math.round(sy - 62), 7, '#ff9a6a', 'center');
+  if (!m.flee && !hero.mount && Math.abs(m.x - hero.x) < 80 && Math.abs(m.y - hero.y) < 24 && ((tickN >> 4) & 1)) text('K: RIDE', Math.round(sx), Math.round(sy - 52), 8, '#fff1b0', 'center');
 }
 
 function drawJar(x, y, on) {
@@ -2075,7 +2116,7 @@ function drawDragon(sx, sy, o) {
   const fl = Math.sin(tickN * (o.breathe ? 0.5 : 0.12)) * 3;
   P([-4, -22 - bob, 5, -22 - bob, 0, -38 - bob + fl, -15, -34 - bob + fl, -10, -24 - bob], wing);
   P([-4, -22 - bob, 0, -38 - bob + fl, -8, -30 - bob + fl * 0.5], dark);
-  if (o.sc > 1.5) { // ember wyrm: huge ribbed wings behind the back
+  if (o.sc > 1.5 || o.wings) { // ember wyrm / storm wyrmling: huge ribbed wings behind the back
     const wf = Math.sin(tickN * 0.07) * 3;
     P([-6, -24 - bob, 8, -22 - bob, 26, -52 - bob + wf, 12, -48 - bob + wf, 14, -64 - bob + wf, -2, -50 - bob + wf, -10, -68 - bob + wf, -16, -46 - bob + wf, -30, -58 - bob + wf, -20, -30 - bob], wing);
     P([-6, -24 - bob, 26, -52 - bob + wf, 14, -64 - bob + wf, -10, -68 - bob + wf, -30, -58 - bob + wf], dark);
@@ -2094,9 +2135,15 @@ function drawDragon(sx, sy, o) {
   P([20, -31 - bob, 33, -31 - bob + jaw, 32, -28 - bob + jaw, 19, -28 - bob], dark);
   P([17, -39 - bob, 25, -41 - bob, 35, -37 - bob, 34, -32 - bob, 20, -31 - bob, 16, -33 - bob], body);
   P([20, -39 - bob, 25, -41 - bob, 35, -37 - bob, 28, -37 - bob], light);
-  if (o.breathe) { R(27, -32 - bob, 6, 3, '#ffb43a'); R(28, -32 - bob, 4, 1, '#fff1b0'); }
+  if (o.breathe) { const bc = o.type === 'storm' ? ['#8ab0ff', '#ffffff'] : o.type === 'stone' ? ['#b8c8a8', '#ffffff'] : ['#ffb43a', '#fff1b0']; R(27, -32 - bob, 6, 3, bc[0]); R(28, -32 - bob, 4, 1, bc[1]); }
   R(25, -38 - bob, 3, 2, '#ffe27a'); R(27, -38 - bob, 1, 2, '#2a0a0a'); R(33, -37 - bob, 1, 1, '#2a0a0a');
   P([18, -40 - bob, 11, -47 - bob, 21, -41 - bob], '#e6dcc4'); P([20, -39 - bob, 15, -44 - bob, 22, -40 - bob], '#bfb49a');
+  if (o.horns && !(o.sc > 1.5)) { // stone wyrmling: curved horns and back plates
+    P([14, -39 - bob, 5, -52 - bob, 18, -41 - bob], '#e6dcc4'); P([22, -40 - bob, 22, -54 - bob, 27, -41 - bob], '#bfb49a');
+    for (let i = 0; i < 4; i++) { R(-9 + i * 6, -25 - bob, 5, 3, '#2a3228'); R(-9 + i * 6, -25 - bob, 5, 1, '#8a9a86'); }
+    R(8, -36 - bob, 10, 2, '#3a4438');
+  }
+  if (o.type === 'storm' && !white) { g.globalAlpha = 0.5 + Math.sin(tickN * 0.4) * 0.3; R(24, -39 - bob, 3, 2, '#e8f6ff'); R(-3, -21 - bob, 1, 6, '#bfe6ff'); R(7, -19 - bob, 1, 5, '#bfe6ff'); g.globalAlpha = 1; }
   if (o.sc > 1.5) { // horns, lava cracks, blazing eye
     P([14, -39 - bob, 4, -55 - bob, 18, -41 - bob], '#e6dcc4'); P([22, -40 - bob, 20, -56 - bob, 26, -41 - bob], '#bfb49a');
     const lv = 0.6 + Math.sin(tickN * 0.12) * 0.4; g.globalAlpha = white ? 1 : 0.6 + lv * 0.4;
@@ -2246,7 +2293,7 @@ function drawHUD() {
   { const S = skillOf(hero); if (S) { text('U: ' + S.name, 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
   for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
   text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
-  if (hero.mount) { text('WYRMLING', 12, 92, 8, '#ff9a6a'); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, '#ff8a3a', '#3a1a10'); }
+  if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
   if (coop && hero2) { const p = hero2; text('LYRA', 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
   if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); for (let i = 0; i < 3; i++) drawCoin(W - 46 + i * 14, 46, i < rpg.coins);
