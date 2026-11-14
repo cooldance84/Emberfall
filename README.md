@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.8.2-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.9.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -35,6 +35,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 
 ## Features
 
+- **English and Hungarian (magyar):** pick the language on the title screen (click the box or press H) or in the pause menu. It defaults to your browser language and is remembered. Translations live in `i18n.js`.
 - **Wyrmling mounts:** some enemies arrive on small dragons. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
 - **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen. Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
 - **RPG layer:** levels up to **70**. Items roll **STR, crit chance, crit damage and hit chance**. Gear has six slots (helm, armor, boots, weapon, ring, amulet), and what you wear shows on the hero.
@@ -130,6 +131,7 @@ python3 -m http.server
 ```
 index.html   page and canvas
 game.js      the whole game (engine, art, AI, UI, audio)
+i18n.js      Hungarian translation tables
 docs/        screenshots used by this README
 CHANGELOG.md release notes
 ```

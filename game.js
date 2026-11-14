@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.8.2';
+const VERSION = '1.9.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -61,8 +61,11 @@ const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), he
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
 let crtOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
-function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false; crtOn = o.crt !== false; } } catch (e) { } }
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn })); } catch (e) { } }
+let LANG = (() => { try { return /^hu/i.test(navigator.language || '') ? 'hu' : 'en'; } catch (e) { return 'en'; } })();
+function tr(s) { return (LANG === 'hu' && typeof huTranslate === 'function' && typeof s === 'string') ? huTranslate(s) : s; }
+function setLang(l) { LANG = l; saveSettings(); if (typeof refreshTouchLabels === 'function') refreshTouchLabels(); }
+function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false; crtOn = o.crt !== false; if (o.lang === 'hu' || o.lang === 'en') LANG = o.lang; } } catch (e) { } }
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, lang: LANG })); } catch (e) { } }
 loadSettings();
 
 /* ---------- audio (tiny synth) ---------- */
@@ -1193,7 +1196,7 @@ function dragonImpact() {
 
 /* ---------- campaign flow: story screens, stages ---------- */
 /* ---------- pause menu ---------- */
-const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'SKILLS', 'CONTROLS', 'QUIT TO TITLE'];
+const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'LANGUAGE', 'SKILLS', 'CONTROLS', 'QUIT TO TITLE'];
 let pauseI = 0, pausePg = 0;
 function openPause() { mode = 'pause'; pauseI = 0; pausePg = 0; SFX.pick(); }
 function updatePause() {
@@ -1207,9 +1210,10 @@ function updatePause() {
   else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
   else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
-  else if (pauseI === 4) pausePg = 2;
-  else if (pauseI === 5) pausePg = 1;
-  else if (pauseI === 6) { saveGame(); toTitle(); }
+  else if (pauseI === 4) { setLang(LANG === 'hu' ? 'en' : 'hu'); SFX.pick(); }
+  else if (pauseI === 5) pausePg = 2;
+  else if (pauseI === 6) pausePg = 1;
+  else if (pauseI === 7) { saveGame(); toTitle(); }
 }
 function drawPause() {
   g.fillStyle = 'rgba(4,2,10,0.72)'; g.fillRect(0, 0, W, H);
@@ -1225,10 +1229,11 @@ function drawPause() {
     text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
-    const sel = i === pauseI, y = 78 + i * 20, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
-    if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 16); }
+    const sel = i === pauseI, y = 74 + i * 18, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
+    if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
+    if (i === 4) text(LANG === 'hu' ? 'MAGYAR' : 'ENGLISH', W / 2 + 86, y, 10, '#8cc4ff', 'right');
   });
   text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }
@@ -1240,7 +1245,7 @@ function wrapText(s, n) {
 }
 function openStory(title, sub, paras, next, themeIdx, act) {
   if (!paras.length) { next(); return; }
-  story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx, act: act || 0 }; mode = 'story';
+  paras = paras.map(tr); story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx, act: act || 0 }; mode = 'story';
 }
 function updateStory() {
   const s = story; if (!s) { mode = 'play'; return; }
@@ -2348,6 +2353,7 @@ function bar(x, y, w, h, v, max, c1, c2) {
   g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x, y, Math.max(0, w * v / max) | 0, 1);
 }
 function text(s, x, y, size, col, align) {
+  s = tr(s);
   g.font = `bold ${size}px "Courier New",monospace`; g.textAlign = align || 'left'; g.fillStyle = '#000'; g.fillText(s, x + 1, y + 1); g.fillStyle = col; g.fillText(s, x, y);
 }
 const WYRM_PAL = { body: '#3a2230', belly: '#d06a2a', dark: '#1a0c16', light: '#6a3a4a', spine: '#ffb43a', wing: '#7a1c2c' };
@@ -2390,9 +2396,9 @@ function drawHUD() {
 }
 
 const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
-let donateBox = null;
+let donateBox = null, langBox = null;
 function drawDonate(y) {
-  const t = 'LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D';
+  const t = tr('LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D');
   g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
   donateBox = { x: W / 2 - w / 2, y: y - 9, w, h: 13 };
   g.fillStyle = 'rgba(40,16,4,0.75)'; g.fillRect(donateBox.x, donateBox.y, w, 13); g.strokeStyle = '#ffb43a'; g.strokeRect(donateBox.x + 0.5, donateBox.y + 0.5, w - 1, 12);
@@ -2400,15 +2406,17 @@ function drawDonate(y) {
 }
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
-  if (!donateBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !langBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
-  if (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
+  if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
+  if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
 screen.addEventListener('pointermove', e => {
   if (!donateBox) { screen.style.cursor = ''; return; } const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
 });
+addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 'title') setLang(LANG === 'hu' ? 'en' : 'hu'); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 function drawTitleOverlay() {
   g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
@@ -2422,12 +2430,13 @@ function drawTitleOverlay() {
   text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
   text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
   drawDonate(H - 12);
+  { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10; langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12); text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : 'HERO LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null;
+  donateBox = null; langBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -2537,14 +2546,16 @@ function initTouch() {
   const mk = (cls, style, txt) => { const d = document.createElement('div'); d.className = cls; d.style.cssText = style; if (txt) d.textContent = txt; document.body.appendChild(d); return d; };
   const all = [];
   const btn = (txt, code, right, bottom, size) => {
-    const d = mk('tb', 'width:' + size + 'px;height:' + size + 'px;right:' + right + 'px;bottom:' + bottom + 'px', txt); all.push(d);
+    const d = mk('tb', 'width:' + size + 'px;height:' + size + 'px;right:' + right + 'px;bottom:' + bottom + 'px', txt); d.dataset.k = txt; all.push(d);
     const dn = e => { e.preventDefault(); initAudio(); setV(code, true); d.classList.add('dn'); }, up = e => { e.preventDefault(); setV(code, false); d.classList.remove('dn'); };
     d.addEventListener('pointerdown', dn); d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up); d.addEventListener('pointerleave', up);
   };
   btn('ATK', 'TAtk', 96, 62, 78); btn('JUMP', 'TJump', 20, 112, 68); btn('MAGIC', 'TMagic', 20, 30, 62); btn('RIDE', 'TRide', 120, 150, 50);
   btn('SKILL', 'TSkill', 182, 40, 54); btn('SWAP', 'TSwap', 188, 104, 42);
   btn('II', 'TPause', 12, null, 40); btn('GEAR', 'TInv', 60, null, 40); btn('OK', 'TStart', 108, null, 40);
-  for (const d of all) if (d.textContent === 'II' || d.textContent === 'GEAR' || d.textContent === 'OK') { d.style.bottom = 'auto'; d.style.top = '8px'; d.style.fontSize = '10px'; }
+  for (const d of all) if (d.dataset.k === 'II' || d.dataset.k === 'GEAR' || d.dataset.k === 'OK') { d.style.bottom = 'auto'; d.style.top = '8px'; d.style.fontSize = '10px'; }
+  window.refreshTouchLabels = () => { for (const d of all) if (d.dataset && d.dataset.k) d.textContent = LANG === 'hu' && typeof HU_TOUCH !== 'undefined' && HU_TOUCH[d.dataset.k] ? HU_TOUCH[d.dataset.k] : d.dataset.k; };
+  refreshTouchLabels();
   // virtual stick
   const stick = mk('tb', 'left:22px;bottom:40px;width:128px;height:128px'), knob = document.createElement('div');
   knob.style.cssText = 'width:52px;height:52px;border-radius:50%;background:rgba(255,220,160,.45);position:absolute;left:38px;top:38px';

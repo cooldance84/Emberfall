@@ -1,0 +1,187 @@
+/* Hungarian translation for Emberfall (magyar nyelv).
+   The game draws every string through tr(): exact sentences first, then word-order rules,
+   then a phrase table for composed strings such as "STAGE 12  THE BLACK FEN". */
+
+/* whole sentences (story, tags, tooltips): matched exactly */
+const HU_EXACT = {
+  /* title + hints */
+  "ENTER: 1 PLAYER     2: CO-OP": "ENTER: 1 JÁTÉKOS     2: EGYÜTT",
+  "WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /": "WASD MOZGÁS   J ÜTÉS (x3)   K UGRÁS   SHIFT SÁRKÁNYHARAG   J2: NYILAK , . /",
+  "K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE": "K SÁRKÁNYKA MELLETT = LOVAGLÁS (J TŰZ, E LESZÁLL)   F: CRT   M: NÉMÍT",
+  "PRESS R AGAIN TO ERASE YOUR HERO": "NYOMD MEG ÚJRA AZ R-T A HŐS TÖRLÉSÉHEZ",
+  "LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D": "TETSZETT? TÁMOGASD A FEJLESZTÉST  -  KATTINTS VAGY NYOMJ D-T",
+  "A TALE OF EMBERFALL": "EGY EMBERFALL-MESE",
+  "SHIFT: DRAGON WRATH": "SHIFT: SÁRKÁNYHARAG",
+  "SKILL AT LV 10": "KÉPESSÉG A 10. SZINTEN",
+  "STAGE CLEAR": "PÁLYA TELJESÍTVE",
+  "LOOT TIME  -  GRAB THE DROPS": "ZSÁKMÁNY-IDŐ  -  SZEDD ÖSSZE A DROPOKAT",
+  "ENTER: CONTINUE TO THE MARKET": "ENTER: TOVÁBB A PIACRA",
+  "I: GEAR": "I: FELSZERELÉS",
+  /* pause + controls */
+  "ESC TO RESUME": "ESC: FOLYTATÁS",
+  "PRESS ENTER TO GO BACK": "ENTER: VISSZA",
+  "MOVE      WASD / ARROWS": "MOZGÁS    WASD / NYILAK",
+  "ATTACK    J / Z": "ÜTÉS      J / Z",
+  "JUMP      K / X / SPACE": "UGRÁS     K / X / SZÓKÖZ",
+  "MAGIC     SHIFT / L / C": "VARÁZS    SHIFT / L / C",
+  "SKILL     U CAST, Q SWAP": "KÉPESSÉG U DOB, Q VÁLT",
+  "RIDE/DISMOUNT   K / E": "LOVAGLÁS/LESZÁLL  K / E",
+  "GEAR      I / TAB": "FELSZERELÉS  I / TAB",
+  "PAUSE     ESC / P": "SZÜNET    ESC / P",
+  "PAD  STICK, X A B Y, LB/LT SKILL": "PAD  GOMBOK, X A B Y, LB/LT KÉP.",
+  "PLAYER 2  ARROWS  , . /  ; \\": "2. JÁTÉKOS  NYILAK  , . /  ; \\",
+  /* inventory + tooltips */
+  "ENTER  EQUIP/UNEQUIP": "ENTER  FELVESZ/LEVESZ",
+  "X      DISCARD": "X      ELDOB",
+  "I/TAB  CLOSE": "I/TAB  BEZÁR",
+  "VS EQUIPPED": "ÖSSZEHASONLÍTÁS",
+  "VS EMPTY SLOT": "ÜRES HELYHEZ KÉPEST",
+  /* market */
+  "SPEND YOUR GOLD BEFORE THE NEXT STAGE": "KÖLTSD EL AZ ARANYAD A KÖVETKEZŐ PÁLYA ELŐTT",
+  "RESTORES THE WHOLE PARTY": "MINDENKI TELJESEN MEGGYÓGYUL",
+  "AN EXTRA LIFE (MAX 3)": "EXTRA ÉLET (MAX 3)",
+  "W/S CHOOSE   ENTER BUY   I GEAR": "W/S VÁLASZT   ENTER VESZ   I FELSZERELÉS",
+  "* PREMIUM SHELF: BEST ODDS FOR LEGENDARY AND MYTHIC    DUPLICATES BECOME GOLD": "* PRÉMIUM POLC: LEGJOBB ESÉLY LEGENDÁSRA ÉS MÍTOSZIRA    A DUPLIKÁTUM ARANNYÁ VÁLIK",
+  /* end screens */
+  "ENTER: CONTINUE  (USES 1 COIN)": "ENTER: FOLYTATÁS  (1 ÉRME)",
+  "ESC: END RUN AND SAVE SCORE": "ESC: BEFEJEZÉS ÉS PONT MENTÉSE",
+  "ENTER: SAVE YOUR SCORE": "ENTER: PONTSZÁM MENTÉSE",
+  "ESC: FINISH AND SIGN THE LEATHERBOARD": "ESC: BEFEJEZÉS ÉS ALÁÍRÁS A DICSŐSÉGLISTÁN",
+  "NOLAN KEPT THE ASHEN VOW": "NOLAN BETARTOTTA A HAMVAS ESKÜT",
+  "PRESS ENTER TO SIGN THE BOARD": "ENTER: ALÁÍRÁS A LISTÁN",
+  "W/S LETTER    A/D MOVE": "W/S BETŰ    A/D LÉPÉS",
+  "* = WORLD SAVED": "* = A VILÁG MEGMENEKÜLT",
+  "MAX LEVEL 70!": "MAXIMUM SZINT: 70!",
+  /* stage tags + epithets */
+  "THE CINDER COLOSSUS BARS THE ROAD NORTH": "A PARÁZSKOLOSSZUS ZÁRJA AZ ÚTAT ÉSZAK FELÉ",
+  "THE MIRE MATRON STIRS THE DROWNED DEAD": "A LÁPI ANYA FELKELTI A FULLADT HOLTAKAT",
+  "THE FORGEMASTER HAMMERS OUT AN ARMY": "A KOVÁCSMESTER SEREGET KOVÁCSOL",
+  "THE CINDER KING WAITS WITH THE HEART-EMBER": "A PARÁZSKIRÁLY A SZÍVPARÁZSSAL VÁR",
+  "THE EMBER WYRM GUARDS THE FIRST FLAME": "A PARÁZSSÁRKÁNY AZ ELSŐ LÁNGOT ŐRZI",
+  "THE CINDER COLOSSUS RETURNS FROM THE SLAG": "A PARÁZSKOLOSSZUS VISSZATÉR A SALAKBÓL",
+  "THE MIRE MATRON RISES FROM THE FEN": "A LÁPI ANYA FELTÁMAD A MOCSÁRBÓL",
+  "THE FORGEMASTER REFORGES HIS ARMY": "A KOVÁCSMESTER ÚJRAKOVÁCSOLJA A SEREGÉT",
+  "THE CINDER KING WEARS A CROWN OF NEW FIRE": "A PARÁZSKIRÁLY ÚJ TŰZ KORONÁJÁT VISELI",
+  "THE EMBER WYRM HUNGERS ONCE MORE": "A PARÁZSSÁRKÁNY ÚJRA ÉHES",
+  "KEEPER OF THE BROKEN GATE": "A TÖRÖTT KAPU ŐRZŐJE",
+  "WHISPERER OF THE DROWNED": "A FULLADTAK SUTTOGÓJA",
+  "HAMMER OF THE ASH ARMIES": "A HAMUSEREGEK KALAPÁCSA",
+  "THE WARDEN WHO BROKE HIS VOW": "AZ ŐR, AKI MEGSZEGTE AZ ESKÜJÉT",
+  "DEVOURER OF THE FIRST FLAME": "AZ ELSŐ LÁNG FALÓJA",
+  /* boss names in running text */
+  "The Cinder Colossus": "A Parázskolosszus", "The Mire Matron": "A Lápi Anya", "The Forgemaster": "A Kovácsmester", "The Cinder King": "A Parázskirály", "The Ember Wyrm": "A Parázssárkány",
+  /* story: loop, cycle end, intro, ending */
+  "The Heart-Ember burns again, but the ash remembers. Beyond the Broken Gate the husks rise anew, harder and hungrier than before.": "A Szívparázs újra ég, de a hamu emlékszik. A Törött Kapun túl a héjak újra felkelnek, keményebben és éhesebben, mint valaha.",
+  "The old Wardens whisper that the Cinder King was only the first. As long as the ash lies on the world, the vow is never finished.": "A vén Őrök azt suttogják, hogy a Parázskirály csak az első volt. Amíg hamu borítja a világot, az eskü soha nem ér véget.",
+  "Nolan lifts the sword once more. Another cycle begins.": "Nolan még egyszer felemeli a kardot. Új kör kezdődik.",
+  "The Ember Wyrm falls again, and the Heart-Ember flares higher. For a breath the whole world is warm.": "A Parázssárkány ismét elbukik, és a Szívparázs magasabbra lobban. Egy lélegzetre az egész világ meleg.",
+  "But the ash still stirs in the far hills. The vow is never finished.": "De a hamu még mozog a távoli dombokon. Az eskü sosem ér véget.",
+  "For a thousand years the Ember Wardens kept the Heart-Ember burning: the small, stubborn flame that keeps the whole world warm.": "Ezer éven át a Parázsőrök őrizték a Szívparázs lángját: azt a kicsi, makacs tüzet, amely az egész világot melegen tartja.",
+  "Then the Cinder King, first among the Wardens, swore a new vow: that all fire should be his alone. He tore the Heart-Ember from its altar.": "Aztán a Parázskirály, az Őrök első embere, új esküt tett: hogy minden tűz egyedül az övé legyen. Letépte a Szívparázst az oltárról.",
+  "Ash fell on every road. The dead rose as husks, the villages went dark, and the sun forgot the sky above Ashhold.": "Hamu hullott minden útra. A holtak héjakként keltek fel, a falvak sötétbe borultak, és a nap elfelejtette az eget Hamuvár fölött.",
+  "One Warden remains. Nolan carries a sword and an old promise: to save the world from the monsters of the ash.": "Egyetlen Őr maradt. Nolan kardot visel és egy régi ígéretet: hogy megmenti a világot a hamu szörnyeitől.",
+  "The Ember Wyrm falls, and the Heart-Ember slips free of its cracked hide, small and bright and warm.": "A Parázssárkány elbukik, és a Szívparázs kicsúszik repedt bőréből, kicsiny, fényes és meleg.",
+  "Nolan carries it down the black stair, past the cold forge, through the clearing marsh and the open gate.": "Nolan levisz a fekete lépcsőn, a kihűlt kohó mellett, a tisztuló lápon át, a nyitott kapun keresztül.",
+  "At the altar of Ashhold the flame takes hold, and dawn breaks over the world for the first time in ten years.": "Hamuvár oltárán a láng megkapaszkodik, és tíz év óta először virrad a világra.",
+  "The husks lie still. The villages light their lamps. The Ashen Vow is kept, and the world is saved.": "A héjak mozdulatlanok. A falvak meggyújtják lámpáikat. A Hamvas Eskü beteljesült, és a világ megmenekült.",
+  /* story: stage clears */
+  "The Cinder Colossus crumbles into cold slag, and the Broken Gate stands open at last.": "A Parázskolosszus hideg salakká omlik, és a Törött Kapu végre nyitva áll.",
+  "North of Ashhold the road sinks into the Sunken Marsh, where the Mire Matron whispers the drowned dead awake.": "Hamuvártól északra az út a Süllyedt Lápba merül, ahol a Lápi Anya életre suttogja a fulladt holtakat.",
+  "The Mire Matron's lantern gutters out. The mist thins, and the drowned villages sleep again.": "A Lápi Anya lámpása kialszik. A köd megritkul, és a fulladt falvak újra alszanak.",
+  "Far ahead the sky glows red: the Ember Forge, where the Cinder King hammers out his armies.": "Messze előttük vörösen izzik az ég: a Parázskohó, ahol a Parázskirály a seregeit kovácsolja.",
+  "The Forgemaster's hammer falls silent, and the furnaces cool for the first time in ten years.": "A Kovácsmester kalapácsa elnémul, és a kemencék tíz év óta először hűlnek ki.",
+  "Beyond the forge a black stair climbs into the storm. At its top waits the Obsidian Throne, and the Cinder King.": "A kohón túl fekete lépcső kapaszkodik a viharba. A tetején az Obszidián Trón vár, és a Parázskirály.",
+  "The Cinder King crumbles to ash, and the Heart-Ember tumbles from his chest. Its glass shell cracks.": "A Parázskirály hamuvá omlik, és a Szívparázs kigurul a mellkasából. Üveghéja megreped.",
+  "From the dark beneath the throne, something ancient uncoils: the Ember Wyrm, who swallowed the first fire and has hungered ever since.": "A trón alatti sötétből valami ősi tekeredik elő: a Parázssárkány, aki lenyelte az első tüzet, és azóta is éhezik.",
+  "The Ember Wyrm falls, and the first Heart-Ember is Nolan's. But a crack runs through its glass: this flame is only one of four.": "A Parázssárkány elbukik, és az első Szívparázs Nolané. De repedés fut az üvegén: ez a láng csak egy a négyből.",
+  "Three embers still burn in the dark. Nolan turns north, where the road bends into the Shattered Bridge.": "Három parázs még ég a sötétben. Nolan északnak fordul, ahol az út a Rombolt Hídhoz kanyarodik.",
+  "The second ember warms Nolan's palm, and the hills below turn green for a single night.": "A második parázs melegíti Nolan tenyerét, és a lenti dombok egyetlen éjszakára zöldbe borulnak.",
+  "Then the wind shifts. Beyond the Second Sanctum the Ashen Wastes begin, and the husks there never sleep.": "Aztán fordul a szél. A Második Szentélyen túl kezdődik a Hamvas Pusztaság, és az ottani héjak soha nem alszanak.",
+  "The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.": "A harmadik parázs csatlakozik a többihez. Fényük a hajnalnál is ragyogóbb, és a hamu hátrahőköl.",
+  "One flame remains, buried at the world's oldest forge. Nolan does not rest. The Last Road begins here.": "Egy láng maradt, a világ legrégebbi kohójában eltemetve. Nolan nem pihen. Itt kezdődik az Utolsó Út.",
+  /* items: base, legendary, mythic names and magic prefixes/bases */
+  "Rusted Sword": "Rozsdás Kard", "Iron Blade": "Vaspenge", "Ash Cleaver": "Hamuhasító", "Worn Cap": "Kopott Sapka", "Iron Helm": "Vassisak", "Husk Visor": "Héjrostély",
+  "Ragged Vest": "Rongyos Mellény", "Chain Shirt": "Láncing", "Ash Plate": "Hamupáncél", "Old Boots": "Öreg Csizma", "Road Greaves": "Úti Lábszárvédő", "Cinder Treads": "Parázstalp",
+  "Copper Ring": "Rézgyűrű", "Bone Band": "Csontkarika", "Ash Loop": "Hamukarika", "Bone Charm": "Csontbűbáj", "Tin Pendant": "Ónmedál", "Ash Locket": "Hamumedalion",
+  "Dawnbreaker": "Hajnaltörő", "Warden's Oath": "Őr Esküje", "Crown of Embers": "Parázskorona", "Sunwatch Helm": "Napőr Sisak", "Phoenix Mail": "Főnix Vért", "Heart-Ward": "Szívőr",
+  "Stormstep Greaves": "Viharlépő Lábszárvédő", "Ashwalkers": "Hamujárók", "Ring of Kindling": "Gyújtás Gyűrűje", "Vow-Band": "Eskükarika", "Heart-Ember Shard": "Szívparázs-szilánk", "Eye of Ashhold": "Hamuvár Szeme",
+  "Ruinblade, the Vow": "Pusztítópenge, az Eskü", "Nolan's Last Dawn": "Nolan Utolsó Hajnala", "Helm of the Last Flame": "Az Utolsó Láng Sisakja", "Aegis of Emberfall": "Emberfall Pajzsa",
+  "Boots of the Endless Road": "A Végtelen Út Csizmája", "Ring of the First Warden": "Az Első Őr Gyűrűje", "The Heart-Ember Reborn": "Az Újjászületett Szívparázs",
+  "Keen": "Éles", "Warden's": "Őrzői", "Ember": "Parázs", "Swift": "Gyors", "Fierce": "Vad", "Gilded": "Aranyozott", "Bladed": "Pengés",
+  "Sword": "Kard", "Blade": "Penge", "Axe": "Balta", "Helm": "Sisak", "Cap": "Sapka", "Hood": "Csuklya", "Mail": "Vért", "Vest": "Mellény", "Plate": "Páncél",
+  "Boots": "Csizma", "Greaves": "Lábszárvédő", "Treads": "Talp", "Ring": "Gyűrű", "Band": "Karika", "Loop": "Hurok", "Amulet": "Amulett", "Charm": "Bűbáj", "Pendant": "Medál"
+};
+
+/* stage names, characters, skills and short UI words: replaced inside longer strings, longest first */
+const HU_PHRASE = {
+  "THE BROKEN GATE": "A TÖRÖTT KAPU", "THE SUNKEN MARSH": "A SÜLLYEDT LÁP", "THE EMBER FORGE": "A PARÁZSKOHÓ", "THE OBSIDIAN THRONE": "AZ OBSZIDIÁN TRÓN", "THE HEART-EMBER SANCTUM": "A SZÍVPARÁZS-SZENTÉLY",
+  "THE SHATTERED BRIDGE": "A ROMBOLT HÍD", "THE DROWNED CATHEDRAL": "A FULLADT KATEDRÁLIS", "THE COLD FOUNDRY": "A HIDEG ÖNTÖDE", "THE BONE CITADEL": "A CSONTVÁR", "THE SECOND SANCTUM": "A MÁSODIK SZENTÉLY",
+  "THE ASHEN WASTES": "A HAMVAS PUSZTASÁG", "THE BLACK FEN": "A FEKETE MOCSÁR", "THE MOLTEN DEEP": "AZ OLVADT MÉLY", "THE HOLLOW CROWN": "AZ ÜREGES KORONA", "THE BURNING STAIR": "AZ ÉGŐ LÉPCSŐ",
+  "THE LAST ROAD": "AZ UTOLSÓ ÚT", "THE LOST MARSH": "AZ ELVESZETT LÁP", "THE WORLD-FORGE": "A VILÁGKOHÓ", "THE ENDLESS THRONE": "A VÉGTELEN TRÓN", "THE FIRST FLAME": "AZ ELSŐ LÁNG",
+  "THE CINDER COLOSSUS": "A PARÁZSKOLOSSZUS", "THE MIRE MATRON": "A LÁPI ANYA", "THE FORGEMASTER": "A KOVÁCSMESTER", "THE CINDER KING": "A PARÁZSKIRÁLY", "THE EMBER WYRM": "A PARÁZSSÁRKÁNY",
+  "CINDER COLOSSUS": "PARÁZSKOLOSSZUS", "MIRE MATRON": "LÁPI ANYA", "FORGEMASTER": "KOVÁCSMESTER", "CINDER KING": "PARÁZSKIRÁLY", "EMBER WYRM": "PARÁZSSÁRKÁNY",
+  "ASHEN HUSK": "HAMVAS HÉJ", "CINDER BRUTE": "PARÁZSBRUTÓ", "PILFERER": "LOPKODÓ", "BOG WISP": "LÁPI LIDÉRC", "SLAG RUNNER": "SALAKFUTÓ", "THRONE GUARD": "TRÓNŐR", "EMBER WRAITH": "PARÁZSKÍSÉRTET",
+  "EMBER WYRMLING": "PARÁZS SÁRKÁNYKA", "STORM WYRMLING": "VIHAR SÁRKÁNYKA", "STONE WYRMLING": "KŐ SÁRKÁNYKA", "WYRMLING": "SÁRKÁNYKA",
+  "FLAME BREATH": "LÁNGLEHELET", "CHAIN LIGHTNING": "LÁNCVILLÁM", "SHOCKWAVE + STOMP": "LÖKÉSHULLÁM + DOBBANTÁS",
+  "RISING SLASH": "FELFELÉ VÁGÁS", "DASH STRIKE": "LENDÜLETES CSAPÁS", "WHIRLWIND": "FORGÓSZÉL", "FLAME WAVE": "LÁNGHULLÁM", "METEOR DIVE": "METEOR-ZUHANÁS", "EMBER NOVA": "PARÁZS-NÓVA", "HEART-EMBER BURST": "SZÍVPARÁZS-ROBBANÁS",
+  "THE ASHEN VOW": "A HAMVAS ESKÜ", "THE ASH RETURNS": "A HAMU VISSZATÉR", "THE WORLD IS SAVED": "A VILÁG MEGMENEKÜLT", "WORLD SAVED": "A VILÁG MEGMENEKÜLT", "THE EMBER MARKET": "A PARÁZSPIAC", "HALL OF EMBER WARDENS": "A PARÁZSŐRÖK CSARNOKA",
+  "THE END": "VÉGE", "YOU HAVE FALLEN": "ELESTÉL", "NEW HIGH SCORE!": "ÚJ REKORD!", "LEATHERBOARD": "DICSŐSÉGLISTA",
+  "DRAGON'S WRATH": "SÁRKÁNYHARAG", "EMBER JAR": "PARÁZSKORSÓ", "WRATH": "HARAG", "JARS": "KORSÓK",
+  "LEGENDARY DROP!": "LEGENDÁS ZSÁKMÁNY!", "MYTHIC DROP!": "MÍTOSZI ZSÁKMÁNY!", "LEVEL UP!": "SZINTLÉPÉS!", "NEW SKILL:": "ÚJ KÉPESSÉG:", "ENRAGED!": "DÜHÖNGŐ!",
+  "RETURNS SOON (-1 COIN)": "HAMAROSAN VISSZATÉR (-1 ÉRME)", "RETURNS  (-1 COIN)": "VISSZATÉR  (-1 ÉRME)", "BOLTED!": "ELSZALADT!", "1 FALL LEFT": "MÉG 1 ESÉS",
+  "E: DISMOUNT": "E: LESZÁLL", "K: RIDE": "K: LOVAGOL", "GRIP": "FOGÁS", "SCORCHED": "MEGPERZSELVE", "MISS": "MELLÉ", "BLOCK": "BLOKK",
+  "NOT ENOUGH GOLD": "NINCS ELÉG ARANY", "COINS ARE FULL": "TELE VAN AZ ÉRMETÁR", "PARTY HEALED": "A CSAPAT MEGGYÓGYULT", "+1 CONTINUE COIN": "+1 FOLYTATÁS-ÉRME", "PACK FULL": "TELE A HÁTIZSÁK",
+  "FULL HEAL": "TELJES GYÓGYÍTÁS", "CONTINUE COIN": "FOLYTATÁS-ÉRME", "LEAVE THE MARKET": "KILÉPÉS A PIACRÓL", "BACK TO THE ROAD": "VISSZA AZ ÚTRA", "SOLD OUT": "ELFOGYOTT", "SOLD": "ELKELT", "BOUGHT": "MEGVÉVE",
+  "NO COINS LEFT": "NINCS TÖBB ÉRME", "PRESS ENTER": "NYOMJ ENTERT", "UNSPENT COINS": "FELHASZNÁLATLAN ÉRMÉK", "WHEN YOU FINISH": "A BEFEJEZÉSKOR",
+  "RESUME": "FOLYTATÁS", "MUSIC": "ZENE", "SOUND FX": "HANGEFFEKTEK", "CRT FILTER": "CRT SZŰRŐ", "LANGUAGE": "NYELV", "SKILLS": "KÉPESSÉGEK", "CONTROLS": "IRÁNYÍTÁS", "QUIT TO TITLE": "KILÉPÉS A CÍMRE", "PAUSED": "SZÜNET",
+  "LOCKED": "ZÁRVA", "ACTIVE": "AKTÍV", "ON": "BE", "OFF": "KI",
+  "COMMON": "KÖZÖNSÉGES", "MAGIC": "MÁGIKUS", "LEGENDARY": "LEGENDÁS", "MYTHIC": "MÍTOSZI",
+  "WEAPON": "FEGYVER", "HELM": "SISAK", "ARMOR": "PÁNCÉL", "BOOTS": "CSIZMA", "RING": "GYŰRŰ", "AMULET": "AMULETT",
+  "REQUIRES": "SZÜKSÉGES", "CHARACTER": "KARAKTER", "BACKPACK": "HÁTIZSÁK", "ITEMS": "TÁRGYAK", "ITEM": "TÁRGY", "EMPTY": "ÜRES", "EQUIPPED": "FELSZERELVE", "DUPLICATE": "DUPLIKÁLT",
+  "CRIT CHANCE": "KRIT. ESÉLY", "CRIT DAMAGE": "KRIT. SEBZÉS", "HIT CHANCE": "TALÁLATI ESÉLY", "CRIT DMG": "KRIT. SEBZ.", "CRIT": "KRIT.", "HIT": "TALÁLAT", "STR": "ERŐ", "DMG": "SEBZ.", "HP": "ÉP",
+  "HALL": "CSARNOK", "NAME": "NÉV", "SCORE": "PONT", "PTS": "PONT", "COINS": "ÉRMÉK", "GOLD": "ARANY", "STAGE": "PÁLYA", "CYCLE": "KÖR", "HERO": "HŐS", "GEAR": "FELSZERELÉS", "SKILL": "KÉPESSÉG", "LEVEL": "SZINT", "LV": "SZ",
+  "RESET HERO": "HŐS TÖRLÉSE", "GO": "MEHET", "LYRA": "LYRA",
+  "RETURNS": "VISSZATÉR", "SWAP": "VÁLT", "CAST": "DOB", "STONE": "KŐ", "STORM": "VIHAR", "EMBER": "PARÁZS", "COIN": "ÉRME", "TOUGHER FOES": "ERŐSEBB ELLENSÉG", "BEGIN": "KEZDÉS",
+  "ENTER": "ENTER", "ESC": "ESC"
+};
+
+/* word-order rules for strings with numbers and names in them */
+const HU_RULES = [
+  [/^((?:\s|[*>])+)([A-Za-z].*)$/, m => m[1] + tr(m[2])],
+  [/^BOUGHT (.+)$/, m => "MEGVETTED: " + tr(m[1])],
+  [/^EQUIPPED (.+)$/, m => "FELSZERELVE: " + tr(m[1])],
+  [/^REQUIRES LV (\d+)$/, m => "SZINT " + m[1] + " SZÜKSÉGES"],
+  [/^NEEDS LEVEL (\d+)$/, m => m[1] + ". SZINT SZÜKSÉGES"],
+  [/^LV (\d+)(\s+MAX)?$/, m => "SZ " + m[1] + (m[2] ? "  MAX" : "")],
+  [/^STAGE (\d+) CLEARED$/, m => m[1] + ". PÁLYA TELJESÍTVE"],
+  [/^CYCLE (\d+) COMPLETE$/, m => m[1] + ". KÖR KÉSZ"],
+  [/^ENTER: CONTINUE TO THE MARKET\s+(\d+)S$/, m => "ENTER: TOVÁBB A PIACRA   " + m[1] + " MP"],
+  [/^YOUR LEVEL (\d+)\.  U CAST   Q SWAP SKILL$/, m => "SZINTED: " + m[1] + ".   U: DOB   Q: VÁLT"],
+  [/^UNSPENT COINS (\d+) x 1500 WHEN YOU FINISH$/, m => "FELHASZNÁLATLAN ÉRME: " + m[1] + " x 1500 A BEFEJEZÉSKOR"],
+  [/^ENTER: BEGIN CYCLE (\d+)  \(\+1 COIN, TOUGHER FOES\)$/, m => "ENTER: " + m[1] + ". KÖR KEZDÉSE  (+1 ÉRME, ERŐSEBB ELLENSÉG)"],
+  [/^THROWN!  K NEAR THE (\S+) TO REMOUNT  \(1 FALL LEFT\)$/, m => "ELDOBTAK!  K: ÜLJ VISSZA (" + trPhrase(m[1]) + ")  (MÉG 1 ESÉS)"],
+  [/^(.+) is cinders at last, and (.+) falls quiet\.$/, m => tr(m[1]) + " végre hamuvá lett, és " + trPhrase(m[2].toUpperCase()).toLowerCase() + " elcsendesedik."],
+  [/^Ahead lies (.+)\. The ash is deeper here, and the husks are hungrier than before\.$/, m => "Előttük " + trPhrase(m[1].toUpperCase()).toLowerCase() + " áll. A hamu itt mélyebb, és a héjak éhesebbek, mint valaha."]
+];
+
+/* short labels for the on-screen touch buttons */
+const HU_TOUCH = { ATK: "ÜTÉS", JUMP: "UGRÁS", MAGIC: "VARÁZS", RIDE: "LOVAG", SKILL: "KÉP.", SWAP: "VÁLT", GEAR: "FELSZ." };
+
+const _huPhraseKeys = Object.keys(HU_PHRASE).sort((a, b) => b.length - a.length);
+const _huPhraseRe = new RegExp("(^|[^A-Za-z])(" + _huPhraseKeys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?![A-Za-z])", "g");
+function trPhrase(s) { return s.replace(_huPhraseRe, (all, pre, ph) => pre + HU_PHRASE[ph]); }
+var huTranslate = function (s) {
+  if (HU_EXACT[s] !== undefined) return HU_EXACT[s];
+  for (const [re, fn] of HU_RULES) { const m = s.match(re); if (m) return fn(m); }
+  const sp = s.indexOf(" ");
+  if (sp > 0) { const a = s.slice(0, sp), b = s.slice(sp + 1); if (HU_EXACT[a] !== undefined && HU_EXACT[b] !== undefined && !/ /.test(b)) return HU_EXACT[a] + " " + HU_EXACT[b]; }
+  return trPhrase(s);
+};
+const _huUp = {}; for (const k in HU_EXACT) _huUp[k.toUpperCase()] = HU_EXACT[k].toUpperCase();
+const _huBase = huTranslate;
+huTranslate = function (s) {
+  const r = _huBase(s); if (r !== s) return r;
+  const u = _huUp[s]; if (u) return u;
+  const sp = s.indexOf(" "); if (sp > 0) { const a = _huUp[s.slice(0, sp)], b = _huUp[s.slice(sp + 1)]; if (a && b) return a + " " + b; }
+  return s;
+};

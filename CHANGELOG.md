@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.9.0] - 2026-11-14
+- Added a full Hungarian translation (UI, story, stages, items, skills). Switch language on the title screen (H or click) or in the pause menu; the choice is saved and defaults to the browser language.
+
 ## [1.8.2] - 2026-11-14
 - Renamed the hero from Kestrel to Nolan.
 
