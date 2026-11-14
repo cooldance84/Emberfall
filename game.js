@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.8.1';
+const VERSION = '1.8.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -364,7 +364,7 @@ const STORY = {
   loop: [
     'The Heart-Ember burns again, but the ash remembers. Beyond the Broken Gate the husks rise anew, harder and hungrier than before.',
     'The old Wardens whisper that the Cinder King was only the first. As long as the ash lies on the world, the vow is never finished.',
-    'Kestrel lifts the sword once more. Another cycle begins.'
+    'Nolan lifts the sword once more. Another cycle begins.'
   ],
   cycleEnd: [
     'The Ember Wyrm falls again, and the Heart-Ember flares higher. For a breath the whole world is warm.',
@@ -374,11 +374,11 @@ const STORY = {
     'For a thousand years the Ember Wardens kept the Heart-Ember burning: the small, stubborn flame that keeps the whole world warm.',
     'Then the Cinder King, first among the Wardens, swore a new vow: that all fire should be his alone. He tore the Heart-Ember from its altar.',
     'Ash fell on every road. The dead rose as husks, the villages went dark, and the sun forgot the sky above Ashhold.',
-    'One Warden remains. Kestrel carries a sword and an old promise: to save the world from the monsters of the ash.'
+    'One Warden remains. Nolan carries a sword and an old promise: to save the world from the monsters of the ash.'
   ],
   ending: [
     'The Ember Wyrm falls, and the Heart-Ember slips free of its cracked hide, small and bright and warm.',
-    'Kestrel carries it down the black stair, past the cold forge, through the clearing marsh and the open gate.',
+    'Nolan carries it down the black stair, past the cold forge, through the clearing marsh and the open gate.',
     'At the altar of Ashhold the flame takes hold, and dawn breaks over the world for the first time in ten years.',
     'The husks lie still. The villages light their lamps. The Ashen Vow is kept, and the world is saved.'
   ]
@@ -411,9 +411,9 @@ const BOSS_OF = ['boss', 'witch', 'smith', 'king', 'wyrm'];
 const BOSS_TC = { boss: 'The Cinder Colossus', witch: 'The Mire Matron', smith: 'The Forgemaster', king: 'The Cinder King', wyrm: 'The Ember Wyrm' };
 const BOSS_RET = { boss: 'THE CINDER COLOSSUS RETURNS FROM THE SLAG', witch: 'THE MIRE MATRON RISES FROM THE FEN', smith: 'THE FORGEMASTER REFORGES HIS ARMY', king: 'THE CINDER KING WEARS A CROWN OF NEW FIRE', wyrm: 'THE EMBER WYRM HUNGERS ONCE MORE' };
 const ACT_END = [
-  ['The Ember Wyrm falls, and the first Heart-Ember is Kestrel\'s. But a crack runs through its glass: this flame is only one of four.', 'Three embers still burn in the dark. Kestrel turns north, where the road bends into the Shattered Bridge.'],
-  ['The second ember warms Kestrel\'s palm, and the hills below turn green for a single night.', 'Then the wind shifts. Beyond the Second Sanctum the Ashen Wastes begin, and the husks there never sleep.'],
-  ['The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.', 'One flame remains, buried at the world\'s oldest forge. Kestrel does not rest. The Last Road begins here.']
+  ['The Ember Wyrm falls, and the first Heart-Ember is Nolan\'s. But a crack runs through its glass: this flame is only one of four.', 'Three embers still burn in the dark. Nolan turns north, where the road bends into the Shattered Bridge.'],
+  ['The second ember warms Nolan\'s palm, and the hills below turn green for a single night.', 'Then the wind shifts. Beyond the Second Sanctum the Ashen Wastes begin, and the husks there never sleep.'],
+  ['The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.', 'One flame remains, buried at the world\'s oldest forge. Nolan does not rest. The Last Road begins here.']
 ];
 for (let i = 5; i < 20; i++) {
   const b = STAGES[i % 5], act = Math.floor(i / 5);
@@ -431,7 +431,7 @@ let WAVES = STAGES[0].waves, STAGE_END = STAGES[0].end, TH = THEMES[0];
 let stageIdx = 0, story = null, bossRef = null, stageCard = 0, clearT = 0, shots = [];
 
 const KINDS = {
-  hero: { name: 'KESTREL', hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
+  hero: { name: 'NOLAN', hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
   imp: { name: 'PILFERER', hp: 20, spd: 1.8, scale: 0.8, h: 36, skin: '#79b04a', hair: '#3a5a22', armor: '#7a5a32', armor2: '#c9962e', cloth: '#4a3320', wlen: 12, wwid: 2, wcol: '#cfd4de', windup: 99, rng: 0, dmg: 0 },
   h: { name: 'ASHEN HUSK', hp: 44, spd: 0.8, scale: 1, h: 44, skin: '#6e6a74', hair: '#2c2a30', armor: '#4a3a3a', armor2: '#ff7a2a', cloth: '#2b2226', wlen: 22, wwid: 3, wcol: '#a8743c', windup: 22, rng: 28, dmg: 9 },
   b: { name: 'CINDER BRUTE', hp: 120, spd: 0.55, scale: 1.3, h: 58, skin: '#5a5660', hair: '#1f1c22', armor: '#5a2e2e', armor2: '#ff9a3a', cloth: '#2a1c1c', wlen: 26, wwid: 6, wcol: '#6b6f78', windup: 30, rng: 40, dmg: 18 },
@@ -480,7 +480,7 @@ const BASE_NAMES = { weapon: ['Rusted Sword', 'Iron Blade', 'Ash Cleaver'], helm
 const MAGIC_BASE = { weapon: ['Sword', 'Blade', 'Axe'], helm: ['Helm', 'Cap', 'Hood'], armor: ['Mail', 'Vest', 'Plate'], boots: ['Boots', 'Greaves', 'Treads'], ring: ['Ring', 'Band', 'Loop'], amulet: ['Amulet', 'Charm', 'Pendant'] };
 const MAGIC_PRE = ['Keen', "Warden's", 'Ember', 'Swift', 'Fierce', 'Gilded', 'Bladed'];
 const LEG_NAMES = { weapon: ['Dawnbreaker', "Warden's Oath"], helm: ['Crown of Embers', 'Sunwatch Helm'], armor: ['Phoenix Mail', 'Heart-Ward'], boots: ['Stormstep Greaves', 'Ashwalkers'], ring: ['Ring of Kindling', 'Vow-Band'], amulet: ['Heart-Ember Shard', 'Eye of Ashhold'] };
-const MYTH_NAMES = { weapon: ['Ruinblade, the Vow', "Kestrel's Last Dawn"], helm: ['Helm of the Last Flame'], armor: ['Aegis of Emberfall'], boots: ['Boots of the Endless Road'], ring: ['Ring of the First Warden'], amulet: ['The Heart-Ember Reborn'] };
+const MYTH_NAMES = { weapon: ['Ruinblade, the Vow', "Nolan's Last Dawn"], helm: ['Helm of the Last Flame'], armor: ['Aegis of Emberfall'], boots: ['Boots of the Endless Road'], ring: ['Ring of the First Warden'], amulet: ['The Heart-Ember Reborn'] };
 const pickOf = a => a[Math.random() * a.length | 0];
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
 let PS = null, floats = [];
@@ -1313,7 +1313,7 @@ function drawStory() {
   const T = themeFor(s.theme, s.act);
   const saveTH = TH; TH = T; drawWorld(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
-  { const sh = { x: hero.x, y: hero.y, f: hero.face, st: hero.st, z: hero.z, inv: hero.inv, fl: hero.flash }; // Kestrel keeps watch at the bottom of the scene
+  { const sh = { x: hero.x, y: hero.y, f: hero.face, st: hero.st, z: hero.z, inv: hero.inv, fl: hero.flash }; // Nolan keeps watch at the bottom of the scene
     hero.x = cam + 150; hero.y = 240; hero.face = 1; hero.st = 'idle'; hero.z = 0; hero.inv = 0; hero.flash = 0; drawFighter(hero);
     hero.x = sh.x; hero.y = sh.y; hero.face = sh.f; hero.st = sh.st; hero.z = sh.z; hero.inv = sh.inv; hero.flash = sh.fl; }
   TH = saveTH;
@@ -1333,7 +1333,7 @@ function drawStory() {
     }
     y += 8;
   }
-  if (s.theme >= 0 && s.theme < 5) { drawPortrait('hero', 46, 150, 'KESTREL', '90,60,40'); drawPortrait(PORT[s.theme], W - 46, 150, PORT_NAME[s.theme], THEMES[s.theme].glow); }
+  if (s.theme >= 0 && s.theme < 5) { drawPortrait('hero', 46, 150, 'NOLAN', '90,60,40'); drawPortrait(PORT[s.theme], W - 46, 150, PORT_NAME[s.theme], THEMES[s.theme].glow); }
   const done = s.pi === s.paras.length - 1 && s.ci >= s.paras[s.pi].length;
   if ((tickN >> 5) & 1) text(done ? 'PRESS ENTER' : '...', W / 2, 252, 9, '#ffffff', 'center');
 }
@@ -2367,7 +2367,7 @@ function drawWyrm(f, sx, sy) {
 function drawHUD() {
   if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
-  text('KESTREL  LV ' + rpg.lvl, 12, 18, 11, '#9fd0ff');
+  text('NOLAN  LV ' + rpg.lvl, 12, 18, 11, '#9fd0ff');
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
@@ -2465,7 +2465,7 @@ function render() {
     if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); drawDonate(226); }
   }
   if (mode === 'victory') {
-    g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text('KESTREL KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
+    g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text('NOLAN KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
     text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W / 2, 158, 8, '#d9b98a', 'center');
     if (endTimer > 30) { text('ENTER: BEGIN CYCLE ' + (cycle + 2) + '  (+1 COIN, TOUGHER FOES)', W / 2, 184, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W / 2, 198, 8, '#b8a8c8', 'center'); }
     drawDonate(222);

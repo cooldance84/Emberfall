@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.8.2] - 2026-11-14
+- Renamed the hero from Kestrel to Nolan.
+
 ## [1.8.1] - 2026-11-14
 - The Ember Market now has a mythic chance (about 3%) on its regular shelves from stage 3 and a fourth premium shelf with about 6% mythic and 30% legendary or better.
 
@@ -27,7 +30,7 @@ All notable changes to Emberfall. Versions follow [Semantic Versioning](https://
 - Made monsters a little tougher: more health and damage per stage and cycle.
 
 ## [1.4.0] - 2026-11-14
-- Added original framed portraits of Kestrel and each boss to the story scenes.
+- Added original framed portraits of Nolan and each boss to the story scenes.
 - Added boss secondary motion: breathing, a hovering Mire Matron with spirit lights, Forgemaster smoke, Cinder King flame wings and Colossus footfall dust.
 
 ## [1.3.0] - 2026-11-14

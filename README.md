@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.8.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.8.2-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -10,7 +10,7 @@ An original side-scrolling arcade brawler in the spirit of the 90s classics. The
 
 ## The story
 
-The Cinder King stole the Heart-Ember and the world went dark. You are Kestrel, the last Ember Warden, and you fight through five stages to bring the flame home.
+The Cinder King stole the Heart-Ember and the world went dark. You are Nolan, the last Ember Warden, and you fight through five stages to bring the flame home.
 
 | Stage | Setting | New monster | Boss |
 |---|---|---|---|
@@ -76,7 +76,7 @@ Every act has its own palette and weather, so the later stages do not look like 
 ![Ember Market](docs/screenshots/market.jpg)
 
 ### Story portraits and living bosses
-Every story scene now shows a framed portrait of Kestrel facing the boss of the coming stage. Bosses breathe, the Mire Matron hovers with circling spirit lights, the Forgemaster smokes, the Cinder King beats flame wings and the Colossus shakes the ground as he walks.
+Every story scene now shows a framed portrait of Nolan facing the boss of the coming stage. Bosses breathe, the Mire Matron hovers with circling spirit lights, the Forgemaster smokes, the Cinder King beats flame wings and the Colossus shakes the ground as he walks.
 
 | | |
 |---|---|
