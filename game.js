@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -16,7 +16,7 @@ const keys = {}, pressed = {};
 const KEYMAP = {
   left: ['KeyA', 'ArrowLeft', 'PadLeft', 'TLeft'], right: ['KeyD', 'ArrowRight', 'PadRight', 'TRight'], up: ['KeyW', 'ArrowUp', 'PadUp', 'TUp'], down: ['KeyS', 'ArrowDown', 'PadDown', 'TDown'],
   atk: ['KeyJ', 'KeyZ', 'PadX', 'TAtk'], jump: ['KeyK', 'KeyX', 'Space', 'PadA', 'TJump'], magic: ['ShiftLeft', 'ShiftRight', 'KeyL', 'KeyC', 'PadB', 'PadRB', 'TMagic'], dismount: ['KeyE', 'PadY', 'TRide'],
-  start: ['Enter', 'PadA', 'TStart'], inv: ['KeyI', 'Tab', 'PadSelect', 'TInv'], back: ['Escape', 'Backspace'], pause: ['Escape', 'KeyP', 'PadStart', 'TPause']
+  start: ['Enter', 'PadA', 'TStart'], skill: ['KeyU', 'PadLB', 'TSkill'], swap: ['KeyQ', 'PadLT', 'TSwap'], inv: ['KeyI', 'Tab', 'PadSelect', 'TInv'], back: ['Escape', 'Backspace'], pause: ['Escape', 'KeyP', 'PadStart', 'TPause']
 };
 addEventListener('keydown', e => {
   if (!keys[e.code]) pressed[e.code] = true;
@@ -28,12 +28,12 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 /* ---- gamepad + touch feed the same key tables with virtual key codes ---- */
-const PADNAMES = ['Left', 'Right', 'Up', 'Down', 'A', 'B', 'X', 'Y', 'RB', 'Select', 'Start'];
+const PADNAMES = ['Left', 'Right', 'Up', 'Down', 'A', 'B', 'X', 'Y', 'RB', 'LB', 'LT', 'Select', 'Start'];
 function setV(code, on) { on = !!on; if (on && !keys[code]) pressed[code] = true; keys[code] = on; }
 function feedPad(p, pre) {
   const b = i => !!(p && p.buttons[i] && p.buttons[i].pressed), ax = p ? p.axes[0] || 0 : 0, ay = p ? p.axes[1] || 0 : 0;
   setV(pre + 'Left', ax < -0.45 || b(14)); setV(pre + 'Right', ax > 0.45 || b(15)); setV(pre + 'Up', ay < -0.45 || b(12)); setV(pre + 'Down', ay > 0.45 || b(13));
-  setV(pre + 'X', b(2)); setV(pre + 'A', b(0)); setV(pre + 'B', b(1) || b(7)); setV(pre + 'RB', b(5)); setV(pre + 'Y', b(3)); setV(pre + 'Select', b(8)); setV(pre + 'Start', b(9));
+  setV(pre + 'X', b(2)); setV(pre + 'A', b(0)); setV(pre + 'B', b(1) || b(7)); setV(pre + 'RB', b(5)); setV(pre + 'LB', b(4)); setV(pre + 'LT', b(6)); setV(pre + 'Y', b(3)); setV(pre + 'Select', b(8)); setV(pre + 'Start', b(9));
 }
 function pollPad() {
   if (typeof navigator === 'undefined' || !navigator.getGamepads) return;
@@ -44,8 +44,12 @@ const isDown = a => KEYMAP[a].some(c => keys[c]);
 const isHit = a => KEYMAP[a].some(c => pressed[c]);
 // player 2 (co-op): arrows + , . / (or numpad 1-3), or the second gamepad
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
-  atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'] };
-let coop = false, hero1 = null, hero2 = null, intro = null;
+  atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
+let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
+const areaLv = () => 4 + stageIdx * 2 + cycle * 14;          // how deep in the endless loop you are
+const hpMul = () => 1 + (areaLv() - 4) * 0.1;                // monsters get tougher every stage and cycle
+const dmgMul = () => 1 + (areaLv() - 4) * 0.045;
+const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
 const keysOf = (a, pn) => pn === 2 ? (KEYMAP2[a] || []) : (coop ? KEYMAP[a].filter(c => !c.startsWith('Arrow')) : KEYMAP[a]);
 const inD = (f, a) => keysOf(a, f.pn).some(c => keys[c]);
 const inH = (f, a) => keysOf(a, f.pn).some(c => pressed[c]);
@@ -302,6 +306,15 @@ let mounts = [], dragon = null, impT = 240, flashA = 0;
 const BOSSES = { boss: 1, witch: 1, smith: 1, king: 1, wyrm: 1 };
 const isBoss = e => !!BOSSES[e.kind];
 const STORY = {
+  loop: [
+    'The Heart-Ember burns again, but the ash remembers. Beyond the Broken Gate the husks rise anew, harder and hungrier than before.',
+    'The old Wardens whisper that the Cinder King was only the first. As long as the ash lies on the world, the vow is never finished.',
+    'Kestrel lifts the sword once more. Another cycle begins.'
+  ],
+  cycleEnd: [
+    'The Ember Wyrm falls again, and the Heart-Ember flares higher. For a breath the whole world is warm.',
+    'But the ash still stirs in the far hills. The vow is never finished.'
+  ],
   intro: [
     'For a thousand years the Ember Wardens kept the Heart-Ember burning: the small, stubborn flame that keeps the whole world warm.',
     'Then the Cinder King, first among the Wardens, swore a new vow: that all fire should be his alone. He tore the Heart-Ember from its altar.',
@@ -356,10 +369,12 @@ const KINDS = {
 
 function makeFighter(kind, x, y) {
   const k = KINDS[kind];
-  return {
+  const o = {
     kind, k, x, y, z: 0, vx: 0, vy: 0, vz: 0, face: 1, hp: k.hp, maxhp: k.hp, st: 'idle', t: 0, anim: 0,
     inv: 0, flash: 0, combo: 0, queued: false, hits: new Set(), cool: rnd(20, 70), armor: k.poise || 70, mana: 0, dead: false, fade: 0, h: k.h, vases: 0, mount: null, vase: false, dir: 1, fled: false, gone: false
   };
+  if (kind !== 'hero' && kind !== 'imp') o.hp = o.maxhp = Math.round(k.hp * hpMul());
+  return o;
 }
 
 /* ---------- RPG: levels, loot, equipment, saves, leaderboard ---------- */
@@ -390,7 +405,8 @@ const pickOf = a => a[Math.random() * a.length | 0];
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, ini: 'AAA' };
 let PS = null, floats = [];
 
-const xpNeed = l => Math.round(20 * Math.pow(l, 1.25));
+const XPN = [40, 20];
+const xpNeed = l => Math.round(XPN[0] + XPN[1] * l);
 function pstats() {
   if (PS) return PS;
   const s = { str: 4 + rpg.lvl, crit: 5, cdmg: 150, hit: 90 };
@@ -419,33 +435,38 @@ function rollHit(dmg) { // hit chance, crit chance, crit damage, STR
 }
 function gainXP(n) {
   if (rpg.lvl >= MAX_LV || n <= 0) return;
-  rpg.xp += n; let up = false;
+  rpg.xp += n; let up = false; const lv0 = rpg.lvl;
   while (rpg.lvl < MAX_LV && rpg.xp >= xpNeed(rpg.lvl)) { rpg.xp -= xpNeed(rpg.lvl); rpg.lvl++; up = true; }
   if (rpg.lvl >= MAX_LV) rpg.xp = 0;
-  if (up) levelUp();
+  if (up) levelUp(lv0);
 }
-function levelUp() {
+function levelUp(lv0) {
   heroStats(false); for (const p of players()) p.hp = Math.min(p.maxhp, p.hp + (p.maxhp * 0.35 | 0));
   msg = rpg.lvl >= MAX_LV ? 'MAX LEVEL 70!' : 'LEVEL UP!  LV ' + rpg.lvl; msgT = 130; flashA = 0.3; SFX.magic();
   spawn(hero.x, hero.y, 20, 36, { s0: 1, s1: 3.4, c: ['#fff1b0', '#ffd24a', '#c9a8ff'], l0: 16, l1: 36, add: true, size: 2, up: 3, g: 0.05 });
+  const sk = SKILLS.filter(k => k.lv > (lv0 || 0) && k.lv <= rpg.lvl).pop();
+  if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + sk.name + '  (U)'; msgT = 220; }
   saveGame();
 }
-function rollRarity() { // stage 1: white only. 2: +magic. 3: +legendary 10%. 4+: +mythic 3%
-  if (stageIdx >= 3 && Math.random() < 0.03) return 3;
-  if (stageIdx >= 2 && Math.random() < 0.10) return 2;
-  if (stageIdx >= 1 && Math.random() < 0.38) return 1;
+function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +legendary 7%. 4+: +mythic 1%
+  const t = tierOf();
+  if (t >= 3 && Math.random() < 0.01) return 3;
+  if (t >= 2 && Math.random() < 0.07) return 2;
+  if (t >= 1 && Math.random() < 0.34) return 1;
   return 0;
 }
-function genItem(rar, slot) {
+const canWear = it => (it.lvl || 1) <= rpg.lvl;
+function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS); const R = RARITY[rar];
-  const sc = 1 + rpg.lvl * 0.045 + stageIdx * 0.18;
+  const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2, 1, MAX_LV); // drops land around your level, a little above or below
+  const sc = k => (k === 'str' || k === 'cdmg') ? 1 + il * 0.045 : 1 + il * 0.012;
   const first = pickOf(SLOT_PRIMARY[slot]);
   const keys = [first, ...STAT_KEYS.filter(k => k !== first).sort(() => Math.random() - 0.5)];
   const n = R.n[0] + (R.n[1] > R.n[0] ? (Math.random() * (R.n[1] - R.n[0] + 1) | 0) : 0);
   const st = {};
-  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * sc)); }
+  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * sc(k))); }
   const name = rar === 0 ? pickOf(BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(MAGIC_BASE[slot]) : rar === 2 ? pickOf(LEG_NAMES[slot]) : pickOf(MYTH_NAMES[slot]);
-  return { slot, rar, name, st };
+  return { slot, rar, name, st, lvl: il };
 }
 function dropGear(x, y, rar) {
   const R = RARITY[rar];
@@ -454,19 +475,19 @@ function dropGear(x, y, rar) {
   if (rar >= 2) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 3 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
 }
 function onKill(e) {
-  const boss = isBoss(e), k = 1 + 0.5 * stageIdx;
-  gainXP(Math.round((boss ? 300 : e.kind === 'b' || e.k.ai ? 36 : 12) * k));
-  const n = boss ? (stageIdx >= 2 ? 3 : 2) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.45 : 0.18) ? 1 : 0;
+  const boss = isBoss(e);
+  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12)));
+  const n = boss ? (tierOf() >= 2 ? 3 : 2) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
   for (let i = 0; i < n; i++) {
     let r = rollRarity();
-    if (boss && stageIdx === 1) r = 1;                       // stage 2 boss: two magic drops
-    else if (boss && i === 0 && stageIdx >= 2) r = Math.max(1, r);
+    if (boss && tierOf() === 1) r = 1;                       // stage 2 boss: two magic drops
+    else if (boss && i === 0 && tierOf() >= 2) r = Math.max(1, r);
     dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
   }
 }
 function pickupGear(it) {
   const R = RARITY[it.rar];
-  if (!rpg.eq[it.slot]) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, R.col, 8); }
+  if (!rpg.eq[it.slot] && canWear(it)) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, R.col, 8); }
   else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); floatText(hero.x, hero.y - 60, it.name, R.col, 8); }
   else return false;
   saveGame(); return true;
@@ -496,16 +517,17 @@ loadGame();
 /* ---- end of run: name entry + leather leaderboard ---- */
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let nameBuf = [0, 0, 0], namePos = 0, pendingRun = null, boardHi = -1, resetArm = 0, leatherCv = null;
-let inv = { z: 'bag', i: 0, from: 'play' };
+let inv = { z: 'bag', i: 0, from: 'play' }, invNote = '', invNoteT = 0;
 function endRun(won) {
+  if (won) score += rpg.coins * 1500;
   saveGame();
   const b = loadBoard();
-  pendingRun = { s: score, st: stageIdx + 1, lv: rpg.lvl, w: !!won };
+  pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won };
   if (score > 0 && (b.length < 10 || score > b[b.length - 1].s)) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
-function toTitle() { coop = false; resetGame(); TH = THEMES[0]; mode = 'title'; }
+function toTitle() { coop = false; cycle = 0; resetGame(); TH = THEMES[0]; mode = 'title'; }
 function updateName() {
   if (isHit('left')) namePos = (namePos + 2) % 3; if (isHit('right')) namePos = (namePos + 1) % 3;
   if (isHit('up')) nameBuf[namePos] = (nameBuf[namePos] + 1) % 26; if (isHit('down')) nameBuf[namePos] = (nameBuf[namePos] + 25) % 26;
@@ -533,7 +555,7 @@ function drawBoardScreen() {
   if (mode === 'name') {
     text('NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
     text('SCORE ' + String(score).padStart(7, '0'), W / 2, 76, 11, '#fff1d0', 'center');
-    text('STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
+    text((pendingRun.c > 1 ? 'CYCLE ' + pendingRun.c + '  ' : '') + 'STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
     for (let i = 0; i < 3; i++) {
       const x = W / 2 + (i - 1) * 44, sel = i === namePos;
       g.fillStyle = 'rgba(20,8,0,0.55)'; g.fillRect(x - 17, 112, 34, 52);
@@ -554,7 +576,7 @@ function drawBoardScreen() {
     if (i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
     text(String(i + 1).padStart(2, ' '), 78, y, 9, col);
-    if (e) { text(e.n, 104, y, 9, col); text(String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text('S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
+    if (e) { text(e.n, 104, y, 9, col); text(String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
     else text('---', 104, y, 9, col);
   }
   text('* = WORLD SAVED', 78, 240, 7, '#b8935a');
@@ -585,6 +607,7 @@ function slotBox(x, y, it, sel, ghost) {
   g.strokeStyle = it ? RARITY[it.rar].col : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
   if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, RARITY[it.rar].col);
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
+  if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
   if (sel) { g.strokeStyle = (tickN >> 3) & 1 ? '#ffd24a' : '#fff1b0'; g.lineWidth = 2; g.strokeRect(x - 2, y - 2, 30, 30); }
 }
 const eqPos = i => i < 3 ? [16, 34 + i * 44] : [136, 34 + (i - 3) * 44];
@@ -594,7 +617,8 @@ function drawTip(it, cmp, x, y) {
   const R = RARITY[it.rar];
   text(it.name, x + 8, y + 26, it.name.length > 20 ? 8 : 9, R.col);
   text(R.name + ' ' + SLOT_NAME[it.slot], x + 8, y + 38, 8, '#9a90a8');
-  let yy = y + 58;
+  text('REQUIRES LV ' + (it.lvl || 1), x + 8, y + 49, 8, canWear(it) ? '#9a90a8' : '#ff6a6a');
+  let yy = y + 62;
   for (const k of STAT_KEYS) if (it.st[k]) { text('+' + it.st[k] + STATS[k].sfx + ' ' + STATS[k].n, x + 8, yy, 8, '#8fb8ff'); yy += 12; }
   if (cmp !== undefined) {
     yy += 8; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
@@ -604,6 +628,7 @@ function drawTip(it, cmp, x, y) {
 function openInv(from) { inv.from = from; inv.z = 'bag'; inv.i = 0; mode = 'inv'; SFX.pick(); }
 function invItem() { return inv.z === 'bag' ? rpg.bag[inv.i] : rpg.eq[EQ_ORDER[inv.i]]; }
 function updateInv() {
+  if (invNoteT > 0) invNoteT--;
   if (isHit('inv') || isHit('back')) { mode = inv.from; return; }
   const L = isHit('left'), R = isHit('right'), U = isHit('up'), D = isHit('down');
   if (inv.z === 'eq') {
@@ -620,7 +645,8 @@ function updateInv() {
   if (isHit('start') || isHit('atk')) {
     if (inv.z === 'bag') {
       const it = rpg.bag[inv.i];
-      if (it) { const old = rpg.eq[it.slot]; rpg.eq[it.slot] = it; if (old) rpg.bag[inv.i] = old; else rpg.bag.splice(inv.i, 1); PS = null; heroStats(false); saveGame(); SFX.pick(); }
+      if (it && !canWear(it)) { invNote = 'NEEDS LEVEL ' + (it.lvl || 1); invNoteT = 90; SFX.hit(); }
+      else if (it) { const old = rpg.eq[it.slot]; rpg.eq[it.slot] = it; if (old) rpg.bag[inv.i] = old; else rpg.bag.splice(inv.i, 1); PS = null; heroStats(false); saveGame(); SFX.pick(); }
     } else {
       const s = EQ_ORDER[inv.i], it = rpg.eq[s];
       if (it && rpg.bag.length < BAG_MAX) { rpg.bag.push(it); delete rpg.eq[s]; PS = null; heroStats(false); saveGame(); SFX.pick(); }
@@ -642,6 +668,7 @@ function drawInv() {
   text('HIT ' + s.hit + '%    HP ' + s.maxhp, 14, y0 + 60, 8, '#e8e0f0');
   for (let i = 0; i < BAG_MAX; i++) { const [x, y] = bagPos(i); slotBox(x, y, rpg.bag[i], inv.z === 'bag' && inv.i === i); }
   text('ITEMS ' + rpg.bag.length + '/' + BAG_MAX, 251, 164, 8, '#8a7a9a', 'center');
+  if (invNoteT > 0) text(invNote, 251, 226, 8, '#ff6a6a', 'center');
   text('ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text('X      DISCARD', 192, 196, 7, '#b8a8c8'); text('I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
   for (let i = 0; i < 3; i++) drawCoin(198 + i * 14, 240, i < rpg.coins); text('COINS', 244, 244, 7, '#b8a8c8');
   const it = invItem();
@@ -685,6 +712,7 @@ function dust(x, y, n) { spawn(x, y, 0, n, { s0: 0.3, s1: 1.2, c: ['#8d7a8f', '#
 function hurt(e, dmg, kind, from) {
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
   const dir = sgn(e.x - from.x) || -from.face;
+  if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul()));
   if (e.pn && e.mount) { // the wyrmling takes the blow for its rider
     const m = e.mount; m.hp -= dmg; e.flash = 4; e.inv = 14;
     sparks(e.x, e.y, e.z + 20, false); SFX.hit(); shake = Math.max(shake, 3); freeze = Math.max(freeze, 2);
@@ -766,8 +794,64 @@ function reviveP(f, mate) {
   f.dead = false; f.fade = 0; f.hp = Math.max(1, f.maxhp >> 1); f.x = mate.x - 22; f.y = mate.y; f.z = 0; f.vx = 0; f.vz = 0; f.st = 'idle'; f.t = 0; f.inv = 120; f.mount = null; f.hits.clear();
   msg = f.k.name + ' RETURNS  (-1 COIN)'; msgT = 100; SFX.magic(); spawn(f.x, f.y, 20, 26, { s0: 1, s1: 3, c: ['#fff1b0', '#8affb0'], l0: 14, l1: 30, add: true, size: 2, up: 3, g: 0.05 });
 }
+/* ---------- skills: a new special attack every 10 levels (U casts, Q swaps) ---------- */
+const SKILLS = [
+  { lv: 10, name: 'RISING SLASH', cd: 150 }, { lv: 20, name: 'DASH STRIKE', cd: 180 }, { lv: 30, name: 'WHIRLWIND', cd: 240 },
+  { lv: 40, name: 'FLAME WAVE', cd: 260 }, { lv: 50, name: 'METEOR DIVE', cd: 330 }, { lv: 60, name: 'EMBER NOVA', cd: 400 }, { lv: 70, name: 'HEART-EMBER BURST', cd: 900 }
+];
+const skillsOf = () => SKILLS.filter(k => k.lv <= rpg.lvl);
+function skillOf(f) { const a = skillsOf(); return a.length ? a[clamp(f.ski == null ? a.length - 1 : f.ski, 0, a.length - 1)] : null; }
+function cycleSkill(f) { const a = skillsOf(); if (a.length < 2) return; f.ski = ((f.ski == null ? a.length - 1 : f.ski) + 1) % a.length; SFX.pick(); floatText(f.x, f.y - 66, skillOf(f).name, '#8cc4ff', 8); }
+function castSkill(f) {
+  const S = skillOf(f); if (!S || f.skcd > 0 || f.mount) return false;
+  f.sk = { id: SKILLS.indexOf(S), face0: f.face }; f.st = 'atk'; f.combo = 2; f.t = 0; f.queued = false; f.hits.clear(); f.skcd = S.cd; f.inv = Math.max(f.inv, 14); f.vx = 0;
+  floatText(f.x, f.y - 66, S.name + '!', '#8cc4ff', 8); return true;
+}
+function stepSkill(f) {
+  const t = f.t, id = f.sk.id, ff = f.sk.face0, foes = enemies;
+  f.inv = Math.max(f.inv, 6);
+  const end = () => { f.face = ff; f.sk = null; f.st = 'idle'; f.t = 0; f.z = 0; f.vz = 0; };
+  const burst = (n, cols, s1) => spawn(f.x, f.y, 14, n, { s0: 1, s1: s1 || 3.6, c: cols, l0: 12, l1: 28, add: true, size: 2, flat: true });
+  if (id === 0) { // rising slash: leaping uppercut
+    if (t === 3) { f.vz = 4.6; f.hits.clear(); SFX.swing(); }
+    if (t >= 3) { f.z += f.vz; f.vz -= 0.33; f.x += ff * 0.8; }
+    if (t >= 4 && t <= 12) strike(f, { x0: -8, x1: 54, dy: 16, z0: -10, z1: 70 }, 26, 'down', foes);
+    if (t >= 4 && t % 2 === 0) spawn(f.x + ff * 22, f.y, f.z + 24, 2, { c: ['#fff1b0', '#8cc4ff'], l0: 8, l1: 16, add: true, up: 2, g: -0.02 });
+    if (f.z <= 0 && t > 6) end();
+  } else if (id === 1) { // dash strike
+    if (t === 2) SFX.swing();
+    if (t < 16) { f.x += ff * 5.2; if (t === 7) f.hits.clear(); strike(f, { x0: -8, x1: 30, dy: 14, z0: 0, z1: 48 }, 22, t < 8 ? 'hurt' : 'down', foes); if (t % 2 === 0) spawn(f.x - ff * 10, f.y, 16, 2, { c: ['#8cc4ff', '#ffffff'], l0: 8, l1: 14, add: true }); }
+    if (t >= 22) end();
+  } else if (id === 2) { // whirlwind
+    if (t < 26) { if (t % 6 === 0) { f.hits.clear(); SFX.swing(); } if (t % 3 === 0) { f.face = -f.face; burst(5, ['#fff1b0', '#ffb43a'], 2.4); } strike(f, { x0: -66, x1: 66, dy: 20, z0: 0, z1: 54 }, 13, t >= 20 ? 'down' : 'hurt', foes); }
+    if (t >= 30) end();
+  } else if (id === 3) { // flame wave: two piercing waves
+    if (t === 6) { for (const dy of [-8, 8]) shots.push({ type: 'pwave', owner: f, x: f.x + ff * 30, y: clamp(f.y + dy, Y_MIN, Y_MAX), z: 0, vx: ff * 3.6, t: 0, dmg: 24, life: 90, hit: new Set() }); SFX.big(); burst(10, ['#fff1b0', '#ff8a2a'], 2.4); }
+    if (t >= 22) end();
+  } else if (id === 4) { // meteor dive
+    if (t < 10) f.z += 5.5;
+    else if (!f.sk.landed) {
+      if (t === 10) f.vz = -10; f.z += f.vz;
+      if (f.z <= 0) { f.z = 0; f.sk.landed = t; f.hits.clear(); strike(f, { x0: -84, x1: 84, dy: 34, z0: -30, z1: 130 }, 42, 'down', foes); shake = Math.max(shake, 12); dust(f.x, f.y, 10); burst(30, ['#fff1b0', '#ffb43a', '#ff5a1f']); SFX.big(); }
+    } else if (t >= f.sk.landed + 14) end();
+  } else if (id === 5) { // ember nova
+    if (t === 8) { f.hits.clear(); strike(f, { x0: -130, x1: 130, dy: 50, z0: -20, z1: 120 }, 38, 'down', foes); shake = Math.max(shake, 10); flashA = Math.max(flashA, 0.25); burst(60, ['#fff1b0', '#ffb43a', '#ff5a1f'], 4.4); SFX.big(); }
+    if (t === 22) { f.hits.clear(); strike(f, { x0: -150, x1: 150, dy: 56, z0: -20, z1: 120 }, 30, 'hurt', foes); burst(40, ['#ffd070', '#ff8a2a'], 4.8); SFX.big(); }
+    if (t >= 34) end();
+  } else if (id === 6) { // heart-ember burst: screen-wide blast that heals the party
+    if (t < 18 && t % 4 === 0) spawn(f.x, f.y, 30, 6, { s0: 0.4, s1: 1.4, c: ['#fff1b0', '#ffd24a', '#c9a8ff'], l0: 14, l1: 26, add: true, up: 2.4, g: 0.04 });
+    if (t === 18) {
+      f.hits.clear(); strike(f, { x0: -W, x1: W, dy: 200, z0: -40, z1: 200 }, 70, 'down', foes);
+      for (const p of players()) if (!p.dead) p.hp = Math.min(p.maxhp, p.hp + (p.maxhp * 0.15 | 0));
+      flashA = 0.8; shake = Math.max(shake, 16); burst(80, ['#fff1b0', '#ffd24a', '#ffffff'], 5.4); SFX.magic(); SFX.big();
+    }
+    if (t >= 40) end();
+  }
+}
+
 function updateHero(f) {
-  f.t++; if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--;
+  f.t++; if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--; if (f.skcd > 0) f.skcd--;
+  if (f.sk && f.st !== 'atk') f.sk = null;
   if (f.dead) {
     f.fade++;
     if (coop) { const mate = players().find(p => p !== f && !p.dead); if (mate && f.fade > 240 && rpg.coins > 0 && mode === 'play') { rpg.coins--; reviveP(f, mate); return; } }
@@ -779,6 +863,7 @@ function updateHero(f) {
   const foes = enemies, spd = f.mount ? 2.4 : f.k.spd;
   switch (f.st) {
     case 'idle': case 'walk': {
+      if (inH(f, 'swap')) cycleSkill(f);
       f.vx = mx * spd; f.vy = my * spd * 0.65;
       if (mx) f.face = mx;
       f.x += f.vx; f.y = clamp(f.y + f.vy, Y_MIN, Y_MAX);
@@ -790,11 +875,13 @@ function updateHero(f) {
       } else if (inH(f, 'dismount') && f.mount) {
         const m = f.mount; m.x = f.x - f.face * 12; m.y = f.y; m.face = f.face; m.z = 0.01; m.vz = 2; mounts.push(m); f.mount = null;
       } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? 6 : 5.4; f.vx = mx * (f.mount ? 2.2 : 1.5); f.t = 0; f.hits.clear(); }
+      else if (inH(f, 'skill') && castSkill(f)) { }
       else if (inH(f, 'atk')) { if (f.mount) { f.st = 'ratk'; f.t = 0; f.hits.clear(); SFX.swing(); } else startAttack(f, 0); }
       else if (inH(f, 'magic') && f.mana >= 60 && !dragon) castDragon();
       break;
     }
     case 'atk': {
+      if (f.sk) { stepSkill(f); break; }
       const c = COMBO[f.combo];
       if (f.t === c.a) SFX.swing();
       if (f.t < 7) f.x += f.vx, f.vx *= 0.9;
@@ -976,11 +1063,11 @@ function dragonImpact() {
 
 /* ---------- campaign flow: story screens, stages ---------- */
 /* ---------- pause menu ---------- */
-const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'CONTROLS', 'QUIT TO TITLE'];
-let pauseI = 0, showCtl = false;
-function openPause() { mode = 'pause'; pauseI = 0; showCtl = false; SFX.pick(); }
+const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'SKILLS', 'CONTROLS', 'QUIT TO TITLE'];
+let pauseI = 0, pausePg = 0;
+function openPause() { mode = 'pause'; pauseI = 0; pausePg = 0; SFX.pick(); }
 function updatePause() {
-  if (showCtl) { if (isHit('back') || isHit('start') || isHit('atk') || isHit('pause')) showCtl = false; return; }
+  if (pausePg) { if (isHit('back') || isHit('start') || isHit('atk') || isHit('pause')) pausePg = 0; return; }
   if (isHit('back') || isHit('pause')) { mode = 'play'; return; }
   if (isHit('up')) { pauseI = (pauseI + PAUSE_ITEMS.length - 1) % PAUSE_ITEMS.length; SFX.pick(); }
   if (isHit('down')) { pauseI = (pauseI + 1) % PAUSE_ITEMS.length; SFX.pick(); }
@@ -990,24 +1077,30 @@ function updatePause() {
   else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
   else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
-  else if (pauseI === 4) showCtl = true;
-  else if (pauseI === 5) { saveGame(); toTitle(); }
+  else if (pauseI === 4) pausePg = 2;
+  else if (pauseI === 5) pausePg = 1;
+  else if (pauseI === 6) { saveGame(); toTitle(); }
 }
 function drawPause() {
   g.fillStyle = 'rgba(4,2,10,0.72)'; g.fillRect(0, 0, W, H);
-  panel(W / 2 - 110, 52, 220, 170, 'PAUSED');
-  if (showCtl) {
-    const L = ['MOVE      WASD / ARROWS', 'ATTACK    J / Z', 'JUMP      K / X / SPACE', 'MAGIC     SHIFT / L / C', 'RIDE/DISMOUNT   K / E', 'GEAR      I / TAB', 'PAUSE     ESC / P', 'PAD       STICK, A/X/B/Y, START', 'PLAYER 2  ARROWS  , . /  (2ND PAD)'];
-    L.forEach((t, i) => text(t, W / 2 - 96, 84 + i * 13, 8, '#e8dcc8', 'left'));
-    text('PRESS ENTER TO GO BACK', W / 2, 212, 8, '#c9a8ff', 'center'); return;
+  panel(W / 2 - 110, 40, 220, 196, 'PAUSED');
+  if (pausePg === 1) {
+    const L = ['MOVE      WASD / ARROWS', 'ATTACK    J / Z', 'JUMP      K / X / SPACE', 'MAGIC     SHIFT / L / C', 'SKILL     U CAST, Q SWAP', 'RIDE/DISMOUNT   K / E', 'GEAR      I / TAB', 'PAUSE     ESC / P', 'PAD  STICK, X A B Y, LB/LT SKILL', 'PLAYER 2  ARROWS  , . /  ; \\'];
+    L.forEach((t, i) => text(t, W / 2 - 96, 78 + i * 13, 8, '#e8dcc8', 'left'));
+    text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
+  }
+  if (pausePg === 2) {
+    const cur = skillOf(hero);
+    SKILLS.forEach((k, i) => { const on = k.lv <= rpg.lvl, y = 80 + i * 18; text('LV ' + k.lv, W / 2 - 96, y, 8, on ? '#8cc4ff' : '#4a4a5a', 'left'); text(k.name, W / 2 - 60, y, 9, on ? (cur === k ? '#ffd24a' : '#e8dcc8') : '#4a4a5a', 'left'); if (!on) text('LOCKED', W / 2 + 96, y, 7, '#4a4a5a', 'right'); else if (cur === k) text('ACTIVE', W / 2 + 96, y, 7, '#ffd24a', 'right'); });
+    text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
-    const sel = i === pauseI, y = 88 + i * 20, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
+    const sel = i === pauseI, y = 78 + i * 20, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 16); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
   });
-  text('ESC TO RESUME', W / 2, 214, 8, '#8878a0', 'center');
+  text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }
 
 function wrapText(s, n) {
@@ -1071,8 +1164,13 @@ function beginStage(i) {
   mode = 'play';
 }
 function startCampaign(two) {
-  coop = !!two; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3;
+  coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3;
   openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(0), 0);
+}
+function nextCycle() {
+  cycle++; rpg.coins = Math.min(3, rpg.coins + 1);
+  for (const p of players()) { p.dead = false; p.fade = 0; p.hp = p.maxhp; p.mana = Math.max(p.mana, 60); }
+  openStory('THE ASH RETURNS', 'CYCLE ' + (cycle + 1), STORY.loop, () => beginStage(0), 0);
 }
 function continueStage() {
   const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
@@ -1080,7 +1178,7 @@ function continueStage() {
 function stageCleared() {
   const S = STAGES[stageIdx]; score += 3000; saveGame();
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme);
-  else openStory('THE END', 'EMBERFALL', STORY.ending, () => { score += rpg.coins * 1500; mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
+  else openStory(cycle === 0 ? 'THE END' : 'CYCLE ' + (cycle + 1) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
 }
 
 /* ---------- boss AI & projectiles ---------- */
@@ -1263,6 +1361,16 @@ function updateShots() {
         if (!hero.dead && Math.abs(dx) < 24 && Math.abs(dy) < 14 && hero.z < 26) hurt(hero, s.dmg, 'down', { x: s.x, face: 1 });
       }
       if (s.t > s.delay + 6) s.dead = true;
+    } else if (s.type === 'pwave') {
+      s.x += s.vx;
+      if (s.t % 2 === 0) spawn(s.x, s.y, 8, 2, { c: ['#fff1b0', '#ffb43a', '#ff5a1f'], s0: 0.2, s1: 0.8, l0: 8, l1: 16, add: true, size: 2, up: 1, g: -0.01 });
+      for (const e of enemies) {
+        if (e.dead || s.hit.has(e) || Math.abs(e.x - s.x) > 16 || Math.abs(e.y - s.y) > 16) continue;
+        s.hit.add(e); const r = rollHit(s.dmg);
+        if (r.miss) { floatText(e.x, e.y - e.h * 0.8, 'MISS', '#9aa0b0', 8); continue; }
+        if (hurt(e, r.d, 'hurt', s.owner)) floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
+      }
+      if (s.t > s.life || s.x < cam - 40 || s.x > cam + W + 40) s.dead = true;
     } else if (s.type === 'ring') {
       s.r += 3.2;
       if (!s.hit && !hero.dead && Math.abs(Math.hypot(dx, dy * 3) - s.r) < 10 && hero.z < 14) { s.hit = true; hurt(hero, s.dmg, 'down', { x: s.x, face: sgn(hero.x - s.x) || 1 }); }
@@ -1275,6 +1383,12 @@ function updateShots() {
 function drawShots() {
   for (const s of shots) {
     const x = Math.round(s.x - cam), y = Math.round(s.y);
+    if (s.type === 'pwave') {
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y, 12, 3, 0, 0, 7); g.fill();
+      g.globalCompositeOperation = 'lighter'; glowEllipse(x, y - 8, 20, 11); g.globalCompositeOperation = 'source-over';
+      const fl = Math.sin(tickN * 0.5 + x) * 2; g.fillStyle = '#ff5a1f'; g.fillRect(x - 8, y - 16, 14, 14); g.fillStyle = '#ffb43a'; g.fillRect(x - 5, y - 18 + fl, 10, 12); g.fillStyle = '#fff1b0'; g.fillRect(x - 2, y - 14, 5, 7);
+      continue;
+    }
     if (s.type === 'orb') {
       const zz = y - s.z;
       g.fillStyle = 'rgba(0,0,0,0.35)'; g.beginPath(); g.ellipse(x, y, 6, 2, 0, 0, 7); g.fill();
@@ -1324,19 +1438,22 @@ function drawIntro() {
     text(KINDS[I.k].name, W / 2, H - h + 15, 14, '#ff9a5a', 'center'); text(EPI[I.k] || '', W / 2, H - h + 27, 8, '#c9a8ff', 'center'); g.globalAlpha = 1;
   }
 }
+function buildList(w) { // later stages and cycles throw bigger crowds
+  const hasBoss = w.e.some(t => BOSSES[t]), list = w.e.slice(), d = stageIdx + cycle;
+  for (let n = 0; n < d && list.length < 9; n++) list.push(hasBoss ? 'h' : (waveIdx % 2 ? 'b' : 'h'));
+  if (d >= 2 && !hasBoss && waveIdx >= 2 && list.length < 9) list.push('b');
+  return list;
+}
 function updateStage() {
   const w = WAVES[waveIdx];
   if (w && lockX === Infinity && leadX() > w.x - 120) {
     lockX = w.x - 200 > cam ? Math.max(cam, w.x - 200) : cam;
     // later stages throw bigger crowds: extra husks, brutes from stage 3, more escorts around bosses
-    const hasBoss = w.e.some(t => BOSSES[t]);
-    const list = w.e.slice();
-    for (let n = 0; n < stageIdx && list.length < 9; n++) list.push(hasBoss ? 'h' : (waveIdx % 2 ? 'b' : 'h'));
-    if (stageIdx >= 2 && !hasBoss && waveIdx >= 2 && list.length < 9) list.push('b');
+    const hasBoss = w.e.some(t => BOSSES[t]), list = buildList(w);
     list.forEach((t, i) => {
       const side = i % 2 ? 1 : -1;
       const ex = side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22;
-      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.3 + 0.1 * stageIdx)) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
+      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.3 + 0.1 * Math.min(stageIdx + cycle, 5))) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
     });
     const bk = w.e.find(t => BOSSES[t]);
     if (bk) {
@@ -1408,7 +1525,7 @@ function step() {
     }
     return;
   }
-  if (mode === 'victory') { endTimer++; updateParts(); if (isHit('start') && endTimer > 30) endRun(true); return; }
+  if (mode === 'victory') { endTimer++; updateParts(); if (endTimer > 30) { if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
   if (isHit('pause') && !hero.dead && !dragon) { openPause(); return; }
   if (isHit('inv') && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
   if (intro) { updateIntro(); return; }
@@ -1546,7 +1663,7 @@ function drawHuman(f, sx, sy) {
   };
   const dk = c => shade(c, -0.38), lt = c => shade(c, 0.3);
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SW, SH); g.globalCompositeOperation = 'source-over';
-  g.globalAlpha = (f.ghost != null && !f.dead) ? f.ghost : (kind === 'king' && f.st === 'wind' && f.atk === 'blink') ? 0.3 : (f.dead && f.fade > 8) ? Math.max(0, 1 - (f.fade - 8) / 40) : ((f.inv > 0 && f.inv < 100 && (tickN >> 2) & 1 && f.pn) ? 0.45 : 1);
+  g.globalAlpha = (f.ghost != null && !f.dead) ? f.ghost : (kind === 'king' && f.st === 'wind' && f.atk === 'blink') ? 0.3 : (f.dead && f.fade > 8) ? Math.max(0, 1 - (f.fade - 8) / 40) : ((f.inv > 0 && f.inv < 100 && (tickN >> 2) & 1 && f.pn && !f.sk) ? 0.45 : 1);
   g.save(); g.translate(AX, AY); g.scale(f.face * sc, sc);
   const riding = !!f.mount, winding = f.st === 'wind', walking = f.st === 'walk' && !riding;
   const lay = f.st === 'down' && f.z === 0;
@@ -1940,17 +2057,18 @@ function drawHUD() {
   bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text('SHIFT: DRAGON WRATH', 12, 52, 8, hero.mana >= 60 ? '#ffd24a' : '#6a5a40');
-  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 70, i < hero.vases);
-  text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 67, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
-  if (hero.mount) { text('WYRMLING', 12, 86, 8, '#ff9a6a'); bar(12, 89, 70, 4, hero.mount.hp, hero.mount.maxhp, '#ff8a3a', '#3a1a10'); }
+  { const S = skillOf(hero); if (S) { text('U: ' + S.name, 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
+  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
+  text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
+  if (hero.mount) { text('WYRMLING', 12, 92, 8, '#ff9a6a'); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, '#ff8a3a', '#3a1a10'); }
   if (coop && hero2) { const p = hero2; text('LYRA', 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
   if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); for (let i = 0; i < 3; i++) drawCoin(W - 46 + i * 14, 46, i < rpg.coins);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
   if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); }
-  else text('STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, '#b8a8c8', 'center');
-  if (stageCard > 0) { const a = Math.min(1, stageCard / 40, (190 - stageCard) / 25); g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(0, 92, W, 70); text('STAGE ' + (stageIdx + 1), W / 2, 114, 12, '#ffb43a', 'center'); text(STAGES[stageIdx].name, W / 2, 138, 20, '#fff1d0', 'center'); text(STAGES[stageIdx].tag, W / 2, 154, 8, '#c9a8ff', 'center'); g.globalAlpha = 1; }
+  else text((cycle ? 'CYCLE ' + (cycle + 1) + '  ' : '') + 'STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, cycle ? '#e0a8ff' : '#b8a8c8', 'center');
+  if (stageCard > 0) { const a = Math.min(1, stageCard / 40, (190 - stageCard) / 25); g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(0, 92, W, 70); text((cycle ? 'CYCLE ' + (cycle + 1) + '  ' : '') + 'STAGE ' + (stageIdx + 1), W / 2, 114, 12, '#ffb43a', 'center'); text(STAGES[stageIdx].name, W / 2, 138, 20, '#fff1d0', 'center'); text(STAGES[stageIdx].tag, W / 2, 154, 8, '#c9a8ff', 'center'); g.globalAlpha = 1; }
   if (lastEnemy && lastEnemy !== bossRef && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); }
   if (goBlink > 0 && (goBlink >> 4) & 1) { text('GO', W - 40, 120, 18, '#fff1b0', 'center'); g.fillStyle = '#fff1b0'; g.beginPath(); g.moveTo(W - 22, 105); g.lineTo(W - 8, 115); g.lineTo(W - 22, 125); g.fill(); }
   if (msgT > 0) { g.globalAlpha = Math.min(1, msgT / 30); text(msg, W / 2, 88, msg.length > 10 ? 14 : 18, '#ff8a4a', 'center'); g.globalAlpha = 1; }
@@ -2009,8 +2127,8 @@ function render() {
   }
   if (mode === 'victory') {
     g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text('KESTREL KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
-    text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('COIN BONUS INCLUDED: ' + rpg.coins + ' x 1500', W / 2, 158, 8, '#d9b98a', 'center');
-    if (endTimer > 30) text('PRESS ENTER', W / 2, 186, 10, '#fff', 'center');
+    text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W / 2, 158, 8, '#d9b98a', 'center');
+    if (endTimer > 30) { text('ENTER: BEGIN CYCLE ' + (cycle + 2) + '  (+1 COIN, TOUGHER FOES)', W / 2, 184, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W / 2, 198, 8, '#b8a8c8', 'center'); }
   }
 }
 
@@ -2084,6 +2202,7 @@ function initTouch() {
     d.addEventListener('pointerdown', dn); d.addEventListener('pointerup', up); d.addEventListener('pointercancel', up); d.addEventListener('pointerleave', up);
   };
   btn('ATK', 'TAtk', 96, 62, 78); btn('JUMP', 'TJump', 20, 112, 68); btn('MAGIC', 'TMagic', 20, 30, 62); btn('RIDE', 'TRide', 120, 150, 50);
+  btn('SKILL', 'TSkill', 182, 40, 54); btn('SWAP', 'TSwap', 188, 104, 42);
   btn('II', 'TPause', 12, null, 40); btn('GEAR', 'TInv', 60, null, 40); btn('OK', 'TStart', 108, null, 40);
   for (const d of all) if (d.textContent === 'II' || d.textContent === 'GEAR' || d.textContent === 'OK') { d.style.bottom = 'auto'; d.style.top = '8px'; d.style.fontSize = '10px'; }
   // virtual stick

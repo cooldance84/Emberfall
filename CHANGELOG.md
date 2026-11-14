@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.1.0] - 2026-11-14
+- Added stage-by-stage difficulty scaling for monster health and damage.
+- Added endless Ashen Cycles so level 70 can be reached; the leatherboard records the cycle.
+- Added seven special skills unlocked every 10 levels (U to cast, Q to swap), with cooldowns and a pause-menu skills page.
+- Added item levels with level requirements for equipping.
+- Lowered drop rates: magic 34%, legendary 7%, mythic 1%.
+
 ## [1.0.0] - 2026-11-14
 - Added a gear-look system: equipped rarity tints the hero and gives legendary or mythic gear an aura.
 - Added a new stage monster for each of stages 2 to 5: Bog Wisp, Slag Runner, Throne Guard and Ember Wraith.

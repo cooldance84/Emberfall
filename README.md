@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.0.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.1.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -52,6 +52,12 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Co-op](docs/screenshots/coop.jpg) | ![Shield guards](docs/screenshots/minions-guards.jpg) |
 | ![Pause menu](docs/screenshots/pause.jpg) | ![Touch controls](docs/screenshots/touch.jpg) |
 
+## Progression and difficulty
+- Monsters get tougher every stage, and the campaign loops as **Ashen Cycles**: beat the Ember Wyrm, press Enter and the realm returns stronger, with a free continue coin. Level 70 is reachable after about three to four cycles.
+- A new **special skill every 10 levels** (U casts, Q swaps): Rising Slash, Dash Strike, Whirlwind, Flame Wave, Meteor Dive, Ember Nova and Heart-Ember Burst (lv 70, heals the party).
+- Items have an **item level** and a level requirement; stronger levels roll stronger stats.
+- Drop rates: magic 34% from stage 2, legendary 7% from stage 3, mythic 1% from stage 4.
+
 ## Controls
 
 | Action | Player 1 | Player 2 (co-op) | Gamepad | Touch |
@@ -62,6 +68,8 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | Dragon's Wrath (needs 60 mana) | Shift, L or C | `/` or numpad 3 | B or RB | MAGIC |
 | Dismount | E | `'` or numpad 0 | Y | RIDE |
 | Gear screen | I or Tab | shared | Select | GEAR |
+| Special skill (unlocks every 10 levels) | U | `;` or numpad 4 | LB | SKILL |
+| Swap skill | Q | `\` or numpad 5 | LT | SWAP |
 | Pause | Esc or P | shared | Start | II |
 | Confirm / continue | Enter | shared | A | OK |
 
