@@ -1,80 +1,93 @@
-# EMBERFALL — The Ashen Vow
+# EMBERFALL: The Ashen Vow
 
-An original side-scrolling brawler in the classic arcade style. All characters,
-stages, effects and sounds are procedural and original. No external assets, no
-dependencies, no build step.
+![version](https://img.shields.io/badge/version-1.0.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
-## Run
-Open `index.html` in a browser, or serve the folder (`python3 -m http.server`).
+An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
+
+**Play it:** https://cooldance84.github.io/Emberfall/
+
+![Title screen](docs/screenshots/title.jpg)
+
+## The story
+
+The Cinder King stole the Heart-Ember and the world went dark. You are Kestrel, the last Ember Warden, and you fight through five stages to bring the flame home.
+
+| Stage | Setting | New monster | Boss |
+|---|---|---|---|
+| 1 | The Broken Gate | Ashen Husk, Cinder Brute | Cinder Colossus |
+| 2 | The Sunken Marsh | Bog Wisp (floats, shoots orbs) | Mire Matron |
+| 3 | The Ember Forge | Slag Runner (telegraphed dash) | Forgemaster |
+| 4 | The Obsidian Throne | Throne Guard (shield blocks light frontal hits) | Cinder King |
+| 5 | The Heart-Ember Sanctum | Ember Wraith (teleports behind you) | Ember Wyrm |
+
+![Story scene](docs/screenshots/story.jpg)
+
+| | |
+|---|---|
+| ![Cinder Colossus](docs/screenshots/boss-colossus.jpg) | ![Mire Matron](docs/screenshots/boss-matron.jpg) |
+| ![Forgemaster](docs/screenshots/boss-forgemaster.jpg) | ![Cinder King](docs/screenshots/boss-king.jpg) |
+
+![Ember Wyrm](docs/screenshots/boss-wyrm.jpg)
+
+Each boss arrives with a short letterboxed intro, has its own attack set and enrages at half health.
+
+![Boss intro](docs/screenshots/boss-intro.jpg)
+
+## Features
+
+- **Wyrmling mounts:** some enemies arrive on small dragons. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
+- **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen. Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
+- **RPG layer:** levels up to **70**. Items roll **STR, crit chance, crit damage and hit chance**. Gear has six slots (helm, armor, boots, weapon, ring, amulet), and what you wear shows on the hero.
+- **Loot by stage:** stage 1 drops only white items. Stage 2 adds magic (blue). Stage 3 adds legendary at 10%. Stage 4 and 5 add mythic at 3%.
+- **3 continue coins** per run, worth 1,500 points each if unspent when you win.
+- **Leatherboard:** top 10 scores with initials. Your character, gear, settings and the board are saved in your browser.
+- **2-player co-op:** press **2** on the title screen.
+- **Procedural music** for each stage, a **pause menu**, **gamepad** and **touch** support.
+- **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.
+
+| | |
+|---|---|
+| ![Dragon fire](docs/screenshots/dragon-fire.jpg) | ![Loot drops](docs/screenshots/loot.jpg) |
+| ![Gear screen](docs/screenshots/inventory.jpg) | ![Leatherboard](docs/screenshots/leatherboard.jpg) |
+| ![Co-op](docs/screenshots/coop.jpg) | ![Shield guards](docs/screenshots/minions-guards.jpg) |
+| ![Pause menu](docs/screenshots/pause.jpg) | ![Touch controls](docs/screenshots/touch.jpg) |
 
 ## Controls
-| Action | Keys |
-|---|---|
-| Move | WASD / arrows |
-| Attack (3-hit combo) | J or Z |
-| Jump | K, X or Space |
-| Dive strike | Jump, then J (on foot) |
-| Flame breath | J while riding |
-| Dragon's Wrath (60 mana) | Shift (or L / C) |
-| Ride a wyrmling | K while standing next to a free one |
-| Dismount | E |
-| CRT filter | F |
-| Mute | M |
 
-## Graphics pipeline
-1. 480x270 pixel scene: five parallax layers (sky and clouds, far castles with lit windows, dead trees, banner-hung colonnade, flagstone floor with per-tile shading), drifting fog, foreground pillars
-2. Dynamic lighting: a darkness mask with torch, hero, enemy and spark lights punched out of it, with flicker
-3. Additive particles (sparks, embers, dust), swing trails, hit-stop and screen shake
-4. WebGL post-process: barrel curvature, bloom, scanlines, aperture grille, vignette, chromatic aberration
+| Action | Player 1 | Player 2 (co-op) | Gamepad | Touch |
+|---|---|---|---|---|
+| Move | WASD | Arrow keys | Stick or d-pad | Stick |
+| Attack (3-hit combo) | J or Z | `,` or numpad 1 | X | ATK |
+| Jump / ride a wyrmling | K, X or Space | `.` or numpad 2 | A | JUMP |
+| Dragon's Wrath (needs 60 mana) | Shift, L or C | `/` or numpad 3 | B or RB | MAGIC |
+| Dismount | E | `'` or numpad 0 | Y | RIDE |
+| Gear screen | I or Tab | shared | Select | GEAR |
+| Pause | Esc or P | shared | Start | II |
+| Confirm / continue | Enter | shared | A | OK |
 
-## Roadmap
-- Optional: swap the code-drawn fighters (`drawHuman`) for hand-made sprite sheets
-- More stages, two-player co-op, gamepad and touch controls
-- Music, and more enemy types and boss phases
+Other keys: **F** toggles the CRT filter and **M** mutes. On the title screen **B** opens the leatherboard and **R** (pressed twice) erases your hero.
 
-## Art notes
-Fighters are drawn from layered, cel-shaded shapes (highlight, base and shadow tones),
-then stamped with a 1px dark outline for a chunky 16-bit look. Weapons, helms, capes,
-pauldrons and ember cracks differ per enemy type. Everything is original.
+In the gear screen, Enter equips or swaps an item and X discards it.
 
-## Mounts, jars and Dragon's Wrath
-- **Wyrmlings:** some Ashen Husks arrive riding small ember dragons (faster, hit harder). Knock the rider off (a heavy hit or three hits) and the wyrmling is free: stand next to it and press K to ride. Riding gives speed, J breathes fire, and the wyrmling soaks hits for you until its health bar runs out.
-- **Pilferers:** a small green imp runs across the screen now and then carrying an ember jar. Hit it and it drops the jar and bolts. Pick jars up (max 3).
-- **Dragon's Wrath (Shift):** costs a full 60 mana (filled by landing hits). Storm clouds roll in, a giant dragon head descends and smashes the arena, damaging every enemy on the map (off-screen too), for 130 damage. Each jar you carry adds +15% (1 jar +15%, 2 jars +30%, 3 jars +45%) and makes the dragon bigger. Jars are spent on cast. Regular enemies die outright; the boss takes the hit but survives.
+## Run locally
 
-## Story & campaign
+Open `index.html` in a browser, or serve the folder:
 
-*The Ashen Vow*: the Cinder King stole the Heart-Ember and the world went dark. Play Kestrel, the last Ember Warden, through four stages, each with its own look and its own boss:
+```
+python3 -m http.server
+```
 
-| Stage | Boss | Gimmick |
-|---|---|---|
-| 1. The Broken Gate | Cinder Colossus | Heavy bruiser, enrages below 50% HP |
-| 2. The Sunken Marsh | Mire Matron | Kites you, fires spirit orbs, summons husks |
-| 3. The Ember Forge | Forgemaster | Hammer smashes with shockwaves, charge, quake rings (jump them) |
-| 4. The Obsidian Throne | Cinder King | Blink-slash combos, meteor rain in phase 2 |
+## Project layout
 
-Story screens play between stages (Enter to advance). If you fall, Enter continues the current stage.
+```
+index.html   page and canvas
+game.js      the whole game (engine, art, AI, UI, audio)
+docs/        screenshots used by this README
+CHANGELOG.md release notes
+```
 
-## Gear, levels, coins and the Leatherboard
+## Versioning
 
-- **Levels:** kill monsters for XP, up to **level 70**. Each level adds STR and max HP, and heals you a bit.
-- **Gear slots (press I or Tab):** helm, armor, boots, weapon, ring, amulet. Items roll **STR, crit chance, crit damage and hit chance**. Enter equips or swaps, X discards.
-- **Loot by stage:**
-  - Stage 1: only white (common) items.
-  - Stage 2: magic (blue) items too, and the boss drops two.
-  - Stage 3: **legendary** (orange) at 10%.
-  - Stage 4 and 5: **mythic** (pink) at 3%.
-- **Stage 5, The Heart-Ember Sanctum:** the final boss is the Ember Wyrm.
-- **3 continue coins** per run. Unused coins are worth 1500 points each when you win.
-- **Leatherboard:** top 10 scores with 3-letter initials, shown after every run. Your character, gear and the board are saved in your browser (localStorage), so clearing site data resets them.
+Emberfall follows [Semantic Versioning](https://semver.org). The current version is shown at the bottom right of the title screen and is the `VERSION` constant at the top of `game.js`. Every release has a git tag (`v1.0.0` and so on) and an entry in [CHANGELOG.md](CHANGELOG.md).
 
-## More features
-
-- **New monsters per stage:** Bog Wisp (stage 2, floating orb shooter), Slag Runner (stage 3, telegraphed dash), Throne Guard (stage 4, shield blocks light frontal hits; hit it from behind or knock it down), Ember Wraith (stage 5, teleports behind you).
-- **Boss intros:** each boss walks in with a letterboxed name card and a roar. Press Enter or J after a second to skip.
-- **Music:** a small procedural score per stage, faster during boss fights.
-- **Pause menu (Esc or P):** music, sound effects and CRT toggles, controls list, quit to title.
-- **Gamepad:** stick or d-pad to move, X attack, A jump, B or RB magic, Y ride or dismount, Select gear, Start pause.
-- **Touch:** on-screen stick and buttons appear on touch devices.
-- **2-player co-op:** press **2** on the title screen. Player 1 uses WASD, J, K and Shift. Player 2 (Lyra) uses the arrow keys and `,` `.` `/` (or numpad 1-3), or a second gamepad. Gear, level and coins are shared. A fallen player returns after a few seconds for 1 coin, and the run ends when both are down.
-- **Gear shows on the hero:** rarity tints armor, cape and blade, and legendary or mythic gear gives an aura.
+To cut a new release: bump `VERSION` and the badge above, add a changelog entry, commit, then `git tag -a vX.Y.Z -m "..."` and `git push --tags`.
