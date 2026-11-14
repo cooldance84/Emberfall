@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -293,12 +293,65 @@ function themeWall(c, w, h, T) {
   c.fillStyle = T.trim; c.fillRect(0, h - 6, w, 6); c.fillStyle = T.trim2; c.fillRect(0, h - 6, w, 1);
 }
 
-const THEMES = THEME_DEF.map(T => Object.assign({}, T, {
+const buildTheme = T => Object.assign({}, T, {
   skyL: makeLayer((c, w, h) => themeSky(c, w, h, T)),
   farL: makeLayer((c, w, h) => themeFar(c, w, h, T)),
   midL: makeLayer((c, w, h) => themeMid(c, w, h, T)),
   wallL: makeLayer((c, w, h) => themeWall(c, w, h, T), GROUND_TOP + 6)
-}));
+});
+const THEMES = THEME_DEF.map(buildTheme);
+/* act palettes: later acts regrade every colour of a theme (frost, deep crimson, violet-gold) */
+const ACT_GRADE = [{ c: null, s: 1, l: 1 }, { c: 205, k: 0.75, s: 0.85, l: 1.1 }, { c: 355, k: 0.7, s: 1.15, l: 0.92 }, { c: 275, k: 0.7, s: 1.05, l: 1.02 }];
+function gradeRGB(r, g, b, G) {
+  r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0, l = (mx + mn) / 2;
+  if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+  if (G.c !== null) { const dh = ((G.c - h + 540) % 360) - 180; h = ((h + dh * G.k) % 360 + 360) % 360; } s = Math.min(1, s * G.s); l = Math.min(0.95, l * G.l);
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q, f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return s === 0 ? [l, l, l].map(v => Math.round(v * 255)) : [f(h / 360 + 1 / 3), f(h / 360), f(h / 360 - 1 / 3)].map(v => Math.round(v * 255));
+}
+function gradeVal(v, G) {
+  if (typeof v === 'string') {
+    if (/^#[0-9a-f]{6}$/i.test(v)) { const n = parseInt(v.slice(1), 16), c = gradeRGB(n >> 16 & 255, n >> 8 & 255, n & 255, G); return '#' + c.map(x => x.toString(16).padStart(2, '0')).join(''); }
+    if (/^\d+,\d+,\d+$/.test(v)) { const a = v.split(',').map(Number); return gradeRGB(a[0], a[1], a[2], G).join(','); }
+    const m = v.match(/^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/); if (m) return 'rgba(' + gradeRGB(+m[1], +m[2], +m[3], G).join(',') + ',' + m[4] + ')';
+    return v;
+  }
+  if (Array.isArray(v)) return (v.length === 3 && typeof v[0] === 'number') ? gradeRGB(v[0], v[1], v[2], G) : v.map(x => gradeVal(x, G));
+  if (v && typeof v === 'object') { const o = {}; for (const k in v) o[k] = gradeVal(v[k], G); return o; }
+  return v;
+}
+const _actThemes = {};
+function themeFor(idx, act) {
+  act = Math.max(0, Math.min(3, act | 0)); if (!act) return THEMES[idx];
+  const key = act + ':' + idx; if (!_actThemes[key]) { const T = {}; for (const k in THEME_DEF[idx]) T[k] = k === 'fogA' ? THEME_DEF[idx][k] : gradeVal(THEME_DEF[idx][k], ACT_GRADE[act]); _actThemes[key] = buildTheme(T); }
+  return _actThemes[key];
+}
+const actOf = si => Math.min(3, (si / 5) | 0);
+/* weather: what falls through each act and theme */
+const WEATHER = [[null, 'rain', 'sparks', 'storm', 'ash'], ['snow', 'snow', 'blizzard', 'blizzard', 'snow'], ['ash', 'storm', 'ash', 'storm', 'sparks'], ['motes', 'rain', 'sparks', 'storm', 'motes']];
+let weather = 'ash';
+const wh = (i, s) => { const v = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return v - Math.floor(v); };
+function updateWeather() { if ((weather === 'storm') && ((tickN + 137) % 540 === 0 || (tickN + 137) % 540 === 11)) flashA = Math.max(flashA, 0.4); }
+function drawWeather() {
+  const w = weather; if (!w) return; const t = tickN;
+  if (w === 'rain' || w === 'storm') {
+    g.fillStyle = 'rgba(170,195,225,0.4)';
+    for (let i = 0; i < (w === 'storm' ? 150 : 90); i++) { const sp = 5 + wh(i, 3) * 3, x = ((wh(i, 1) * (W + 40) - t * 0.9) % (W + 40) + W + 40) % (W + 40), y = (wh(i, 2) * H + t * sp) % H; g.fillRect(x | 0, y | 0, 1, 5 + (i % 3)); }
+  } else if (w === 'snow' || w === 'blizzard') {
+    const wind = w === 'blizzard' ? -2.4 : -0.3, n = w === 'blizzard' ? 170 : 85;
+    for (let i = 0; i < n; i++) { const sp = 0.5 + wh(i, 3) * 1.1 + (w === 'blizzard' ? 1.2 : 0), x = ((wh(i, 1) * (W + 60) + t * wind + Math.sin(t * 0.03 + i) * 6) % (W + 60) + W + 60) % (W + 60), y = (wh(i, 2) * H + t * sp) % H; g.fillStyle = `rgba(235,245,255,${0.5 + wh(i, 4) * 0.4})`; g.fillRect(x | 0, y | 0, wh(i, 5) > 0.7 ? 2 : 1, wh(i, 5) > 0.7 ? 2 : 1); }
+  } else if (w === 'ash') {
+    for (let i = 0; i < 70; i++) { const x = ((wh(i, 1) * (W + 30) + t * 0.35 + Math.sin(t * 0.02 + i) * 10) % (W + 30)), y = (wh(i, 2) * H + t * (0.4 + wh(i, 3) * 0.7)) % H; g.fillStyle = i % 9 === 0 ? 'rgba(255,150,70,0.8)' : 'rgba(190,175,170,0.5)'; g.fillRect(x | 0, y | 0, 1, 1); }
+  } else if (w === 'sparks') {
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 60; i++) { const x = (wh(i, 1) * W + Math.sin(t * 0.05 + i) * 8 + W) % W, y = H - ((wh(i, 2) * H + t * (0.6 + wh(i, 3) * 1.2)) % H); g.fillStyle = `rgba(255,${130 + wh(i, 4) * 100 | 0},50,${0.4 + 0.4 * Math.abs(Math.sin(t * 0.2 + i))})`; g.fillRect(x | 0, y | 0, 1, 1); }
+    g.globalCompositeOperation = 'source-over';
+  } else if (w === 'motes') {
+    g.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 55; i++) { const x = (wh(i, 1) * W + Math.sin(t * 0.017 + i) * 18 + W) % W, y = (wh(i, 2) * H + Math.cos(t * 0.013 + i * 2) * 14 - t * 0.12 * (0.3 + wh(i, 3)) + H * 4) % H; g.fillStyle = i % 2 ? `rgba(255,224,140,${0.35 + 0.35 * Math.sin(t * 0.07 + i)})` : `rgba(190,150,255,${0.35 + 0.35 * Math.sin(t * 0.06 + i)})`; const s = wh(i, 5) > 0.8 ? 2 : 1; g.fillRect(x | 0, y | 0, s, s); }
+    g.globalCompositeOperation = 'source-over';
+  }
+}
 
 /* ---------- game state ---------- */
 let mode = 'title', cam = 0, lockX = Infinity, hero, enemies, items, parts, shake = 0, freeze = 0;
@@ -564,7 +617,7 @@ function endRun(won) {
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
-function toTitle() { coop = false; cycle = 0; resetGame(); TH = THEMES[0]; mode = 'title'; }
+function toTitle() { coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
 function updateName() {
   if (isHit('left')) namePos = (namePos + 2) % 3; if (isHit('right')) namePos = (namePos + 1) % 3;
   if (isHit('up')) nameBuf[namePos] = (nameBuf[namePos] + 1) % 26; if (isHit('down')) nameBuf[namePos] = (nameBuf[namePos] + 25) % 26;
@@ -1185,9 +1238,9 @@ function wrapText(s, n) {
   for (const w of words) { if ((cur + ' ' + w).trim().length > n) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); }
   if (cur) lines.push(cur); return lines;
 }
-function openStory(title, sub, paras, next, themeIdx) {
+function openStory(title, sub, paras, next, themeIdx, act) {
   if (!paras.length) { next(); return; }
-  story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx }; mode = 'story';
+  story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx, act: act || 0 }; mode = 'story';
 }
 function updateStory() {
   const s = story; if (!s) { mode = 'play'; return; }
@@ -1257,7 +1310,7 @@ function drawPortrait(kind, cx, cy, who, glow) {
 }
 function drawStory() {
   const s = story; if (!s) return;
-  const T = THEMES[s.theme];
+  const T = themeFor(s.theme, s.act);
   const saveTH = TH; TH = T; drawWorld(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
   { const sh = { x: hero.x, y: hero.y, f: hero.face, st: hero.st, z: hero.z, inv: hero.inv, fl: hero.flash }; // Kestrel keeps watch at the bottom of the scene
@@ -1285,7 +1338,7 @@ function drawStory() {
   if ((tickN >> 5) & 1) text(done ? 'PRESS ENTER' : '...', W / 2, 252, 9, '#ffffff', 'center');
 }
 function beginStage(i) {
-  stageIdx = i; const S = STAGES[i]; TH = THEMES[S.theme]; WAVES = S.waves; STAGE_END = S.end;
+  stageIdx = i; const S = STAGES[i]; TH = themeFor(S.theme, actOf(i)); weather = WEATHER[actOf(i)][S.theme]; WAVES = S.waves; STAGE_END = S.end;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
   intro = null; slashes = []; vents = [];
@@ -1362,7 +1415,7 @@ function stageCleared() {
 }
 function afterClear() {
   const S = STAGES[stageIdx];
-  if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme);
+  if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme, actOf(stageIdx + 1));
   else openStory(cycle === 0 ? 'THE END' : 'CYCLE ' + (cycle + 1) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
 }
 
@@ -1756,7 +1809,7 @@ function step() {
   for (const p of players()) withHero(p, () => updateHero(p));
   enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
-  updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats();
+  updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
   if (goBlink > 0) goBlink--; if (msgT > 0) msgT--;
   if (stageCard > 0) stageCard--; if (clearT > 0) { clearT--; if (clearT === 0 || (clearT < LOOT_T - 60 && (pressed.Enter || pressed.TStart))) { clearT = 0; stageCleared(); } }
@@ -2381,7 +2434,7 @@ function render() {
   const list = [...enemies, ...mounts, ...players()].sort((a, b) => a.y - b.y);
   for (const f of list) drawFighter(f);
   drawShots(); drawVentsAndSlashes(true);
-  drawParts(false);
+  drawParts(false); drawWeather();
   drawFloats();
   g.restore();
   applyLighting();

@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.7.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.8.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -54,6 +54,12 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 
 ## The campaign: four acts, twenty stages
 The story now runs through **20 stages in four acts**. Each act ends with an Ember Wyrm and a new Heart-Ember; the old bosses return stronger (Colossus II, Matron III and so on) in new places such as the Drowned Cathedral and the World-Forge. Clearing every stage gives enough XP to reach **level 70 in a single run** (around stage 18 if you clear everything, around stage 20 if you skip some fights). After the last stage the Ashen Cycles keep going for as long as you like.
+
+Every act has its own palette and weather, so the later stages do not look like the first five: Act I keeps the original embers, Act II turns to frost and snow, Act III to deep crimson with ash and storms, and Act IV to violet with drifting light motes. Rain, thunderstorms, blizzards, forge sparks and ash fall through the stages.
+
+| | |
+|---|---|
+| ![Act II](docs/screenshots/act2-frost.jpg) | ![Act IV](docs/screenshots/act4-violet.jpg) |
 
 ![Stage 12](docs/screenshots/stage12.jpg)
 
