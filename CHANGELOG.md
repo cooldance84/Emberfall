@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.7.0] - 2026-11-14
+- Extended the campaign from 5 to 20 stages in four acts, with new stage names, act-ending story scenes and returning bosses (II, III, IV).
+- Rebalanced XP so level 70 can be reached within one run of the campaign; later enemies scale with the stage.
+- Ashen Cycles now start much tougher after the 20th stage.
+
 ## [1.6.0] - 2026-11-14
 - Added three wyrmling kinds with different looks, speed, jump height, health and attacks: Ember, Storm (chain lightning) and Stone (shockwave and landing stomp).
 - Added firing in mid-air while riding.

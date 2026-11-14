@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -48,7 +48,7 @@ const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2Pad
 let vents = [], slashes = [], shop = null;
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
-const areaLv = () => 4 + stageIdx * 2 + cycle * 14;          // how deep in the endless loop you are
+const areaLv = () => Math.round(4 + stageIdx * 2.8) + cycle * 60;          // how deep in the endless loop you are
 const hpMul = () => 1 + (areaLv() - 4) * 0.12;                // monsters get tougher every stage and cycle
 const dmgMul = () => 1 + (areaLv() - 4) * 0.055;
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
@@ -349,6 +349,30 @@ const STAGES = [
 ];
 const MINION = [null, 'wisp', 'runner', 'guard', 'wraith'];
 STAGES.forEach((S, si) => { if (!si) return; S.waves.forEach((w, wi) => { if (!wi) return; let i = w.e.indexOf('h'); if (i >= 0) w.e[i] = MINION[si]; if (wi >= 3 && si >= 2) { i = w.e.indexOf('h'); if (i >= 0) w.e[i] = MINION[si - 1]; } }); });
+/* ---------- four acts, twenty stages: the story carries you to level 70 ---------- */
+const ACT_ROMAN = ['I', 'II', 'III', 'IV'];
+const EXTRA_NAMES = ['THE SHATTERED BRIDGE', 'THE DROWNED CATHEDRAL', 'THE COLD FOUNDRY', 'THE BONE CITADEL', 'THE SECOND SANCTUM',
+  'THE ASHEN WASTES', 'THE BLACK FEN', 'THE MOLTEN DEEP', 'THE HOLLOW CROWN', 'THE BURNING STAIR',
+  'THE LAST ROAD', 'THE LOST MARSH', 'THE WORLD-FORGE', 'THE ENDLESS THRONE', 'THE FIRST FLAME'];
+const BOSS_OF = ['boss', 'witch', 'smith', 'king', 'wyrm'];
+const BOSS_TC = { boss: 'The Cinder Colossus', witch: 'The Mire Matron', smith: 'The Forgemaster', king: 'The Cinder King', wyrm: 'The Ember Wyrm' };
+const BOSS_RET = { boss: 'THE CINDER COLOSSUS RETURNS FROM THE SLAG', witch: 'THE MIRE MATRON RISES FROM THE FEN', smith: 'THE FORGEMASTER REFORGES HIS ARMY', king: 'THE CINDER KING WEARS A CROWN OF NEW FIRE', wyrm: 'THE EMBER WYRM HUNGERS ONCE MORE' };
+const ACT_END = [
+  ['The Ember Wyrm falls, and the first Heart-Ember is Kestrel\'s. But a crack runs through its glass: this flame is only one of four.', 'Three embers still burn in the dark. Kestrel turns north, where the road bends into the Shattered Bridge.'],
+  ['The second ember warms Kestrel\'s palm, and the hills below turn green for a single night.', 'Then the wind shifts. Beyond the Second Sanctum the Ashen Wastes begin, and the husks there never sleep.'],
+  ['The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.', 'One flame remains, buried at the world\'s oldest forge. Kestrel does not rest. The Last Road begins here.']
+];
+for (let i = 5; i < 20; i++) {
+  const b = STAGES[i % 5], act = Math.floor(i / 5);
+  STAGES.push({ name: EXTRA_NAMES[i - 5], tag: BOSS_RET[BOSS_OF[i % 5]], theme: b.theme, end: b.end + act * 200, tint: b.tint,
+    waves: b.waves.map(w => ({ x: Math.round(w.x * (1 + 0.06 * act)), e: w.e.slice() })), clear: [] });
+}
+STAGES.forEach((S, i) => {
+  if (i >= STAGES.length - 1) return;
+  if (i % 5 === 4) { S.clear = ACT_END[(i / 5) | 0]; return; }
+  const nx = STAGES[i + 1];
+  if (i >= 5) S.clear = [BOSS_TC[BOSS_OF[i % 5]] + ' is cinders at last, and ' + S.name.toLowerCase().replace(/^the /, 'the ') + ' falls quiet.', 'Ahead lies ' + nx.name.toLowerCase() + '. The ash is deeper here, and the husks are hungrier than before.'];
+});
 const EPI = { boss: 'KEEPER OF THE BROKEN GATE', witch: 'WHISPERER OF THE DROWNED', smith: 'HAMMER OF THE ASH ARMIES', king: 'THE WARDEN WHO BROKE HIS VOW', wyrm: 'DEVOURER OF THE FIRST FLAME' };
 let WAVES = STAGES[0].waves, STAGE_END = STAGES[0].end, TH = THEMES[0];
 let stageIdx = 0, story = null, bossRef = null, stageCard = 0, clearT = 0, shots = [];
@@ -376,6 +400,7 @@ function makeFighter(kind, x, y) {
     inv: 0, flash: 0, combo: 0, queued: false, hits: new Set(), cool: rnd(20, 70), armor: k.poise || 70, mana: 0, dead: false, fade: 0, h: k.h, vases: 0, mount: null, vase: false, dir: 1, fled: false, gone: false
   };
   if (kind !== 'hero' && kind !== 'imp') o.hp = o.maxhp = Math.round(k.hp * hpMul());
+  if (BOSSES[kind] && stageIdx >= 5) o.k = Object.assign({}, k, { name: k.name + ' ' + ACT_ROMAN[Math.min(3, (stageIdx / 5) | 0)] });
   return o;
 }
 
@@ -407,7 +432,7 @@ const pickOf = a => a[Math.random() * a.length | 0];
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
 let PS = null, floats = [];
 
-const XPN = [40, 20];
+const XPN = [62, 31];
 const xpNeed = l => Math.round(XPN[0] + XPN[1] * l);
 function pstats() {
   if (PS) return PS;
@@ -1595,11 +1620,11 @@ function drawIntro() {
   g.fillStyle = '#000'; g.fillRect(0, 0, W, h); g.fillRect(0, H - h, W, h);
   if (t > 28 && t < 138) {
     const a = Math.min(1, (t - 28) / 16, (138 - t) / 14); g.globalAlpha = Math.max(0, a);
-    text(KINDS[I.k].name, W / 2, H - h + 15, 14, '#ff9a5a', 'center'); text(EPI[I.k] || '', W / 2, H - h + 27, 8, '#c9a8ff', 'center'); g.globalAlpha = 1;
+    text(((I.e && I.e.k) || KINDS[I.k]).name, W / 2, H - h + 15, 14, '#ff9a5a', 'center'); text(EPI[I.k] || '', W / 2, H - h + 27, 8, '#c9a8ff', 'center'); g.globalAlpha = 1;
   }
 }
 function buildList(w) { // later stages and cycles throw bigger crowds
-  const hasBoss = w.e.some(t => BOSSES[t]), list = w.e.slice(), d = stageIdx + cycle;
+  const hasBoss = w.e.some(t => BOSSES[t]), list = w.e.slice(), d = Math.min(9, (stageIdx < 5 ? stageIdx : 4 + Math.round((stageIdx - 4) * 0.35)) + cycle);
   for (let n = 0; n < d && list.length < 9; n++) list.push(hasBoss ? 'h' : (waveIdx % 2 ? 'b' : 'h'));
   if (d >= 2 && !hasBoss && waveIdx >= 2 && list.length < 9) list.push('b');
   return list;

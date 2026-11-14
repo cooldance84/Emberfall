@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.6.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.7.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -52,8 +52,13 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Co-op](docs/screenshots/coop.jpg) | ![Shield guards](docs/screenshots/minions-guards.jpg) |
 | ![Pause menu](docs/screenshots/pause.jpg) | ![Touch controls](docs/screenshots/touch.jpg) |
 
+## The campaign: four acts, twenty stages
+The story now runs through **20 stages in four acts**. Each act ends with an Ember Wyrm and a new Heart-Ember; the old bosses return stronger (Colossus II, Matron III and so on) in new places such as the Drowned Cathedral and the World-Forge. Clearing every stage gives enough XP to reach **level 70 in a single run** (around stage 18 if you clear everything, around stage 20 if you skip some fights). After the last stage the Ashen Cycles keep going for as long as you like.
+
+![Stage 12](docs/screenshots/stage12.jpg)
+
 ## Progression and difficulty
-- Monsters get tougher every stage, and the campaign loops as **Ashen Cycles**: beat the Ember Wyrm, press Enter and the realm returns stronger, with a free continue coin. Level 70 is reachable after about three to four cycles.
+- Monsters get tougher every stage, and the campaign loops as **Ashen Cycles**: beat the Ember Wyrm, press Enter and the realm returns stronger, with a free continue coin. 
 - A new **special skill every 10 levels** (U casts, Q swaps): Rising Slash, Dash Strike, Whirlwind, Flame Wave, Meteor Dive, Ember Nova and Heart-Ember Burst (lv 70, heals the party).
 - Items have an **item level** and a level requirement; stronger levels roll stronger stats.
 - **After every boss** you get 25 seconds of loot time (Enter skips it), then the **Ember Market** opens. Kills pay gold, and a **duplicate item** is turned into gold and score instead of clogging your pack. Spend gold on a full heal, a continue coin or fresh gear. Unspent gold counts for score when you finish.
