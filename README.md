@@ -54,3 +54,16 @@ pauldrons and ember cracks differ per enemy type. Everything is original.
 | 4. The Obsidian Throne | Cinder King | Blink-slash combos, meteor rain in phase 2 |
 
 Story screens play between stages (Enter to advance). If you fall, Enter continues the current stage.
+
+## Gear, levels, coins and the Leatherboard
+
+- **Levels:** kill monsters for XP, up to **level 70**. Each level adds STR and max HP, and heals you a bit.
+- **Gear slots (press I or Tab):** helm, armor, boots, weapon, ring, amulet. Items roll **STR, crit chance, crit damage and hit chance**. Enter equips or swaps, X discards.
+- **Loot by stage:**
+  - Stage 1: only white (common) items.
+  - Stage 2: magic (blue) items too, and the boss drops two.
+  - Stage 3: **legendary** (orange) at 10%.
+  - Stage 4 and 5: **mythic** (pink) at 3%.
+- **Stage 5, The Heart-Ember Sanctum:** the final boss is the Ember Wyrm.
+- **3 continue coins** per run. Unused coins are worth 1500 points each when you win.
+- **Leatherboard:** top 10 scores with 3-letter initials, shown after every run. Your character, gear and the board are saved in your browser (localStorage), so clearing site data resets them.
