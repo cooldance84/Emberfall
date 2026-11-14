@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.3.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.4.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -59,6 +59,13 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - Drop rates: magic 34% from stage 2, legendary 7% from stage 3, mythic 1% from stage 4.
 
 - **Stage hazards:** ember vents on stages 2 to 5 glow, then erupt; step off them, or lure monsters on.
+
+### Story portraits and living bosses
+Every story scene now shows a framed portrait of Kestrel facing the boss of the coming stage. Bosses breathe, the Mire Matron hovers with circling spirit lights, the Forgemaster smokes, the Cinder King beats flame wings and the Colossus shakes the ground as he walks.
+
+| | |
+|---|---|
+| ![Story portraits](docs/screenshots/portraits-story.jpg) | ![Cinder King wings](docs/screenshots/boss-king-wings.jpg) |
 
 ## Support the game
 If you enjoyed Emberfall, donations are very welcome and go towards its further development: **[paypal.me/cooldance84](https://www.paypal.com/paypalme/cooldance84)**. The game also shows a clickable donate button on the title and end screens (or press D there).

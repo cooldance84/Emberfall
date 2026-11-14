@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.4.0] - 2026-11-14
+- Added original framed portraits of Kestrel and each boss to the story scenes.
+- Added boss secondary motion: breathing, a hovering Mire Matron with spirit lights, Forgemaster smoke, Cinder King flame wings and Colossus footfall dust.
+
 ## [1.3.0] - 2026-11-14
 - Added ember vents on stages 2 to 5: a glowing warning, then an eruption that burns anyone standing on them, monsters included.
 - Added slash flashes on every hit, larger on knockdowns.
