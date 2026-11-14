@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -61,7 +61,7 @@ const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), he
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
 let crtOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
-let LANG = (() => { try { return /^hu/i.test(navigator.language || '') ? 'hu' : 'en'; } catch (e) { return 'en'; } })();
+let LANG = 'en';
 function tr(s) { return (LANG === 'hu' && typeof huTranslate === 'function' && typeof s === 'string') ? huTranslate(s) : s; }
 function setLang(l) { LANG = l; saveSettings(); if (typeof refreshTouchLabels === 'function') refreshTouchLabels(); }
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false; crtOn = o.crt !== false; if (o.lang === 'hu' || o.lang === 'en') LANG = o.lang; } } catch (e) { } }
