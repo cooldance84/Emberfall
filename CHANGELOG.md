@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.5.0] - 2026-11-14
+- Added 25 seconds of loot time after each boss before the stage ends (Enter skips it).
+- Added gold from kills and a duplicate-item rule: an item you already own becomes gold and score.
+- Added the Ember Market after every boss: full heal, continue coin and three gear items for sale.
+- Made monsters a little tougher: more health and damage per stage and cycle.
+
 ## [1.4.0] - 2026-11-14
 - Added original framed portraits of Kestrel and each boss to the story scenes.
 - Added boss secondary motion: breathing, a hovering Mire Matron with spirit lights, Forgemaster smoke, Cinder King flame wings and Colossus footfall dust.

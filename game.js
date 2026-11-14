@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -45,11 +45,12 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 // player 2 (co-op): arrows + , . / (or numpad 1-3), or the second gamepad
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
-let vents = [], slashes = [];
+let vents = [], slashes = [], shop = null;
+const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const areaLv = () => 4 + stageIdx * 2 + cycle * 14;          // how deep in the endless loop you are
-const hpMul = () => 1 + (areaLv() - 4) * 0.1;                // monsters get tougher every stage and cycle
-const dmgMul = () => 1 + (areaLv() - 4) * 0.045;
+const hpMul = () => 1 + (areaLv() - 4) * 0.12;                // monsters get tougher every stage and cycle
+const dmgMul = () => 1 + (areaLv() - 4) * 0.055;
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
 const keysOf = (a, pn) => pn === 2 ? (KEYMAP2[a] || []) : (coop ? KEYMAP[a].filter(c => !c.startsWith('Arrow')) : KEYMAP[a]);
 const inD = (f, a) => keysOf(a, f.pn).some(c => keys[c]);
@@ -403,7 +404,7 @@ const MAGIC_PRE = ['Keen', "Warden's", 'Ember', 'Swift', 'Fierce', 'Gilded', 'Bl
 const LEG_NAMES = { weapon: ['Dawnbreaker', "Warden's Oath"], helm: ['Crown of Embers', 'Sunwatch Helm'], armor: ['Phoenix Mail', 'Heart-Ward'], boots: ['Stormstep Greaves', 'Ashwalkers'], ring: ['Ring of Kindling', 'Vow-Band'], amulet: ['Heart-Ember Shard', 'Eye of Ashhold'] };
 const MYTH_NAMES = { weapon: ['Ruinblade, the Vow', "Kestrel's Last Dawn"], helm: ['Helm of the Last Flame'], armor: ['Aegis of Emberfall'], boots: ['Boots of the Endless Road'], ring: ['Ring of the First Warden'], amulet: ['The Heart-Ember Reborn'] };
 const pickOf = a => a[Math.random() * a.length | 0];
-let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, ini: 'AAA' };
+let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
 let PS = null, floats = [];
 
 const XPN = [40, 20];
@@ -478,6 +479,7 @@ function dropGear(x, y, rar) {
 function onKill(e) {
   const boss = isBoss(e);
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12)));
+  { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
   const n = boss ? (tierOf() >= 2 ? 3 : 2) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
   for (let i = 0; i < n; i++) {
     let r = rollRarity();
@@ -486,8 +488,17 @@ function onKill(e) {
     dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
   }
 }
-function pickupGear(it) {
+const GOLD_MULT = [1, 3, 8, 20];
+const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar]);
+const itemPrice = it => Math.round(itemValue(it) * 2.5);
+const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.lvl || 1) === (b.lvl || 1);
+function isDuplicate(it) { return Object.values(rpg.eq).some(o => sameItem(o, it)) || rpg.bag.some(o => sameItem(o, it)); }
+function pickupGear(it, bought) {
   const R = RARITY[it.rar];
+  if (!bought && isDuplicate(it)) { // already owned: it turns into gold and score
+    const gd = itemValue(it), pt = gd * 10; rpg.gold += gd; score += pt;
+    floatText(hero.x, hero.y - 60, 'DUPLICATE  +' + gd + 'G  +' + pt + 'PTS', '#ffd24a', 8); SFX.pick(); return true;
+  }
   if (!rpg.eq[it.slot] && canWear(it)) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, R.col, 8); }
   else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); floatText(hero.x, hero.y - 60, it.name, R.col, 8); }
   else return false;
@@ -520,7 +531,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let nameBuf = [0, 0, 0], namePos = 0, pendingRun = null, boardHi = -1, resetArm = 0, leatherCv = null;
 let inv = { z: 'bag', i: 0, from: 'play' }, invNote = '', invNoteT = 0;
 function endRun(won) {
-  if (won) score += rpg.coins * 1500;
+  if (won) score += rpg.coins * 1500 + rpg.gold * 2;
   saveGame();
   const b = loadBoard();
   pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won };
@@ -1223,7 +1234,7 @@ function beginStage(i) {
   mode = 'play';
 }
 function startCampaign(two) {
-  coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3;
+  coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3; rpg.gold = 0; shop = null;
   openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(0), 0);
 }
 function nextCycle() {
@@ -1234,8 +1245,59 @@ function nextCycle() {
 function continueStage() {
   const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
 }
+function openShop(next) {
+  const mk = i => { let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r); return genItem(r); };
+  shop = { i: 0, note: '', noteT: 0, next, stock: [
+    { kind: 'heal', name: 'FULL HEAL', price: 80, info: 'RESTORES THE WHOLE PARTY' },
+    { kind: 'coin', name: 'CONTINUE COIN', price: 600, info: 'AN EXTRA LIFE (MAX 3)' },
+    ...[0, 1, 2].map(i => { const it = mk(i); return { kind: 'gear', it, name: it.name, price: itemPrice(it) }; }),
+    { kind: 'go', name: 'LEAVE THE MARKET', price: 0 }
+  ] };
+  mode = 'shop'; SFX.pick();
+}
+function updateShop() {
+  const s = shop; if (s.noteT > 0) s.noteT--;
+  if (isHit('inv')) { openInv('shop'); return; }
+  if (isHit('up')) { s.i = (s.i + s.stock.length - 1) % s.stock.length; SFX.pick(); }
+  if (isHit('down')) { s.i = (s.i + 1) % s.stock.length; SFX.pick(); }
+  if (!(isHit('start') || isHit('atk'))) return;
+  const o = s.stock[s.i], say = t => { s.note = t; s.noteT = 90; };
+  if (o.kind === 'go') { const n = s.next; shop = null; mode = 'play'; n(); return; }
+  if (o.sold) { say('SOLD OUT'); return; }
+  if (rpg.gold < o.price) { say('NOT ENOUGH GOLD'); SFX.land(); return; }
+  if (o.kind === 'coin' && rpg.coins >= 3) { say('COINS ARE FULL'); return; }
+  if (o.kind === 'gear' && rpg.bag.length >= BAG_MAX && (rpg.eq[o.it.slot] || !canWear(o.it))) { say('PACK FULL'); return; }
+  rpg.gold -= o.price; SFX.pick();
+  if (o.kind === 'heal') { for (const p of players()) { p.dead = false; p.fade = 0; p.hp = p.maxhp; } say('PARTY HEALED'); }
+  else if (o.kind === 'coin') { rpg.coins++; say('+1 CONTINUE COIN'); }
+  else { pickupGear(o.it, true); o.sold = true; say('BOUGHT ' + o.name); }
+  saveGame();
+}
+function drawShop() {
+  const s = shop; g.fillStyle = 'rgba(6,3,12,0.9)'; g.fillRect(0, 0, W, H);
+  text('THE EMBER MARKET', W / 2, 24, 14, '#ffb43a', 'center'); text('SPEND YOUR GOLD BEFORE THE NEXT STAGE', W / 2, 36, 8, '#c9a8ff', 'center');
+  text('GOLD ' + rpg.gold, W - 14, 24, 11, '#ffd24a', 'right');
+  g.fillStyle = 'rgba(255,180,60,0.35)'; g.fillRect(16, 42, W - 32, 1);
+  s.stock.forEach((o, i) => {
+    const y = 62 + i * 22, sel = i === s.i;
+    if (sel) { g.fillStyle = 'rgba(255,180,60,0.18)'; g.fillRect(14, y - 11, 238, 18); g.strokeStyle = '#ffb43a'; g.strokeRect(14.5, y - 10.5, 237, 17); }
+    const col = o.sold ? '#5a4a6a' : o.kind === 'gear' ? RARITY[o.it.rar].col : o.kind === 'go' ? '#9fd0ff' : '#ffffff';
+    text((sel ? '> ' : '  ') + o.name, 20, y, o.name.length > 22 ? 7 : 8, col);
+    if (o.kind !== 'go') text(o.sold ? 'SOLD' : o.price + 'G', 246, y, 8, o.sold ? '#5a4a6a' : rpg.gold >= o.price ? '#ffd24a' : '#ff6a6a', 'right');
+  });
+  const o = s.stock[s.i];
+  g.fillStyle = 'rgba(20,12,34,0.9)'; g.fillRect(262, 50, 204, 150); g.strokeStyle = '#c9962e'; g.strokeRect(262.5, 50.5, 203, 149);
+  if (o.kind === 'gear') drawTip(o.it, rpg.eq[o.it.slot] || null, 258, 36); else if (o.info) text(o.info, 364, 130, 8, '#d9c9f0', 'center');
+  else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
+  if (s.noteT > 0) text(s.note, W / 2, 224, 9, '#fff1b0', 'center');
+  text('W/S CHOOSE   ENTER BUY   I GEAR', W / 2, 250, 8, '#b8a8c8', 'center');
+  text('DUPLICATE DROPS TURN INTO GOLD AND SCORE', W / 2, 261, 7, '#8a7aa0', 'center');
+}
 function stageCleared() {
-  const S = STAGES[stageIdx]; score += 3000; saveGame();
+  score += 3000; saveGame(); openShop(afterClear);
+}
+function afterClear() {
+  const S = STAGES[stageIdx];
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme);
   else openStory(cycle === 0 ? 'THE END' : 'CYCLE ' + (cycle + 1) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
 }
@@ -1523,7 +1585,7 @@ function updateStage() {
   }
   if (lockX !== Infinity && enemies.filter(e => e.kind !== 'imp').every(e => e.dead)) {
     lockX = Infinity; waveIdx++; goBlink = 240;
-    if (waveIdx >= WAVES.length) { clearT = 150; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; }
+    if (waveIdx >= WAVES.length) { clearT = LOOT_T; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; }
   }
   const target = leadX() - W * 0.42;
   const maxCam = lockX !== Infinity ? lockX : STAGE_END - W;
@@ -1609,6 +1671,7 @@ function step() {
   }
   if (mode === 'story') { updateStory(); return; }
   if (mode === 'inv') { updateInv(); return; }
+  if (mode === 'shop') { updateShop(); return; }
   if (mode === 'pause') { updatePause(); return; }
   if (mode === 'name') { updateName(); return; }
   if (mode === 'board') { updateBoard(); return; }
@@ -1632,7 +1695,7 @@ function step() {
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
   if (goBlink > 0) goBlink--; if (msgT > 0) msgT--;
-  if (stageCard > 0) stageCard--; if (clearT > 0 && --clearT === 0) stageCleared();
+  if (stageCard > 0) stageCard--; if (clearT > 0) { clearT--; if (clearT === 0 || (clearT < LOOT_T - 60 && (pressed.Enter || pressed.TStart))) { clearT = 0; stageCleared(); } }
 }
 
 /* ---------- rendering ---------- */
@@ -2173,6 +2236,8 @@ function drawWyrm(f, sx, sy) {
   }
 }
 function drawHUD() {
+  if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
+  text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
   text('KESTREL  LV ' + rpg.lvl, 12, 18, 11, '#9fd0ff');
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010');
@@ -2261,6 +2326,7 @@ function render() {
   if (mode === 'title') drawTitleOverlay();
   else drawHUD();
   if (intro) drawIntro();
+  if (mode === 'shop') drawShop();
   if (mode === 'inv') drawInv();
   if (mode === 'pause') drawPause();
   if (mode === 'gameover') {

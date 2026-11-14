@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.4.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.5.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -56,9 +56,13 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - Monsters get tougher every stage, and the campaign loops as **Ashen Cycles**: beat the Ember Wyrm, press Enter and the realm returns stronger, with a free continue coin. Level 70 is reachable after about three to four cycles.
 - A new **special skill every 10 levels** (U casts, Q swaps): Rising Slash, Dash Strike, Whirlwind, Flame Wave, Meteor Dive, Ember Nova and Heart-Ember Burst (lv 70, heals the party).
 - Items have an **item level** and a level requirement; stronger levels roll stronger stats.
+- **After every boss** you get 25 seconds of loot time (Enter skips it), then the **Ember Market** opens. Kills pay gold, and a **duplicate item** is turned into gold and score instead of clogging your pack. Spend gold on a full heal, a continue coin or fresh gear. Unspent gold counts for score when you finish.
+- Monsters hit and endure a little harder every stage and cycle.
 - Drop rates: magic 34% from stage 2, legendary 7% from stage 3, mythic 1% from stage 4.
 
 - **Stage hazards:** ember vents on stages 2 to 5 glow, then erupt; step off them, or lure monsters on.
+
+![Ember Market](docs/screenshots/market.jpg)
 
 ### Story portraits and living bosses
 Every story scene now shows a framed portrait of Kestrel facing the boss of the coming stage. Bosses breathe, the Mire Matron hovers with circling spirit lights, the Forgemaster smokes, the Cinder King beats flame wings and the Colossus shakes the ground as he walks.
