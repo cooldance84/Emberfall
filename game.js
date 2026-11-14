@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2074,6 +2074,27 @@ function drawHUD() {
   if (msgT > 0) { g.globalAlpha = Math.min(1, msgT / 30); text(msg, W / 2, 88, msg.length > 10 ? 14 : 18, '#ff8a4a', 'center'); g.globalAlpha = 1; }
 }
 
+const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
+let donateBox = null;
+function drawDonate(y) {
+  const t = 'LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D';
+  g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
+  donateBox = { x: W / 2 - w / 2, y: y - 9, w, h: 13 };
+  g.fillStyle = 'rgba(40,16,4,0.75)'; g.fillRect(donateBox.x, donateBox.y, w, 13); g.strokeStyle = '#ffb43a'; g.strokeRect(donateBox.x + 0.5, donateBox.y + 0.5, w - 1, 12);
+  text(t, W / 2, y, 8, '#ffd24a', 'center');
+}
+function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
+screen.addEventListener('pointerup', e => {
+  if (!donateBox) return; const r = screen.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  if (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
+});
+screen.addEventListener('pointermove', e => {
+  if (!donateBox) { screen.style.cursor = ''; return; } const r = screen.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
+});
+addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 function drawTitleOverlay() {
   g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
   const y = 96 + Math.sin(tickN * 0.04) * 3;
@@ -2085,11 +2106,13 @@ function drawTitleOverlay() {
   if ((tickN >> 5) & 1) text('ENTER: 1 PLAYER     2: CO-OP', W / 2, 190, 12, '#ffffff', 'center');
   text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
   text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
+  drawDonate(H - 12);
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : 'HERO LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
+  donateBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -2123,12 +2146,13 @@ function render() {
     g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, W, H); text('YOU HAVE FALLEN', W / 2, 106, 22, '#e0431f', 'center'); text('SCORE ' + score, W / 2, 132, 12, '#fff1b0', 'center');
     text('STAGE ' + (stageIdx + 1) + ': ' + STAGES[stageIdx].name, W / 2, 148, 8, '#b8a8c8', 'center');
     for (let i = 0; i < 3; i++) drawCoin(W / 2 - 28 + i * 28, 168, i < rpg.coins);
-    if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); }
+    if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); drawDonate(226); }
   }
   if (mode === 'victory') {
     g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text('KESTREL KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
     text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W / 2, 158, 8, '#d9b98a', 'center');
     if (endTimer > 30) { text('ENTER: BEGIN CYCLE ' + (cycle + 2) + '  (+1 COIN, TOUGHER FOES)', W / 2, 184, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W / 2, 198, 8, '#b8a8c8', 'center'); }
+    drawDonate(222);
   }
 }
 

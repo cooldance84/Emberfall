@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.2.0] - 2026-11-14
+- Added a clickable donate button (or press D) on the title, game-over and victory screens, and a Support section in the README.
+
 ## [1.1.0] - 2026-11-14
 - Added stage-by-stage difficulty scaling for monster health and damage.
 - Added endless Ashen Cycles so level 70 can be reached; the leatherboard records the cycle.
