@@ -754,10 +754,15 @@ function updateStage() {
   const w = WAVES[waveIdx];
   if (w && lockX === Infinity && hero.x > w.x - 120) {
     lockX = w.x - 200 > cam ? Math.max(cam, w.x - 200) : cam;
-    w.e.forEach((t, i) => {
+    // later stages throw bigger crowds: extra husks, brutes from stage 3, more escorts around bosses
+    const hasBoss = w.e.some(t => BOSSES[t]);
+    const list = w.e.slice();
+    for (let n = 0; n < stageIdx && list.length < 9; n++) list.push(hasBoss ? 'h' : (waveIdx % 2 ? 'b' : 'h'));
+    if (stageIdx >= 2 && !hasBoss && waveIdx >= 2 && list.length < 9) list.push('b');
+    list.forEach((t, i) => {
       const side = i % 2 ? 1 : -1;
       const ex = side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22;
-      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.4)) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
+      { const f = makeFighter(t, ex, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && ((waveIdx === 0 && i === 0) || Math.random() < 0.3 + 0.1 * stageIdx)) { f.mount = makeMount(0, 0, 70); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } const tn = STAGES[stageIdx].tint; if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn); enemies.push(f); }
     });
     const bk = w.e.find(t => BOSSES[t]); if (bk) { msg = KINDS[bk].name; msgT = 170; bossRef = enemies.find(e => e.kind === bk); SFX.big(); }
   }
