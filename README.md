@@ -67,3 +67,14 @@ Story screens play between stages (Enter to advance). If you fall, Enter continu
 - **Stage 5, The Heart-Ember Sanctum:** the final boss is the Ember Wyrm.
 - **3 continue coins** per run. Unused coins are worth 1500 points each when you win.
 - **Leatherboard:** top 10 scores with 3-letter initials, shown after every run. Your character, gear and the board are saved in your browser (localStorage), so clearing site data resets them.
+
+## More features
+
+- **New monsters per stage:** Bog Wisp (stage 2, floating orb shooter), Slag Runner (stage 3, telegraphed dash), Throne Guard (stage 4, shield blocks light frontal hits; hit it from behind or knock it down), Ember Wraith (stage 5, teleports behind you).
+- **Boss intros:** each boss walks in with a letterboxed name card and a roar. Press Enter or J after a second to skip.
+- **Music:** a small procedural score per stage, faster during boss fights.
+- **Pause menu (Esc or P):** music, sound effects and CRT toggles, controls list, quit to title.
+- **Gamepad:** stick or d-pad to move, X attack, A jump, B or RB magic, Y ride or dismount, Select gear, Start pause.
+- **Touch:** on-screen stick and buttons appear on touch devices.
+- **2-player co-op:** press **2** on the title screen. Player 1 uses WASD, J, K and Shift. Player 2 (Lyra) uses the arrow keys and `,` `.` `/` (or numpad 1-3), or a second gamepad. Gear, level and coins are shared. A fallen player returns after a few seconds for 1 coin, and the run ends when both are down.
+- **Gear shows on the hero:** rarity tints armor, cape and blade, and legendary or mythic gear gives an aura.
