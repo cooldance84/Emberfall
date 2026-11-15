@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.15.0';
+const VERSION = '1.16.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -521,6 +521,7 @@ const SLOT_NAME = { weapon: 'WEAPON', helm: 'HELM', armor: 'ARMOR', boots: 'BOOT
 const RARITY = [
   { name: 'COMMON', col: '#e6e6ee', rgb: '230,230,238', mult: 1, n: [1, 1] },
   { name: 'MAGIC', col: '#5a9cff', rgb: '90,156,255', mult: 1.7, n: [2, 3] },
+  { name: 'RARE', col: '#ffe23a', rgb: '255,226,58', mult: 2.2, n: [3, 4] },
   { name: 'LEGENDARY', col: '#ff9a2a', rgb: '255,154,42', mult: 2.8, n: [4, 4] },
   { name: 'MYTHIC', col: '#ff3a78', rgb: '255,58,120', mult: 4.2, n: [4, 4] }
 ];
@@ -534,6 +535,7 @@ const STAT_KEYS = Object.keys(STATS);
 const SLOT_PRIMARY = { weapon: ['str', 'cdmg'], helm: ['crit', 'hit'], armor: ['str', 'hit'], boots: ['hit', 'crit'], ring: ['crit', 'cdmg'], amulet: ['str', 'cdmg', 'crit', 'hit'] };
 const BASE_NAMES = { weapon: ['Rusted Sword', 'Iron Blade', 'Ash Cleaver'], helm: ['Worn Cap', 'Iron Helm', 'Husk Visor'], armor: ['Ragged Vest', 'Chain Shirt', 'Ash Plate'], boots: ['Old Boots', 'Road Greaves', 'Cinder Treads'], ring: ['Copper Ring', 'Bone Band', 'Ash Loop'], amulet: ['Bone Charm', 'Tin Pendant', 'Ash Locket'] };
 const MAGIC_BASE = { weapon: ['Sword', 'Blade', 'Axe'], helm: ['Helm', 'Cap', 'Hood'], armor: ['Mail', 'Vest', 'Plate'], boots: ['Boots', 'Greaves', 'Treads'], ring: ['Ring', 'Band', 'Loop'], amulet: ['Amulet', 'Charm', 'Pendant'] };
+const RARE_PRE = ['Runed', 'Grim', 'Stormforged', 'Bloodsworn', 'Dread', 'Sunlit', 'Wyrmbone', 'Ashborn'];
 const MAGIC_PRE = ['Keen', "Warden's", 'Ember', 'Swift', 'Fierce', 'Gilded', 'Bladed'];
 const LEG_NAMES = { weapon: ['Dawnbreaker', "Warden's Oath"], helm: ['Crown of Embers', 'Sunwatch Helm'], armor: ['Phoenix Mail', 'Heart-Ward'], boots: ['Stormstep Greaves', 'Ashwalkers'], ring: ['Ring of Kindling', 'Vow-Band'], amulet: ['Heart-Ember Shard', 'Eye of Ashhold'] };
 const MYTH_NAMES = { weapon: ['Ruinblade, the Vow', "Nolan's Last Dawn"], helm: ['Helm of the Last Flame'], armor: ['Aegis of Emberfall'], boots: ['Boots of the Endless Road'], ring: ['Ring of the First Warden'], amulet: ['The Heart-Ember Reborn'] };
@@ -560,13 +562,13 @@ function pstats() {
   s.maxhp = Math.round(C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2));
   return (PS = s);
 }
-const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
+const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a6a24', armor2: '#ffe84a', cloth: '#6a5a14', blade: '#fff6b0' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
 function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape and weapon
   const r = sl => eq[sl] ? eq[sl].rar : 0, top = Math.max(r('helm'), r('armor'), r('boots')), base = KINDS[CLASSES[c].kind];
   const o = Object.assign({}, base);
   const A = GEAR_COL[r('armor')], T = GEAR_COL[top], C = GEAR_COL[Math.max(r('ring'), r('amulet'))], B = GEAR_COL[r('weapon')];
   if (A) o.armor = A.armor; if (T) o.armor2 = T.armor2; if (C) o.cloth = C.cloth; if (B) o.wcol = B.blade;
-  const tier = sl => eq[sl] ? eq[sl].rar + 1 : 0; // 0 = nothing worn, 1 common ... 4 mythic
+  const tier = sl => eq[sl] ? [1, 2, 3, 3, 4][eq[sl].rar] : 0; // look tier: 0 nothing, 1 common, 2 magic, 3 rare/legendary (tinted apart), 4 mythic
   o.gt = { helm: tier('helm'), armor: tier('armor'), boots: tier('boots'), weapon: tier('weapon'), ring: tier('ring'), amulet: tier('amulet') };
   if (!o.gt.armor) { // no armour: a plain tunic, robe or leathers
     if (c === 'panni') { o.armor = '#3a2a6a'; o.armor2 = '#9a7ad8'; o.cloth = '#2a1a5a'; }
@@ -608,10 +610,11 @@ function levelUp(lv0) {
   if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + sk.name + '  (U)'; msgT = 220; }
   saveGame();
 }
-function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +legendary 7%. 4+: +mythic 1%
+function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +legendary 7%. 4+: +mythic 1%
   const t = tierOf();
-  if (t >= 3 && Math.random() < 0.01) return 3;
-  if (t >= 2 && Math.random() < 0.07) return 2;
+  if (t >= 3 && Math.random() < 0.01) return 4;
+  if (t >= 2 && Math.random() < 0.07) return 3;
+  if (t >= 2 && Math.random() < 0.16) return 2;
   if (t >= 1 && Math.random() < 0.34) return 1;
   return 0;
 }
@@ -626,14 +629,17 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   const st = {};
   for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * sc(k))); }
   const WN = slot === 'weapon' && WNAMES[CLS];
-  const name = WN ? (rar === 0 ? pickOf(WN.base) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(WN.magic) : rar === 2 ? pickOf(WN.leg) : pickOf(WN.myth)) : rar === 0 ? pickOf(BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(MAGIC_BASE[slot]) : rar === 2 ? pickOf(LEG_NAMES[slot]) : pickOf(MYTH_NAMES[slot]);
+  const base = WN ? WN.magic : MAGIC_BASE[slot];
+  const name = rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
+    : rar === 3 ? pickOf(WN ? WN.leg : LEG_NAMES[slot]) : pickOf(WN ? WN.myth : MYTH_NAMES[slot]);
   return { slot, rar, name, st, lvl: il };
 }
 function dropGear(x, y, rar) {
   const R = RARITY[rar];
   items.push({ x, y, t: 0, kind: 'gear', it: genItem(rar), z: 14, vz: 3.4 });
   spawn(x, y, 14, 10 + rar * 8, { c: [R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
-  if (rar >= 2) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 3 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
+  if (rar >= 3) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 4 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
+  else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
 function onKill(e) {
   const boss = isBoss(e);
@@ -647,7 +653,7 @@ function onKill(e) {
     dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
   }
 }
-const GOLD_MULT = [1, 3, 8, 20];
+const GOLD_MULT = [1, 3, 5, 8, 20];
 const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar]);
 const itemPrice = it => Math.round(itemValue(it) * 2.5);
 const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.lvl || 1) === (b.lvl || 1);
@@ -670,10 +676,15 @@ function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (5
 /* ---- persistence: character + leaderboard live in localStorage ---- */
 const validItem = it => !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string');
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
-function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
+function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
+function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
+  if (!o || o.v >= 2) return o;
+  const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
+  (Array.isArray(o.bag) ? o.bag : []).forEach(up); if (o.eq) for (const k in o.eq) up(o.eq[k]); o.v = 2; return o;
+}
 function loadGame() {
   try {
-    const o = JSON.parse(localStorage.getItem(saveKey()) || 'null'); loadedCls = CLS;
+    const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0);
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX);
@@ -714,7 +725,7 @@ function drawResume() {
   opt(1, 'NEW CAMPAIGN  (THE OLD RUN IS LOST)', true);
   text('ENTER: CHOOSE    ESC: BACK', W / 2, 250, 8, '#8a7a9a', 'center');
 }
-function peekSave(c) { try { const o = JSON.parse(localStorage.getItem(saveKey(c)) || 'null') || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
+function peekSave(c) { try { const o = migrateSave(JSON.parse(localStorage.getItem(saveKey(c)) || 'null')) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
   if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; PS = null; loadGame(); saveSettings();
@@ -1622,7 +1633,7 @@ function drawCoins(x, y, n, gap) { // up to three slots, then one coin and a cou
 function openShop(next) {
   const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
     let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r);
-    if (stageIdx >= 2 || cycle) { const x = Math.random(); if (i === 3) r = x < 0.06 ? 3 : x < 0.3 ? 2 : Math.max(1, r); else if (x < 0.02) r = 3; else if (x < 0.09) r = Math.max(r, 2); }
+    if (stageIdx >= 2 || cycle) { const x = Math.random(); if (i === 3) r = x < 0.06 ? 4 : x < 0.3 ? 3 : x < 0.6 ? 2 : Math.max(1, r); else if (x < 0.02) r = 4; else if (x < 0.09) r = Math.max(r, 3); else if (x < 0.22) r = Math.max(r, 2); }
     return genItem(r);
   };
   shop = { i: 0, note: '', noteT: 0, next, stock: [

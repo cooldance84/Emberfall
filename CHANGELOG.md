@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.16.0] - 2026-11-15
+- New item rarity: Rare (yellow), between Magic (blue) and Legendary (orange-brown). Rare items roll 3 or 4 stats, drop at about 15% from stage 3, sell for more than magic items and show up in the market too.
+- Rare gear tints your hero gold-yellow; legendary keeps its orange-brown tint, mythic its crimson.
+- Old saves are converted automatically: your legendary and mythic items stay legendary and mythic.
+
 ## [1.15.0] - 2026-11-15
 - You can now hold up to 9 continue coins (was 3) and buy several in the Ember Market. The first ones cost 600 gold; once you hold three or more, each extra coin costs 300 gold more than the last.
 - The coin display shows a count when you hold more than three.

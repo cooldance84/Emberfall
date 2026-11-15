@@ -115,7 +115,7 @@ const HU_EXACT = {
   "Stormstep Greaves": "Viharlépő Lábszárvédő", "Ashwalkers": "Hamujárók", "Ring of Kindling": "Gyújtás Gyűrűje", "Vow-Band": "Eskükarika", "Heart-Ember Shard": "Szívparázs-szilánk", "Eye of Ashhold": "Hamuvár Szeme",
   "Ruinblade, the Vow": "Pusztítópenge, az Eskü", "Nolan's Last Dawn": "Nolan Utolsó Hajnala", "Helm of the Last Flame": "Az Utolsó Láng Sisakja", "Aegis of Emberfall": "Emberfall Pajzsa",
   "Boots of the Endless Road": "A Végtelen Út Csizmája", "Ring of the First Warden": "Az Első Őr Gyűrűje", "The Heart-Ember Reborn": "Az Újjászületett Szívparázs",
-  "Keen": "Éles", "Warden's": "Őrzői", "Ember": "Parázs", "Swift": "Gyors", "Fierce": "Vad", "Gilded": "Aranyozott", "Bladed": "Pengés",
+  "Runed": "Rovásos", "Grim": "Komor", "Stormforged": "Viharkovácsolt", "Bloodsworn": "Véresküdött", "Dread": "Rettegett", "Sunlit": "Napfényes", "Wyrmbone": "Sárkánycsont", "Ashborn": "Hamuszülött", "Keen": "Éles", "Warden's": "Őrzői", "Ember": "Parázs", "Swift": "Gyors", "Fierce": "Vad", "Gilded": "Aranyozott", "Bladed": "Pengés",
   "Sword": "Kard", "Blade": "Penge", "Axe": "Balta", "Helm": "Sisak", "Cap": "Sapka", "Hood": "Csuklya", "Mail": "Vért", "Vest": "Mellény", "Plate": "Páncél",
   "Boots": "Csizma", "Greaves": "Lábszárvédő", "Treads": "Talp", "Ring": "Gyűrű", "Band": "Karika", "Loop": "Hurok", "Amulet": "Amulett", "Charm": "Bűbáj", "Pendant": "Medál"
 };
@@ -164,7 +164,7 @@ const HU_PHRASE = {
   "NO COINS LEFT": "NINCS TÖBB ÉRME", "PRESS ENTER": "NYOMJ ENTERT", "UNSPENT COINS": "FELHASZNÁLATLAN ÉRMÉK", "WHEN YOU FINISH": "A BEFEJEZÉSKOR",
   "RESUME": "FOLYTATÁS", "MUSIC": "ZENE", "SOUND FX": "HANGEFFEKTEK", "CRT FILTER": "CRT SZŰRŐ", "LANGUAGE": "NYELV", "SKILLS": "KÉPESSÉGEK", "CONTROLS": "IRÁNYÍTÁS", "QUIT TO TITLE": "KILÉPÉS A CÍMRE", "PAUSED": "SZÜNET",
   "LOCKED": "ZÁRVA", "ACTIVE": "AKTÍV", "ON": "BE", "OFF": "KI",
-  "COMMON": "KÖZÖNSÉGES", "MAGIC": "MÁGIKUS", "LEGENDARY": "LEGENDÁS", "MYTHIC": "MÍTOSZI",
+  "COMMON": "KÖZÖNSÉGES", "RARE": "RITKA", "RARE DROP": "RITKA ZSÁKMÁNY", "MAGIC": "MÁGIKUS", "LEGENDARY": "LEGENDÁS", "MYTHIC": "MÍTOSZI",
   "WEAPON": "FEGYVER", "HELM": "SISAK", "ARMOR": "PÁNCÉL", "BOOTS": "CSIZMA", "RING": "GYŰRŰ", "AMULET": "AMULETT",
   "REQUIRES": "SZÜKSÉGES", "CHARACTER": "KARAKTER", "BACKPACK": "HÁTIZSÁK", "ITEMS": "TÁRGYAK", "ITEM": "TÁRGY", "EMPTY": "ÜRES", "EQUIPPED": "FELSZERELVE", "DUPLICATE": "DUPLIKÁLT",
   "CRIT CHANCE": "KRIT. ESÉLY", "CRIT DAMAGE": "KRIT. SEBZÉS", "HIT CHANCE": "TALÁLATI ESÉLY", "CRIT DMG": "KRIT. SEBZ.", "CRIT": "KRIT.", "HIT": "TALÁLAT", "STR": "ERŐ", "DMG": "SEBZ.", "HP": "ÉP",
