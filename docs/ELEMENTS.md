@@ -77,4 +77,8 @@ Hero flavour (the main stat scales the buildup):
 
 - Unlock at level 10, tiers every 10 levels.
 - Buildup, not proc chance.
-- Changing element costs coins and keeps tiers.
+- Changing element costs **gold** (250 + 12 x level) at the Blacksmith and keeps tiers; the first choice is free. (Coins were rejected: they are continues and too risky.)
+
+## Status after v1.18.0
+
+Phase 1 and the visuals/translation of phase 4 are done, with a first balance pass. Still open: weakness and resistance icons on the boss bar (the tables already exist), item elemental damage and resistance affixes, a deeper balance pass with items.

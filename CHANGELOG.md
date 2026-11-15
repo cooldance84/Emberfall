@@ -2,6 +2,15 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.18.0] - 2026-11-15
+- Elemental specialisation: at level 10 you choose Fire, Frost or Lightning at the Blacksmith (the first choice is free). Your element gains a new tier every 10 levels, up to tier VII at level 70.
+- Your hits build up a status on enemies; at 100 it triggers: Burning (damage over time), Chill and Deep Freeze, or lightning arcs that shock and stun. Special strikes (U/Q) are unchanged and also build the status.
+- Every tier adds a behaviour (burn spread, eruptions on death, stacking burns, a ring of fire, frozen foes take +20%, frost bursts, shattering, arcs to 2-3 foes, lightning strikes).
+- Enemies are weak to some elements and resist others, but nothing is immune: bosses build the status more slowly, their freeze and stun are shorter and have a cooldown.
+- Changing element later costs gold at the Blacksmith; your tiers are kept. The element is saved per hero, shown in the character panel and tints the weapon glow.
+- Balance: about +3% damage at level 10, about +14% at level 70 for a single target (fire); frost and lightning pay back in control and in groups.
+- Hungarian translation for all new texts.
+
 ## [1.17.0] - 2026-11-15
 - The Blacksmith: after the Ember Market at the end of every stage, you can forge your weapons (worn or in your pack) up to +7 for gold.
 - Every forge level adds 10% to all of the weapon's stats and +2 to your main stat (STR, INT or DEX). The price grows with each level, item level and rarity.

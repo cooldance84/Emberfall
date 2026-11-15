@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.17.0';
+const VERSION = '1.18.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -551,7 +551,8 @@ function itemSt(it, up) { // every forge level adds 10% to the weapon's stats an
 const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
 const pickOf = a => a[Math.random() * a.length | 0];
-let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
+const ELEMS = ['fire', 'frost', 'bolt'];
+let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null };
 let PS = null, floats = [];
 
 const XPN = [62, 31];
@@ -590,6 +591,7 @@ function gearLook() {
   for (const p of players()) {
     const c = p.pn === 2 ? CLS2 : CLS; p.k = lookFor(c, rpg.eq); p.glow = p.k.glowRgb;
     if (p.pn === 2 && c === CLS) p.k.hair = '#4a3ab0';
+    if (rpg.elem && elemTier()) { p.k.wcol = ELEM[rpg.elem].col2; p.glow = ELEM[rpg.elem].rgb; }
   }
 }
 function heroStats(full) {
@@ -615,6 +617,8 @@ function levelUp(lv0) {
   spawn(hero.x, hero.y, 20, 36, { s0: 1, s1: 3.4, c: ['#fff1b0', '#ffd24a', '#c9a8ff'], l0: 16, l1: 36, add: true, size: 2, up: 3, g: 0.05 });
   const sk = SKILLS.filter(k => k.lv > (lv0 || 0) && k.lv <= rpg.lvl).pop();
   if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + sk.name + '  (U)'; msgT = 220; }
+  if (rpg.lvl >= 10 && !rpg.elem && lv0 < 10) { msg = 'ELEMENT UNLOCKED - SEE THE BLACKSMITH'; msgT = 240; }
+  else if (rpg.elem && Math.floor(rpg.lvl / 10) > Math.floor((lv0 || 0) / 10) && elemTier()) { msg = ELEM[rpg.elem].name + ' TIER ' + ROMAN[elemTier()] + ': ' + ELEM_TIERS[rpg.elem][elemTier() - 1]; msgT = 240; }
   saveGame();
 }
 function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +legendary 7%. 4+: +mythic 1%
@@ -649,7 +653,7 @@ function dropGear(x, y, rar) {
   else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
 function onKill(e) {
-  const boss = isBoss(e);
+  const boss = isBoss(e); elemDeath(e);
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42)); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
   const n = boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
@@ -683,7 +687,7 @@ function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (5
 /* ---- persistence: character + leaderboard live in localStorage ---- */
 const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) it.up = clamp(it.up | 0, 0, MAX_UP); return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
-function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
+function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -693,7 +697,7 @@ function loadGame() {
   try {
     const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
     if (o && o.lvl) {
-      rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0);
+      rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX);
       rpg.eq = {}; for (const s of SLOTS) if (o.eq && validItem(o.eq[s]) && o.eq[s].slot === s) rpg.eq[s] = o.eq[s];
       rpg.ini = String(o.ini || 'AAA').toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
@@ -735,7 +739,7 @@ function drawResume() {
 function peekSave(c) { try { const o = migrateSave(JSON.parse(localStorage.getItem(saveKey(c)) || 'null')) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
-  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; PS = null; loadGame(); saveSettings();
+  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; loadGame(); saveSettings();
   if (hero) heroStats(true);
 }
 
@@ -893,6 +897,7 @@ function drawInv() {
   text(cls().stat + ' ' + s.str + '    DMG x' + s.mult.toFixed(2), 14, y0 + 36, 8, '#e8e0f0');
   text('CRIT ' + s.crit + '%   CRIT DMG ' + s.cdmg + '%', 14, y0 + 48, 8, '#e8e0f0');
   text('HIT ' + s.hit + '%    HP ' + s.maxhp, 14, y0 + 60, 8, '#e8e0f0');
+  if (rpg.elem && elemTier()) text(tr('ELEMENT') + ' ' + tr(ELEM[rpg.elem].name) + ' ' + ROMAN[elemTier()], 14, y0 + 72, 8, ELEM[rpg.elem].col); else if (rpg.lvl >= 10) text('ELEMENT: SEE THE BLACKSMITH', 14, y0 + 72, 7, '#ffd24a');
   for (let i = 0; i < BAG_MAX; i++) { const [x, y] = bagPos(i); slotBox(x, y, rpg.bag[i], inv.z === 'bag' && inv.i === i); }
   text('ITEMS ' + rpg.bag.length + '/' + BAG_MAX, 251, 164, 8, '#8a7a9a', 'center');
   if (invNoteT > 0) text(invNote, 251, 226, 8, '#ff6a6a', 'center');
@@ -939,6 +944,7 @@ function dust(x, y, n) { spawn(x, y, 0, n, { s0: 0.3, s1: 1.2, c: ['#8d7a8f', '#
 function hurt(e, dmg, kind, from) {
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
   const dir = sgn(e.x - from.x) || -from.face;
+  if (!e.pn && e.el && e.el.frz > 0 && elemTier() >= 4) dmg = Math.round(dmg * 1.2); // frozen foes are brittle
   if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1)));
   if (!e.pn && e.barrier > 0 && e.kind !== 'imp') { // arcane barrier: no damage gets through until it shatters; heavy blows crack it fastest
     const d = kind === 'down' ? dmg : Math.max(1, Math.round(dmg * 0.35));
@@ -991,6 +997,95 @@ function hurt(e, dmg, kind, from) {
   else if (!isBoss(e)) { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
   return true;
 }
+/* ---------- elemental specialisation: fire, frost or lightning, unlocked at level 10, a new tier every 10 levels ---------- */
+const ELEM = {
+  fire: { name: 'FIRE', col: '#ff7a2a', col2: '#ffd070', rgb: '255,130,40', info: 'BURNING: DAMAGE OVER TIME' },
+  frost: { name: 'FROST', col: '#7ad8ff', col2: '#e8faff', rgb: '120,210,255', info: 'CHILL, THEN DEEP FREEZE' },
+  bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '200,170,255', info: 'ARCS THAT SHOCK AND STUN' }
+};
+const ELEM_TIERS = {
+  fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES'],
+  frost: ['CHILL: SLOWS ENEMIES', 'FASTER FROST BUILDUP', 'DEEP FREEZE: SHORT STASIS', 'FROZEN FOES TAKE +20% DAMAGE', 'LONGER FREEZE, DEEPER CHILL', 'FREEZING SPREADS A FROST BURST', 'FROZEN FOES SHATTER ON DEATH'],
+  bolt: ['ARCS LEAP TO A NEARBY FOE', 'LONGER, STRONGER ARCS', 'SHOCK: BRIEF STUN', 'ARCS HIT 2 FOES', 'LONGER STUN', 'LIGHTNING STRIKES THE TARGET', 'ARCS HIT 3 FOES']
+};
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09]; // status damage as a share of one normal hit
+// weakness (>1) and resistance (<1) by monster: never below 0.4 or above 1.4, so nothing is immune and nothing is helpless
+const ELEM_RES = {
+  boss: { fire: 0.6, frost: 1.25 }, witch: { fire: 1.25, bolt: 0.6 }, smith: { fire: 0.6, frost: 1.25 }, king: { bolt: 1.25, frost: 0.7 }, wyrm: { fire: 0.5, frost: 1.3 },
+  wisp: { fire: 1.25, bolt: 0.7 }, runner: { frost: 1.25, fire: 0.75 }, guard: { bolt: 1.25, frost: 0.75 }, wraith: { frost: 1.25, fire: 0.6 },
+  archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
+};
+const elemTier = () => rpg.elem && rpg.lvl >= 10 ? clamp(Math.floor(rpg.lvl / 10), 1, 7) : 0;
+const elemCost = () => 250 + rpg.lvl * 12; // gold to change element at the Blacksmith; the first choice is free
+const elBase = () => 9 * pstats().mult;
+function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0 }); }
+function elNear(e, r) { return enemies.filter(o => o !== e && !o.dead && o.kind !== 'imp' && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.6); }
+function elDmg(e, d, col) { // status damage: no knock-back, no invulnerability frames; a kill falls through the normal death path
+  if (e.dead || !(d > 0) || e.barrier > 0) return; d = Math.max(1, Math.round(d)); e.hp -= d; lastEnemy = e;
+  floatText(e.x + rnd(-5, 5), e.y - e.z - e.h * 0.95, String(d), col, 7);
+  if (e.hp <= 0 && e.st !== 'down' && e.st !== 'getup') { e.st = 'down'; e.t = 0; e.vz = 2; e.vx = 0; e.z = Math.max(e.z, 0.01); }
+}
+function elArc(a, b, col) { for (let i = 0; i <= 5; i++) { const t = i / 5; spawn(a.x + (b.x - a.x) * t + rnd(-3, 3), a.y + (b.y - a.y) * t, a.h * 0.55 + rnd(-6, 6), 1, { c: col, l0: 6, l1: 12, add: true, size: 2, g: 0 }); } }
+function elemBuild(e, el, amt, T, noSpread) {
+  const S = elOf(e); if (e.dead || e.barrier > 0) return;
+  const rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1); amt *= rs;
+  S[el] += amt;
+  if (el === 'fire' && S.burn > 0) S.burn = Math.max(S.burn, 150 + 25 * T);
+  if (S[el] < 100) return; S[el] -= 100;
+  const base = elBase(), col = ELEM[el].col, cap = isBoss(e) ? 0.4 : 1;
+  if (el === 'fire') {
+    S.burn = [0, 150, 200, 200, 220, 240, 260, 300][T]; S.bst = T >= 5 ? Math.min(3, S.bst + 1) : 1;
+    floatText(e.x, e.y - e.h - 10, 'IGNITED', col, 8); spawn(e.x, e.y, e.h * 0.5, 8, { c: ['#ffd070', '#ff7a2a'], l0: 10, l1: 22, add: true, size: 2, up: 1.5 });
+    if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 45, T, true);
+    if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 3, col);
+  } else if (el === 'frost') {
+    if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); }
+    else if (S.cd <= 0) {
+      S.frz = Math.round([0, 0, 0, 54, 54, 80, 80, 100][T] * cap); S.cd = isBoss(e) ? 420 : 0; S.chill = 150;
+      floatText(e.x, e.y - e.h - 10, 'FROZEN', col, 8); spawn(e.x, e.y, e.h * 0.5, 10, { c: ['#e8faff', '#7ad8ff'], l0: 12, l1: 26, add: true, size: 2, up: 1.2 });
+      if (T >= 6 && !noSpread) for (const o of elNear(e, 55)) elemBuild(o, 'frost', 50, T, true);
+    } else { S.chill = 150; }
+  } else {
+    const n = T >= 7 ? 3 : T >= 4 ? 2 : 1, r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1);
+    elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#c8a8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
+    if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
+    if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
+    spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.hit();
+  }
+}
+function elemHit(e, att, kind, crit) { // called after one of the hero's hits lands
+  const T = elemTier(); if (!T || e.dead || e.pn) return; const el = rpg.elem, cls = att.k && att.k.cls;
+  let amt = (kind === 'down' ? 38 : 24) * (cls === 'panni' ? 1.2 : 1) * (crit ? (cls === 'luca' ? 1.5 : 1.25) : 1) * (el === 'frost' && T >= 2 ? 1.25 : 1);
+  elemBuild(e, el, amt, T);
+}
+function elemTick(e) { // once per frame per afflicted monster; true when it loses this frame (frozen, stunned, slowed)
+  const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
+  for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35);
+  if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--;
+  if (S.frz > 0) { S.frz--; if (tickN % 12 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#e8faff', '#7ad8ff'], l0: 8, l1: 16, add: true, size: 1, g: 0 }); }
+  if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });
+  if (S.burn > 0) {
+    S.burn--; if (tickN % 6 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.8), 1, { c: ['#ffd070', '#ff7a2a'], l0: 8, l1: 16, add: true, size: 2, up: 1.4, g: -0.02 });
+    if (S.burn % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
+    if (S.burn === 0) S.bst = 0;
+  }
+  if (free) return false;
+  if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
+  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; sl = Math.min(sl, isBoss(e) ? 0.3 : 0.5);
+  if (sl > 0) { S.acc += sl; if (S.acc >= 1) { S.acc -= 1; if (e.flash > 0) e.flash--; return true; } }
+  return false;
+}
+function elemDeath(e) { // burning foes erupt, frozen foes shatter
+  const S = e.el, T = elemTier(); if (!S || !T) return;
+  if (S.burn > 0 && T >= 4) { for (const o of elNear(e, 48)) elDmg(o, elBase() * ELEM_PT[T] * 3, ELEM.fire.col); spawn(e.x, e.y, 14, 14, { c: ['#ffd070', '#ff7a2a'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+  if (S.frz > 0 && T >= 7) { for (const o of elNear(e, 52)) elDmg(o, elBase() * ELEM_PT[T] * 4, ELEM.frost.col); spawn(e.x, e.y, 14, 14, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+}
+function elemAura() { // tier VI fire: a ring of fire pulses around each hero
+  if (elemTier() < 6 || rpg.elem !== 'fire' || tickN % 240) return;
+  for (const p of players()) { if (p.dead) continue; for (const o of enemies) if (!o.dead && Math.abs(o.x - p.x) < 52 && Math.abs(o.y - p.y) < 32) elemBuild(o, 'fire', 34, elemTier(), true);
+    for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; spawn(p.x + Math.cos(a) * 44, p.y + Math.sin(a) * 14, 6, 1, { c: ['#ffd070', '#ff7a2a'], l0: 12, l1: 22, add: true, size: 2, up: 0.6 }); } }
+}
 function strike(att, box, dmg, kind, targets) {
   for (const e of targets) {
     if (att.hits.has(e) || e.dead) continue;
@@ -1003,8 +1098,10 @@ function strike(att, box, dmg, kind, targets) {
       const r = rollHit(back ? dmg * 1.5 : dmg);
       if (back && !r.miss && !(e.barrier > 0)) floatText(e.x, e.y - e.z - e.h - 12, 'BACKSTAB', '#9affb8', 7);
       if (r.miss) { floatText(e.x, e.y - e.z - e.h * 0.8, 'MISS', '#9aa0b0', 8); continue; }
+      const shielded = e.barrier > 0;
       if (hurt(e, r.d, kind, att)) {
         if (e.blockT === tickN) continue;
+        if (!shielded && !e.dead) elemHit(e, att, kind, r.crit);
         floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
         if (r.crit) { shake = Math.max(shake, 5); freeze = Math.max(freeze, 4); sparks(e.x, e.y, e.z + e.h * 0.6, true); }
       }
@@ -1222,6 +1319,7 @@ function updateHeroCore(f) {
 
 /* ---------- enemies ---------- */
 function updateEnemy(e) {
+  if (e.el && !e.dead && elemTick(e)) return;
   if (e.kind === 'imp') { updateImp(e); return; }
   e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
   if (e.dead) { e.fade++; if (e.pitT) e.pitT++; return; }
@@ -1642,17 +1740,30 @@ function drawCoins(x, y, n, gap) { // up to three slots, then one coin and a cou
 const FORGE_P = [1, 1, 1, 0.8, 0.65, 0.5, 0.35]; // chance to reach the next level from +0 ... +6
 const forgeCost = it => Math.round((40 + (it.lvl || 1) * 5) * (1 + 0.75 * (it.up | 0)) * [1, 1.2, 1.5, 1.8, 2.2][it.rar]);
 let forge = null;
-function forgeList() { const a = []; if (rpg.eq.weapon) a.push({ it: rpg.eq.weapon, worn: true }); for (const it of rpg.bag) if (it.slot === 'weapon') a.push({ it }); a.push({ go: true }); return a; }
-function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0 }; mode = 'forge'; SFX.pick(); }
+function forgeList() { const a = []; if (rpg.lvl >= 10) a.push({ el: true }); if (rpg.eq.weapon) a.push({ it: rpg.eq.weapon, worn: true }); for (const it of rpg.bag) if (it.slot === 'weapon') a.push({ it }); a.push({ go: true }); return a; }
+function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0, pick: null }; mode = 'forge'; SFX.pick(); }
 function updateForge() {
   const f = forge, L = forgeList(); if (f.noteT > 0) f.noteT--; if (f.fx > 0) f.fx--; f.i = Math.min(f.i, L.length - 1);
+  const say = (t, ok) => { f.note = t; f.noteT = 110; f.ok = ok; };
+  if (f.pick !== null) { // choosing the element
+    if (isHit('up')) { f.pick = (f.pick + 2) % 3; SFX.pick(); }
+    if (isHit('down')) { f.pick = (f.pick + 1) % 3; SFX.pick(); }
+    if (isHit('back')) { f.pick = null; return; }
+    if (isHit('start') || isHit('atk')) {
+      const el = ELEMS[f.pick], cost = rpg.elem ? elemCost() : 0;
+      if (el === rpg.elem) { say('YOU ALREADY CARRY THAT ELEMENT', false); return; }
+      if (rpg.gold < cost) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
+      rpg.gold -= cost; rpg.elem = el; f.pick = null; PS = null; heroStats(false); saveGame(); SFX.magic(); f.fx = 40; say(tr('ELEMENT CHOSEN:') + ' ' + tr(ELEM[el].name), true);
+    }
+    return;
+  }
   if (isHit('up')) { f.i = (f.i + L.length - 1) % L.length; SFX.pick(); }
   if (isHit('down')) { f.i = (f.i + 1) % L.length; SFX.pick(); }
-  const say = (t, ok) => { f.note = t; f.noteT = 110; f.ok = ok; };
   const leave = () => { const n = f.next; forge = null; mode = 'play'; saveGame(); n(); };
   if (isHit('back')) { leave(); return; }
   if (!(isHit('start') || isHit('atk'))) return;
   const o = L[f.i]; if (o.go) { leave(); return; }
+  if (o.el) { f.pick = Math.max(0, ELEMS.indexOf(rpg.elem)); SFX.pick(); return; }
   const it = o.it, up = it.up | 0;
   if (up >= MAX_UP) { say('ALREADY AT +7 (MAX)', false); return; }
   const c = forgeCost(it); if (rpg.gold < c) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
@@ -1672,6 +1783,7 @@ function drawForge() {
     const y = 62 + (L.length === 1 ? 1 : i) * 20, sel = i === f.i; if (y > 200) return;
     if (sel) { g.fillStyle = 'rgba(255,140,60,0.18)'; g.fillRect(14, y - 11, 238, 17); g.strokeStyle = '#ff9a4a'; g.strokeRect(14.5, y - 10.5, 237, 16); }
     if (o.go) { text((sel ? '> ' : '  ') + 'BACK TO THE ROAD', 20, y, 8, '#9fd0ff'); return; }
+    if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); text(rpg.elem ? elemCost() + 'G' : 'FREE', 246, y, 8, !rpg.elem || rpg.gold >= elemCost() ? '#ffd24a' : '#ff6a6a', 'right'); return; }
     const it = o.it, nm = iname(it), mx = (it.up | 0) >= MAX_UP;
     if (o.worn) text('E', 8, y, 7, '#c9a8ff');
     text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, RARITY[it.rar].col);
@@ -1683,7 +1795,21 @@ function drawForge() {
   if (f.fx > 0 && f.fx % 3 === 0) for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#ffd070' : '#ff8a2a'; g.fillRect(ax + rnd(-20, 20), ay - 16 - rnd(0, 26), 2, 2); }
   const o = L[f.i];
   g.fillStyle = 'rgba(30,16,10,0.9)'; g.fillRect(262, 50, 204, 178); g.strokeStyle = '#c96a2e'; g.strokeRect(262.5, 50.5, 203, 177);
-  if (o && !o.go) {
+  if (o && o.el) {
+    const E = rpg.elem && ELEM[rpg.elem], T = elemTier();
+    if (f.pick !== null) {
+      text('PICK AN ELEMENT', 364, 64, 9, '#ffd24a', 'center');
+      ELEMS.forEach((k, i) => { const y = 84 + i * 30, sel = i === f.pick; if (sel) { g.fillStyle = 'rgba(255,140,60,0.2)'; g.fillRect(268, y - 11, 192, 26); }
+        text((sel ? '> ' : '  ') + ELEM[k].name + (k === rpg.elem ? '  (NOW)' : ''), 272, y, 9, ELEM[k].col); text(ELEM[k].info, 276, y + 11, 7, '#c8b8a0'); });
+      text(rpg.elem ? 'CHANGING COSTS ' + elemCost() + ' GOLD' : 'THE FIRST CHOICE IS FREE', 364, 184, 8, '#ffb46a', 'center');
+      text('YOUR TIERS ARE KEPT WHEN YOU CHANGE', 364, 196, 7, '#a89078', 'center'); text('ENTER CHOOSE   ESC BACK', 364, 214, 7, '#a89078', 'center');
+    } else {
+      text(E ? E.name + '  TIER ' + ROMAN[T] : 'NO ELEMENT YET', 364, 64, 9, E ? E.col : '#ffd24a', 'center');
+      if (E) ELEM_TIERS[rpg.elem].forEach((d, i) => text(ROMAN[i + 1] + '  LV ' + (i + 1) * 10 + '  ' + d, 270, 82 + i * 13, 7, i < T ? E.col2 : '#6a5a50'));
+      else { text('FIRE   FROST   LIGHTNING', 364, 90, 8, '#e0c8a0', 'center'); text('HITS BUILD UP A STATUS ON FOES', 364, 110, 7, '#c8b8a0', 'center'); text('A NEW TIER EVERY 10 LEVELS', 364, 122, 7, '#c8b8a0', 'center'); }
+      text('ENTER TO ' + (E ? 'CHANGE' : 'CHOOSE'), 364, 214, 7, '#a89078', 'center');
+    }
+  } else if (o && !o.go) {
     const it = o.it, up = it.up | 0; drawTip(it, undefined, 258, 36);
     if (up < MAX_UP) {
       const a = itemSt(it), b = itemSt(it, up + 1); let yy = 170;
@@ -1692,7 +1818,7 @@ function drawForge() {
     } else text('FULLY FORGED', 364, 190, 9, '#ffd24a', 'center');
   } else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
   if (f.noteT > 0) text(f.note, W / 2, 236, 9, f.ok ? '#7aff9a' : '#ff8a6a', 'center');
-  text('W/S CHOOSE   ENTER FORGE   ESC LEAVE', W / 2, 252, 8, '#c8a890', 'center');
+  text(f.pick !== null ? 'W/S CHOOSE   ENTER CONFIRM   ESC BACK' : 'W/S CHOOSE   ENTER FORGE   ESC LEAVE', W / 2, 252, 8, '#c8a890', 'center');
   text('FAILED FORGING KEEPS THE LEVEL BUT TAKES THE GOLD', W / 2, 264, 7, '#8a6a5a', 'center');
 }
 function openShop(next) {
@@ -2226,7 +2352,7 @@ function step() {
   pollPad(); musicTick();
   if (mode === 'title') {
     if (resetArm > 0) resetArm--;
-    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
+    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
@@ -2257,7 +2383,7 @@ function step() {
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
   for (const p of players()) withHero(p, () => updateHero(p));
-  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots();
+  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
@@ -2667,9 +2793,17 @@ function drawHuman(f, sx, sy) {
 }
 
 function drawFighter(f) {
+  drawFighter0(f); const S = f.el; if (!S || f.dead || f.pitT) return;
+  const sx = Math.round(f.x - cam), by = Math.round(f.y - f.z), hh = f.h || 40, ww = Math.round(15 * ((f.k && f.k.scale) || 1)) + 3;
+  if (S.burn > 0) { g.globalCompositeOperation = 'lighter'; glowDot(g, sx, by - hh * 0.45, hh * 0.55, '255,130,40', 0.22 + 0.06 * Math.sin(tickN * 0.4)); g.globalCompositeOperation = 'source-over'; }
+  if (S.chill > 0 && !(S.frz > 0)) { g.globalCompositeOperation = 'lighter'; glowDot(g, sx, by - hh * 0.45, hh * 0.5, '120,210,255', 0.2); g.globalCompositeOperation = 'source-over'; }
+  if (S.frz > 0) { g.fillStyle = 'rgba(150,220,255,0.38)'; g.fillRect(sx - ww, by - hh - 2, ww * 2, hh + 4); g.fillStyle = 'rgba(235,250,255,0.5)'; g.fillRect(sx - ww, by - hh - 2, ww * 2, 2); g.fillRect(sx - ww, by + 0, ww * 2, 2); g.fillRect(sx - ww, by - hh - 2, 2, hh + 4); g.fillRect(sx + ww - 2, by - hh - 2, 2, hh + 4); }
+  if (S.stun > 0 && tickN % 4 < 2) { g.fillStyle = '#fff6a0'; for (let i = 0; i < 3; i++) g.fillRect(sx - 8 + i * 8 + ((tickN >> 1) % 3), by - hh - 4 - (i % 2) * 3, 3, 2); }
+}
+function drawFighter0(f) {
   if (f.pitT) { // tumbling into a chasm
     g.save(); g.beginPath(); g.rect(0, 0, W, f.pitY - 2); g.clip(); g.globalAlpha = clamp(1 - f.pitT / 30, 0, 1);
-    const sv = f.pitT, y0 = f.y; f.pitT = 0; f.y = y0 + sv * sv * 0.12; drawFighter(f); f.y = y0; f.pitT = sv; g.restore(); return;
+    const sv = f.pitT, y0 = f.y; f.pitT = 0; f.y = y0 + sv * sv * 0.12; drawFighter0(f); f.y = y0; f.pitT = sv; g.restore(); return;
   }
   const sx = f.x - cam, sy = f.y;
   if (f.isMount) { drawWildMount(f, sx, sy); return; }
