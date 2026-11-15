@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.18.1] - 2026-11-15
+- Treasure chests along the road: 2 to 4 per stage, hidden before the boss arena. Hit one twice to open it for gold (more in later stages), with a small chance of a meat drop.
+
 ## [1.18.0] - 2026-11-15
 - Elemental specialisation: at level 10 you choose Fire, Frost or Lightning at the Blacksmith (the first choice is free). Your element gains a new tier every 10 levels, up to tier VII at level 70.
 - Your hits build up a status on enemies; at 100 it triggers: Burning (damage over time), Chill and Deep Freeze, or lightning arcs that shock and stun. Special strikes (U/Q) are unchanged and also build the status.

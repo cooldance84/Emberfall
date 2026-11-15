@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.18.0';
+const VERSION = '1.18.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -45,7 +45,7 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 // player 2 (co-op): arrows + , . / (or numpad 1-3), or the second gamepad
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
-let vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
+let chests = [], vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const areaLv = () => Math.round(4 + stageIdx * 1.6) + cycle * 60;          // how deep in the endless loop you are
@@ -1086,7 +1086,20 @@ function elemAura() { // tier VI fire: a ring of fire pulses around each hero
   for (const p of players()) { if (p.dead) continue; for (const o of enemies) if (!o.dead && Math.abs(o.x - p.x) < 52 && Math.abs(o.y - p.y) < 32) elemBuild(o, 'fire', 34, elemTier(), true);
     for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; spawn(p.x + Math.cos(a) * 44, p.y + Math.sin(a) * 14, 6, 1, { c: ['#ffd070', '#ff7a2a'], l0: 12, l1: 22, add: true, size: 2, up: 0.6 }); } }
 }
+function openChest(c, att) {
+  c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
+  if (c.hp > 0) return;
+  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1)); rpg.gold += gd; score += gd * 5;
+  floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
+  spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
+  if (Math.random() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
+}
 function strike(att, box, dmg, kind, targets) {
+  if (att.pn) for (const c of chests) {
+    if (c.open || att.hits.has(c)) continue; const dx = (c.x - att.x) * att.face;
+    if (dx < box.x0 - 6 || dx > box.x1 + 6 || Math.abs(c.y - att.y) > box.dy + 6 || att.z + box.z0 > 16) continue;
+    att.hits.add(c); openChest(c, att);
+  }
   for (const e of targets) {
     if (att.hits.has(e) || e.dead) continue;
     const dx = (e.x - att.x) * att.face;
@@ -1704,12 +1717,14 @@ function beginStage(i) {
   stageIdx = i; const S = STAGES[i]; TH = themeFor(S.theme, actOf(i)); weather = WEATHER[actOf(i)][S.theme]; WAVES = S.waves; STAGE_END = S.end;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
-  intro = null; slashes = []; vents = [];
+  intro = null; slashes = []; vents = []; chests = [];
   gaps = []; ambW = -1;
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 320 : S.end - 300, n = i === 0 ? 2 : 2 + Math.min(3, actOf(i) + ((i % 5) >= 2 ? 1 : 0));
     if (i === 0) { gaps.push({ x: 590, w: 14, type: 'wall' }); gaps.push({ x: 1600, w: 34, type: 'pit' }); }
     else for (let x = 520 + (i * 37) % 120, k = 0; x < stop && k < n; x += 330 + ((i * 53 + k * 71) % 200), k++) { const pit = (i + k) % 3 !== 0; gaps.push({ x, w: pit ? 34 + ((i + k) * 13) % 9 : 14, type: pit ? 'pit' : 'wall' }); } }
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
+  { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
+    for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < 4; x += 380 + Math.random() * 260, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: 2 }); }
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
@@ -2847,6 +2862,16 @@ function drawJar(x, y, on) {
   if (on) { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(90,170,255,0.22)'; g.fillRect(x - 9, y - 16, 18, 18); g.globalCompositeOperation = 'source-over'; }
 }
 
+function drawChests() {
+  for (const c of chests) {
+    const x = Math.round(c.x - cam + (c.shake > 0 ? (c.shake-- % 2 ? 1 : -1) : 0)), y = Math.round(c.y); if (x < -20 || x > W + 20) continue;
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 11, 3.5, 0, 0, 7); g.fill();
+    g.fillStyle = '#0a0610'; g.fillRect(x - 10, y - 14, 20, 14);
+    g.fillStyle = '#7a4a22'; g.fillRect(x - 9, y - 9, 18, 8); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 9, 18, 2);
+    if (c.open) { g.fillStyle = '#ffd24a'; g.fillRect(x - 7, y - 11, 14, 3); g.fillStyle = '#7a4a22'; g.fillRect(x - 9, y - 19, 18, 4); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 19, 18, 1); }
+    else { g.fillStyle = '#6a3c1a'; g.fillRect(x - 9, y - 14, 18, 6); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 14, 18, 1); g.fillStyle = '#c8a040'; g.fillRect(x - 1, y - 11, 3, 5); g.fillRect(x - 9, y - 12, 18, 1); if ((tickN >> 4) % 6 === 0) { g.fillStyle = '#fff1b0'; g.fillRect(x + 5, y - 15, 2, 2); } }
+  }
+}
 function drawItems() {
   let li = 0;
   for (const it of items) {
@@ -3182,7 +3207,7 @@ function render() {
   g.save(); g.translate(Math.round(sx), Math.round(sy));
   drawWorld(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
-  drawItems(); drawVentsAndSlashes(false);
+  drawChests(); drawItems(); drawVentsAndSlashes(false);
   const list = [...enemies, ...mounts, ...players()].sort((a, b) => a.y - b.y);
   for (const f of list) drawFighter(f);
   drawShots(); drawVentsAndSlashes(true);
