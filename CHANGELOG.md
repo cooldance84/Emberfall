@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.6] - 2026-11-15
+- Fix: a frozen enemy was covered by a white box that did not fit the sprite (it was too big on bosses). Frozen foes now turn icy blue in their own shape, with a soft glow and ice flecks.
+
 ## [1.19.5] - 2026-11-15
 - Dragon's Wrath needs only an Ember Jar now; the mana bar is gone. Each jar still adds 15% to the wrath.
 

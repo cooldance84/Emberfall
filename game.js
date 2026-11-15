@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.5';
+const VERSION = '1.19.6';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2824,7 +2824,11 @@ function drawFighter(f) {
   const sx = Math.round(f.x - cam), by = Math.round(f.y - f.z), hh = f.h || 40, ww = Math.round(15 * ((f.k && f.k.scale) || 1)) + 3;
   if (S.burn > 0) { g.globalCompositeOperation = 'lighter'; glowDot(g, sx, by - hh * 0.45, hh * 0.55, '255,130,40', 0.22 + 0.06 * Math.sin(tickN * 0.4)); g.globalCompositeOperation = 'source-over'; }
   if (S.chill > 0 && !(S.frz > 0)) { g.globalCompositeOperation = 'lighter'; glowDot(g, sx, by - hh * 0.45, hh * 0.5, '120,210,255', 0.2); g.globalCompositeOperation = 'source-over'; }
-  if (S.frz > 0) { g.fillStyle = 'rgba(150,220,255,0.38)'; g.fillRect(sx - ww, by - hh - 2, ww * 2, hh + 4); g.fillStyle = 'rgba(235,250,255,0.5)'; g.fillRect(sx - ww, by - hh - 2, ww * 2, 2); g.fillRect(sx - ww, by + 0, ww * 2, 2); g.fillRect(sx - ww, by - hh - 2, 2, hh + 4); g.fillRect(sx + ww - 2, by - hh - 2, 2, hh + 4); }
+  if (S.frz > 0) { // frozen: the figure itself turns icy blue, so the effect always fits the sprite
+    g.globalCompositeOperation = 'lighter'; glowDot(g, sx, by - hh * 0.45, hh * 0.6, '120,210,255', 0.3); g.globalCompositeOperation = 'source-over';
+    if ('filter' in g) { g.save(); g.filter = 'sepia(1) hue-rotate(160deg) saturate(2.4) brightness(1.3)'; g.globalAlpha = 0.65; drawFighter0(f); g.restore(); }
+    g.fillStyle = '#e8faff'; for (let i = 0; i < 5; i++) { const a = i * 1.26 + 0.3, r = ww * 0.9; g.fillRect(Math.round(sx + Math.cos(a) * r), Math.round(by - hh * 0.5 + Math.sin(a) * hh * 0.45), 2, 3); }
+  }
   if (S.stun > 0 && tickN % 4 < 2) { g.fillStyle = '#fff6a0'; for (let i = 0; i < 3; i++) g.fillRect(sx - 8 + i * 8 + ((tickN >> 1) % 3), by - hh - 4 - (i % 2) * 3, 3, 2); }
 }
 function drawFighter0(f) {
