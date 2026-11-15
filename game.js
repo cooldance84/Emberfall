@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.0';
+const VERSION = '1.19.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -546,7 +546,8 @@ const WNAMES = {
 const MAX_UP = 7;
 function itemSt(it, up) { // every forge level adds 10% to the weapon's stats and +2 to the main stat
   up = up == null ? (it.up | 0) : up; if (!up) return it.st;
-  const o = {}; for (const k in it.st) o[k] = Math.round(it.st[k] * (1 + 0.1 * up)); o.str = (o.str || 0) + 2 * up; return o;
+  const w = it.slot === 'weapon'; // other gear forges more gently: +6% per level and +1 main stat, so forging everything stays balanced
+  const o = {}; for (const k in it.st) o[k] = Math.round(it.st[k] * (1 + (w ? 0.1 : 0.06) * up)); o.str = (o.str || 0) + (w ? 2 : 1) * up; return o;
 }
 const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
@@ -1760,7 +1761,7 @@ function drawCoins(x, y, n, gap) { // up to three slots, then one coin and a cou
 const FORGE_P = [1, 1, 1, 0.8, 0.65, 0.5, 0.35]; // chance to reach the next level from +0 ... +6
 const forgeCost = it => Math.round((40 + (it.lvl || 1) * 5) * (1 + 0.75 * (it.up | 0)) * [1, 1.2, 1.5, 1.8, 2.2][it.rar]);
 let forge = null;
-function forgeList() { const a = []; if (rpg.lvl >= 10) a.push({ el: true }); if (rpg.eq.weapon) a.push({ it: rpg.eq.weapon, worn: true }); for (const it of rpg.bag) if (it.slot === 'weapon') a.push({ it }); a.push({ go: true }); return a; }
+function forgeList() { const a = []; if (rpg.lvl >= 10) a.push({ el: true }); for (const sl of SLOTS) if (rpg.eq[sl]) a.push({ it: rpg.eq[sl], worn: true }); for (const it of rpg.bag) a.push({ it }); a.push({ go: true }); return a; }
 function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0, pick: null }; mode = 'forge'; SFX.pick(); }
 function updateForge() {
   const f = forge, L = forgeList(); if (f.noteT > 0) f.noteT--; if (f.fx > 0) f.fx--; f.i = Math.min(f.i, L.length - 1);
@@ -1795,12 +1796,13 @@ function updateForge() {
 function drawForge() {
   const f = forge, L = forgeList(); g.fillStyle = 'rgba(10,4,2,0.92)'; g.fillRect(0, 0, W, H);
   const gl = g.createRadialGradient(130, 250, 10, 130, 250, 200); gl.addColorStop(0, 'rgba(255,110,30,0.22)'); gl.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = gl; g.fillRect(0, 0, W, H);
-  text('THE BLACKSMITH', W / 2, 24, 14, '#ff9a4a', 'center'); text('FORGE WEAPONS UP TO +7 FOR GOLD', W / 2, 36, 8, '#e0b890', 'center');
+  text('THE BLACKSMITH', W / 2, 24, 14, '#ff9a4a', 'center'); text('FORGE YOUR GEAR UP TO +7 FOR GOLD', W / 2, 36, 8, '#e0b890', 'center');
   text('GOLD ' + rpg.gold, W - 14, 24, 11, '#ffd24a', 'right');
   g.fillStyle = 'rgba(255,140,60,0.35)'; g.fillRect(16, 42, W - 32, 1);
-  if (L.length === 1) text('NO WEAPONS TO FORGE', 133, 62, 8, '#8a7a6a', 'center');
+  if (L.length === 1) text('NOTHING TO FORGE', 133, 62, 8, '#8a7a6a', 'center');
+  const top = Math.max(0, f.i - 6); // scrolls once the list outgrows the screen
   L.forEach((o, i) => {
-    const y = 62 + (L.length === 1 ? 1 : i) * 20, sel = i === f.i; if (y > 200) return;
+    if (i < top) return; const y = 62 + (L.length === 1 ? 1 : i - top) * 20, sel = i === f.i; if (y > 200) return;
     if (sel) { g.fillStyle = 'rgba(255,140,60,0.18)'; g.fillRect(14, y - 11, 238, 17); g.strokeStyle = '#ff9a4a'; g.strokeRect(14.5, y - 10.5, 237, 16); }
     if (o.go) { text((sel ? '> ' : '  ') + 'BACK TO THE ROAD', 20, y, 8, '#9fd0ff'); return; }
     if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); text(rpg.elem ? elemCost() + 'G' : 'FREE', 246, y, 8, !rpg.elem || rpg.gold >= elemCost() ? '#ffd24a' : '#ff6a6a', 'right'); return; }

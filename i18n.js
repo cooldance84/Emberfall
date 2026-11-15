@@ -4,6 +4,8 @@
 
 /* whole sentences (story, tags, tooltips): matched exactly */
 const HU_EXACT = {
+  "FORGE YOUR GEAR UP TO +7 FOR GOLD": "KOVÁCSOLD A FELSZERELÉSED +7-IG ARANYÉRT",
+  "NOTHING TO FORGE": "NINCS MIT KOVÁCSOLNI",
   /* elements */
   "FIRE": "TŰZ",
   "FROST": "FAGY",
