@@ -2,6 +2,16 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.20.0] - 2026-11-15
+- Elemental gear: magic and better items can roll "+% <element> POWER" (boosts your own element's buildup and damage) and "+% <element> RESIST" (cuts damage from monsters of that element, up to 60%). Fire comes from bombers, bosses, vents and fire waves; frost from archers and wraiths; lightning from wisps, witches and knights.
+- Boss bar and target bar now show each monster's weak (green arrow up) and resistant (red arrow down) elements once you reach level 10.
+- Treasure chest variety: golden chests (3 hits, triple gold, a rare-or-better item) and trapped chests (an ambush of husks, but 60% more gold).
+- Daily challenge (key 3 or tap the title line): five stages with a fresh level-1 hero, one rule of the day (Gold Rush, Glass Cannon, Iron Foes, Swift Foes, Treasure Day) and its own daily leaderboard (A/D on the board screen switches all-time and today). Your real hero and run are never touched.
+- Forged gear: other armor pieces forged to +5 or more now make your hero glow and throw golden sparks too, not only the weapon.
+- New sounds for burning, freezing, lightning arcs and shattering.
+- Pause menu: a new ELEMENTS page explains how the system works and shows your tier.
+- Touch: the keyboard hints no longer sit under the touch buttons on the title screen.
+
 ## [1.19.6] - 2026-11-15
 - Fix: a frozen enemy was covered by a white box that did not fit the sprite (it was too big on bosses). Frozen foes now turn icy blue in their own shape, with a soft glow and ice flecks.
 

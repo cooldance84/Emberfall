@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.6';
+const VERSION = '1.20.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -109,7 +109,11 @@ const SFX = {
   magic: () => { tone('sawtooth', 160, 900, 0.45, 0.07); tone('square', 90, 30, 0.5, 0.08); },
   pick: () => tone('sine', 600, 1000, 0.14, 0.08),
   land: () => tone('triangle', 90, 40, 0.08, 0.06),
-  die: () => tone('sawtooth', 220, 30, 0.5, 0.1)
+  die: () => tone('sawtooth', 220, 30, 0.5, 0.1),
+  burn: () => { tone('sawtooth', 300, 90, 0.28, 0.05); tone('square', 520, 160, 0.16, 0.03); },
+  freeze: () => { tone('sine', 1500, 900, 0.3, 0.06); tone('triangle', 2300, 1700, 0.18, 0.04); },
+  zap: () => { tone('square', 900, 120, 0.12, 0.06); tone('sawtooth', 1400, 200, 0.1, 0.04); },
+  shatter: () => { tone('triangle', 1800, 300, 0.22, 0.07); tone('square', 700, 120, 0.12, 0.04); }
 };
 
 /* ---------- music: a small procedural score per stage ---------- */
@@ -573,6 +577,12 @@ const ELEM_RES = {
   archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
 };
 const elemTier = () => rpg.elem && rpg.lvl >= 10 ? clamp(Math.floor(rpg.lvl / 10), 1, 7) : 0;
+const ENEMY_EL = { bomber: 'fire', boss: 'fire', smith: 'fire', king: 'fire', wyrm: 'fire', archer: 'frost', wraith: 'frost', caller: 'frost', wisp: 'bolt', witch: 'bolt', warder: 'bolt', knight: 'bolt' };
+const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
+let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
+const gearSum = (key, el) => { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it[key] && it[key].k === el) n += it[key].v; } return n; };
+const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem)) : 0;   // % bonus to your element's buildup and damage
+const elemResist = el => el ? Math.min(60, gearSum('er', el)) / 100 : 0;        // share of that element's damage you ignore
 const elemCost = () => 250 + rpg.lvl * 12; // gold to change element at the Blacksmith; the first choice is free
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null };
 let PS = null, floats = [];
@@ -587,7 +597,7 @@ function pstats() {
   // soft caps: stacked mythic gear makes you strong, not untouchable
   s.crit = Math.min(CLS === 'luca' ? 70 : 60, s.crit); s.hit = Math.min(100, s.hit);
   if (s.cdmg > 250) s.cdmg = Math.min(500, Math.round(250 + (s.cdmg - 250) * 0.35));
-  s.mult = 1 + Math.min(s.str, 120) * C.mul + Math.max(0, s.str - 120) * C.mul * 0.45;
+  s.mult = (1 + Math.min(s.str, 120) * C.mul + Math.max(0, s.str - 120) * C.mul * 0.45) * (dailyIs('GLASS CANNON') ? 1.5 : 1);
   s.maxhp = Math.round(C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2));
   return (PS = s);
 }
@@ -606,6 +616,7 @@ function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape 
   }
   if (o.gt.weapon >= 3) o.wlen = base.wlen + 3;
   o.wup = eq.weapon ? eq.weapon.up | 0 : 0;
+  o.gup = Math.max(0, ...SLOTS.filter(sl => sl !== 'weapon').map(sl => eq[sl] ? eq[sl].up | 0 : 0)); // best forge level on the other gear
   o.glowRgb = Math.max(0, ...SLOTS.map(r)) >= 2 ? RARITY[Math.max(...SLOTS.map(r))].rgb : null;
   return o;
 }
@@ -614,6 +625,7 @@ function gearLook() {
     const c = p.pn === 2 ? CLS2 : CLS; p.k = lookFor(c, rpg.eq); p.glow = p.k.glowRgb;
     if (p.pn === 2 && c === CLS) p.k.hair = '#4a3ab0';
     if (rpg.elem && elemTier()) { p.k.wcol = ELEM[rpg.elem].col2; p.glow = ELEM[rpg.elem].rgb; }
+    else if (p.k.gup >= 5 && !p.glow) p.glow = '255,200,90';
   }
 }
 function heroStats(full) {
@@ -667,7 +679,13 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   const base = WN ? WN.magic : MAGIC_BASE[slot];
   const name = rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
     : rar === 3 ? pickOf(WN ? WN.leg : LEG_NAMES[slot]) : pickOf(WN ? WN.myth : MYTH_NAMES[slot]);
-  return { slot, rar, name, st, lvl: il, q: Math.round(Q * 100) };
+  const it = { slot, rar, name, st, lvl: il, q: Math.round(Q * 100) };
+  if (rar >= 1) { // elemental affixes: power for your own element, resistance against what the monsters throw
+    const ch = [0, 0.14, 0.3, 0.55, 0.9][rar], roll = b => Math.round((b + il * 0.14) * (0.8 + 0.4 * Q));
+    if (Math.random() < ch) it.ea = { k: pickOf(ELEMS), v: roll(6) };
+    if (Math.random() < ch) it.er = { k: pickOf(ELEMS), v: roll(8) };
+  }
+  return it;
 }
 function dropGear(x, y, rar) {
   const R = RARITY[rar];
@@ -679,8 +697,8 @@ function dropGear(x, y, rar) {
 }
 function onKill(e) {
   const boss = isBoss(e); elemDeath(e);
-  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42)); // paced so level 70 arrives near the end of act VII
-  { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
+  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1))); // paced so level 70 arrives near the end of act VII
+  { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
   const n = boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
   for (let i = 0; i < n; i++) {
     let r = rollRarity();
@@ -710,9 +728,23 @@ function updateFloats() { for (const f of floats) { f.t++; f.y -= 0.45; } floats
 function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (56 - f.t) / 18); text(f.s, Math.round(f.x - cam), Math.round(f.y), f.size, f.col, 'center'); } g.globalAlpha = 1; }
 
 /* ---- persistence: character + leaderboard live in localStorage ---- */
-const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) it.up = clamp(it.up | 0, 0, MAX_UP); return ok; };
+const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) { it.up = clamp(it.up | 0, 0, MAX_UP); for (const k of ['ea', 'er']) if (it[k] && !(ELEMS.includes(it[k].k) && it[k].v > 0)) delete it[k]; else if (it[k]) it[k].v = Math.min(99, it[k].v | 0); } return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
-function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem })); } catch (e) { } }
+/* ---------- daily challenge: five stages, a fresh hero, one rule of the day, its own leaderboard; your real hero and run are never touched ---------- */
+let daily = null, boardView = 0; // boardView 0 = all time, 1 = today's daily
+const DAILY_STAGES = 5;
+const DAILY_MODS = [
+  { name: 'GOLD RUSH', info: 'ALL GOLD IS DOUBLED' },
+  { name: 'GLASS CANNON', info: 'YOU HIT 50% HARDER, AND TAKE 50% MORE' },
+  { name: 'IRON FOES', info: 'FOES HAVE 50% MORE LIFE, AND PAY 50% MORE XP' },
+  { name: 'SWIFT FOES', info: 'EVERY MONSTER IS 20% FASTER' },
+  { name: 'TREASURE DAY', info: 'TWICE THE CHESTS, MORE GOLDEN ONES' }
+];
+const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
+const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
+const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
+function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -729,14 +761,14 @@ function loadGame() {
     }
   } catch (e) { }
 }
-function loadBoard() { try { const a = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
-function saveBoard(b) { try { localStorage.setItem(BOARD_KEY, JSON.stringify(b.slice(0, 10))); } catch (e) { } }
+function loadBoard(v) { try { const a = JSON.parse(localStorage.getItem(boardKeyFor(v == null ? (daily ? 1 : 0) : v)) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
+function saveBoard(b) { try { localStorage.setItem(boardKeyFor(daily ? 1 : 0), JSON.stringify(b.slice(0, 10))); } catch (e) { } }
 loadGame();
 /* ---------- the run is cached on this device: resuming a stage costs a continue coin ---------- */
 const runKey = c => 'emberfall_run_v1_' + (c || CLS);
-function saveRun(stage) { try { localStorage.setItem(runKey(), JSON.stringify({ stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
+function saveRun(stage) { if (daily) return; try { localStorage.setItem(runKey(), JSON.stringify({ stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
 function loadRun(c) { try { const o = JSON.parse(localStorage.getItem(runKey(c)) || 'null'); return o && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
-function clearRun() { try { localStorage.removeItem(runKey()); } catch (e) { } }
+function clearRun() { if (daily) return; try { localStorage.removeItem(runKey()); } catch (e) { } }
 let resumeSel = 0, runInfo = null;
 function resumeRun() {
   const o = runInfo; coop = sel.coop; cycle = o.cycle | 0; resetGame(); rpg.coins = Math.max(0, (o.coins | 0) - 1); rpg.gold = o.gold | 0; score = o.score | 0; shop = null;
@@ -782,7 +814,12 @@ function endRun(won) {
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
-function toTitle() { coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
+function startDaily() {
+  daily = { date: dayStr(), mod: dayMod() }; coop = false; cycle = 0;
+  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
+  beginStage(0); msg = 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
+}
+function toTitle() { if (daily) { daily = null; boardView = 0; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
 function updateName() {
   if (isHit('left')) namePos = (namePos + 2) % 3; if (isHit('right')) namePos = (namePos + 1) % 3;
   if (isHit('up')) nameBuf[namePos] = (nameBuf[namePos] + 1) % 26; if (isHit('down')) nameBuf[namePos] = (nameBuf[namePos] + 25) % 26;
@@ -792,7 +829,7 @@ function updateName() {
     saveBoard(b); saveGame(); mode = 'board';
   }
 }
-function updateBoard() { if (isHit('start') || isHit('back')) toTitle(); }
+function updateBoard() { if (!daily && (isHit('left') || isHit('right'))) { boardView ^= 1; boardHi = -1; SFX.pick(); } if (isHit('start') || isHit('back')) toTitle(); }
 function makeLeather() {
   leatherCv = document.createElement('canvas'); leatherCv.width = 360; leatherCv.height = 242;
   const c = leatherCv.getContext('2d');
@@ -822,10 +859,11 @@ function drawBoardScreen() {
     if ((tickN >> 5) & 1) text('PRESS ENTER TO SIGN THE BOARD', W / 2, 232, 9, '#fff', 'center');
     return;
   }
-  text('LEATHERBOARD', W / 2, 44, 18, C, 'center');
-  text('HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
+  const bv = daily ? 1 : boardView;
+  text(bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
+  text(bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
   text('#', 80, 76, 7, '#b8935a'); text('NAME', 104, 76, 7, '#b8935a'); text('SCORE', 252, 76, 7, '#b8935a', 'right'); text('STAGE', 266, 76, 7, '#b8935a'); text('LV', 322, 76, 7, '#b8935a');
-  const b = loadBoard();
+  const b = loadBoard(bv);
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
     if (i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
@@ -834,7 +872,7 @@ function drawBoardScreen() {
     if (e) { text(e.n, 104, y, 9, col); text(String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
     else text('---', 104, y, 9, col);
   }
-  text('* = WORLD SAVED', 78, 240, 7, '#b8935a');
+  text(bv ? '* = FINISHED ALL 5 STAGES' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (mode === 'board' && !daily) text('A/D: ALL TIME / TODAY', 78, 250, 6, '#8a6a3a');
   if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
 }
 
@@ -877,6 +915,8 @@ function drawTip(it, cmp, x, y) {
   if (it.q != null) text('ROLL ' + it.q + '%', x + 146, y + 49, 8, it.q >= 85 ? '#ffd24a' : it.q >= 50 ? '#9affb8' : '#7a7088', 'right');
   let yy = y + 62;
   for (const k of STAT_KEYS) if (ist[k]) { text('+' + ist[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
+  if (it.ea) { text('+' + it.ea.v + '% ' + ELEM[it.ea.k].name + ' POWER', x + 8, yy, 8, ELEM[it.ea.k].col); yy += 12; }
+  if (it.er) { text('+' + it.er.v + '% ' + ELEM[it.er.k].name + ' RESIST', x + 8, yy, 8, ELEM[it.er.k].col2); yy += 12; }
   if (cmp !== undefined) {
     yy += 8; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
     for (const k of STAT_KEYS) { const d = (ist[k] || 0) - ((cst && cst[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
@@ -971,7 +1011,7 @@ function hurt(e, dmg, kind, from) {
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
   const dir = sgn(e.x - from.x) || -from.face;
   if (!e.pn && e.el && e.el.frz > 0 && elemTier() >= 4) dmg = Math.round(dmg * 1.2); // frozen foes are brittle
-  if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1)));
+  if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (dailyIs('GLASS CANNON') ? 1.5 : 1) * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1) * (1 - elemResist(hitEl || from.el || ENEMY_EL[from.kind]))));
   if (!e.pn && e.barrier > 0 && e.kind !== 'imp') { // arcane barrier: no damage gets through until it shatters; heavy blows crack it fastest
     const d = kind === 'down' ? dmg : Math.max(1, Math.round(dmg * 0.35));
     e.barrier -= d; e.bflash = 6; e.blockT = tickN; lastEnemy = e; freeze = Math.max(freeze, 2);
@@ -1023,7 +1063,7 @@ function hurt(e, dmg, kind, from) {
   else if (!isBoss(e)) { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
   return true;
 }
-const elBase = () => 9 * pstats().mult;
+const elBase = () => 9 * pstats().mult * (1 + elemPower() / 100);
 function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0 }); }
 function elNear(e, r) { return enemies.filter(o => o !== e && !o.dead && o.kind !== 'imp' && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.6); }
 function elDmg(e, d, col) { // status damage: no knock-back, no invulnerability frames; a kill falls through the normal death path
@@ -1041,14 +1081,14 @@ function elemBuild(e, el, amt, T, noSpread) {
   const base = elBase(), col = ELEM[el].col, cap = isBoss(e) ? 0.4 : 1;
   if (el === 'fire') {
     S.burn = [0, 150, 200, 200, 220, 240, 260, 300][T]; S.bst = T >= 5 ? Math.min(3, S.bst + 1) : 1;
-    floatText(e.x, e.y - e.h - 10, 'IGNITED', col, 8); spawn(e.x, e.y, e.h * 0.5, 8, { c: ['#ffd070', '#ff7a2a'], l0: 10, l1: 22, add: true, size: 2, up: 1.5 });
+    floatText(e.x, e.y - e.h - 10, 'IGNITED', col, 8); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 8, { c: ['#ffd070', '#ff7a2a'], l0: 10, l1: 22, add: true, size: 2, up: 1.5 });
     if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 45, T, true);
     if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 3, col);
   } else if (el === 'frost') {
-    if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); }
+    if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); SFX.freeze(); }
     else if (S.cd <= 0) {
       S.frz = Math.round([0, 0, 0, 54, 54, 80, 80, 100][T] * cap); S.cd = isBoss(e) ? 420 : 0; S.chill = 150;
-      floatText(e.x, e.y - e.h - 10, 'FROZEN', col, 8); spawn(e.x, e.y, e.h * 0.5, 10, { c: ['#e8faff', '#7ad8ff'], l0: 12, l1: 26, add: true, size: 2, up: 1.2 });
+      floatText(e.x, e.y - e.h - 10, 'FROZEN', col, 8); SFX.freeze(); spawn(e.x, e.y, e.h * 0.5, 10, { c: ['#e8faff', '#7ad8ff'], l0: 12, l1: 26, add: true, size: 2, up: 1.2 });
       if (T >= 6 && !noSpread) for (const o of elNear(e, 55)) elemBuild(o, 'frost', 50, T, true);
     } else { S.chill = 150; }
   } else {
@@ -1056,13 +1096,13 @@ function elemBuild(e, el, amt, T, noSpread) {
     elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#c8a8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
     if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
-    spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.hit();
+    spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
   }
 }
 function elemHit(e, att, kind, crit) { // called after one of the hero's hits lands
   const T = elemTier(); if (!T || e.dead || e.pn) return; const el = rpg.elem, cls = att.k && att.k.cls;
   let amt = (kind === 'down' ? 38 : 24) * (cls === 'panni' ? 1.2 : 1) * (crit ? (cls === 'luca' ? 1.5 : 1.25) : 1) * (el === 'frost' && T >= 2 ? 1.25 : 1);
-  elemBuild(e, el, amt, T);
+  elemBuild(e, el, amt * (1 + elemPower() / 100), T);
 }
 function elemTick(e) { // once per frame per afflicted monster; true when it loses this frame (frozen, stunned, slowed)
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
@@ -1083,8 +1123,13 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
 }
 function elemDeath(e) { // burning foes erupt, frozen foes shatter
   const S = e.el, T = elemTier(); if (!S || !T) return;
-  if (S.burn > 0 && T >= 4) { for (const o of elNear(e, 48)) elDmg(o, elBase() * ELEM_PT[T] * 3, ELEM.fire.col); spawn(e.x, e.y, 14, 14, { c: ['#ffd070', '#ff7a2a'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
-  if (S.frz > 0 && T >= 7) { for (const o of elNear(e, 52)) elDmg(o, elBase() * ELEM_PT[T] * 4, ELEM.frost.col); spawn(e.x, e.y, 14, 14, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+  if (S.burn > 0 && T >= 4) { SFX.big(); for (const o of elNear(e, 48)) elDmg(o, elBase() * ELEM_PT[T] * 3, ELEM.fire.col); spawn(e.x, e.y, 14, 14, { c: ['#ffd070', '#ff7a2a'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+  if (S.frz > 0 && T >= 7) { SFX.shatter(); for (const o of elNear(e, 52)) elDmg(o, elBase() * ELEM_PT[T] * 4, ELEM.frost.col); spawn(e.x, e.y, 14, 14, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+}
+function gearSparks() { // forged gear (+5 and more) throws golden sparks, more with every level
+  if (tickN % 6) return;
+  for (const p of players()) { const u = p.k && p.k.gup; if (!u || u < 5 || p.dead || Math.random() > 0.25 * (u - 3)) continue;
+    spawn(p.x + rnd(-8, 8), p.y, rnd(6, 38), 1, { c: ['#fff1b0', '#ffd24a'], l0: 12, l1: 24, add: true, size: 1, up: 0.8, g: -0.01 }); }
 }
 function elemAura() { // tier VI fire: a ring of fire pulses around each hero
   if (elemTier() < 6 || rpg.elem !== 'fire' || tickN % 240) return;
@@ -1094,8 +1139,13 @@ function elemAura() { // tier VI fire: a ring of fire pulses around each hero
 function openChest(c, att) {
   c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
   if (c.hp > 0) return;
-  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1)); rpg.gold += gd; score += gd * 5;
+  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1)); rpg.gold += gd; score += gd * 5;
   floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
+  if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
+  if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
+    const n = 2 + (stageIdx >= 5 ? 1 : 0); for (let i = 0; i < n; i++) { const f = spawnFoe(i === 2 && stageIdx >= 5 ? 'b' : 'h', c.x + (i % 2 ? 40 : -40) + i * 6, false); f.y = clamp(c.y + (i - 1) * 8, Y_MIN, Y_MAX); }
+    floatText(c.x, c.y - 36, 'IT WAS A TRAP!', '#ff6a6a', 9); SFX.big(); shake = Math.max(shake, 5); flashA = Math.max(flashA, 0.15);
+  }
   spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
   if (Math.random() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
 }
@@ -1573,7 +1623,7 @@ function dragonImpact() {
 
 /* ---------- campaign flow: story screens, stages ---------- */
 /* ---------- pause menu ---------- */
-const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'LANGUAGE', 'SKILLS', 'CONTROLS', 'QUIT TO TITLE'];
+const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'LANGUAGE', 'SKILLS', 'CONTROLS', 'ELEMENTS', 'QUIT TO TITLE'];
 let pauseI = 0, pausePg = 0;
 function openPause() { mode = 'pause'; pauseI = 0; pausePg = 0; SFX.pick(); }
 function updatePause() {
@@ -1590,7 +1640,8 @@ function updatePause() {
   else if (pauseI === 4) { setLang(LANG === 'hu' ? 'en' : 'hu'); SFX.pick(); }
   else if (pauseI === 5) pausePg = 2;
   else if (pauseI === 6) pausePg = 1;
-  else if (pauseI === 7) { saveGame(); toTitle(); }
+  else if (pauseI === 7) pausePg = 3;
+  else if (pauseI === 8) { saveGame(); toTitle(); }
 }
 function drawPause() {
   g.fillStyle = 'rgba(4,2,10,0.72)'; g.fillRect(0, 0, W, H);
@@ -1600,13 +1651,24 @@ function drawPause() {
     L.forEach((t, i) => text(t, W / 2 - 96, 78 + i * 13, 8, '#e8dcc8', 'left'));
     text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
+  if (pausePg === 3) { // how the elements work
+    const E = rpg.elem && ELEM[rpg.elem], T = elemTier(), L = [];
+    L.push(['HITS BUILD UP A STATUS ON FOES;', '#e8dcc8']); L.push(['AT 100 IT TRIGGERS. A NEW TIER EVERY 10 LEVELS.', '#e8dcc8']);
+    L.push(['FIRE: BURNING.  FROST: CHILL, FREEZE.', '#e8dcc8']); L.push(['LIGHTNING: ARCS AND STUN.', '#e8dcc8']);
+    L.push(['MONSTERS ARE WEAK (GREEN) OR', '#9aff9a']); L.push(['RESISTANT (RED) - NEVER IMMUNE.', '#ff9a9a']);
+    L.push([rpg.lvl < 10 ? 'REACH LEVEL 10, THEN SEE THE BLACKSMITH.' : E ? 'YOURS: ' + E.name + ' TIER ' + ROMAN[T] : 'PICK YOUR ELEMENT AT THE BLACKSMITH.', E ? E.col : '#ffd24a']);
+    if (E) L.push([ELEM_TIERS[rpg.elem][T - 1], E.col2]);
+    L.push(['GEAR: +% POWER FOR YOUR ELEMENT, +% RESIST', '#8fb8ff']); L.push(['AGAINST FIRE, FROST OR LIGHTNING FOES.', '#8fb8ff']);
+    L.forEach(([t, c], i) => text(t, W / 2 - 100, 70 + i * 12, 7, c, 'left'));
+    text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
+  }
   if (pausePg === 2) {
     const cur = skillOf(hero);
     SKILLS.forEach((k, i) => { const on = k.lv <= rpg.lvl, y = 80 + i * 18; text('LV ' + k.lv, W / 2 - 96, y, 8, on ? '#8cc4ff' : '#4a4a5a', 'left'); text(k.name, W / 2 - 60, y, 9, on ? (cur === k ? '#ffd24a' : '#e8dcc8') : '#4a4a5a', 'left'); if (!on) text('LOCKED', W / 2 + 96, y, 7, '#4a4a5a', 'right'); else if (cur === k) text('ACTIVE', W / 2 + 96, y, 7, '#ffd24a', 'right'); });
     text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
-    const sel = i === pauseI, y = 74 + i * 18, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
+    const sel = i === pauseI, y = 72 + i * 16, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : null;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
@@ -1730,7 +1792,7 @@ function beginStage(i) {
     else for (let x = 520 + (i * 37) % 120, k = 0; x < stop && k < n; x += 330 + ((i * 53 + k * 71) % 200), k++) { const pit = (i + k) % 3 !== 0; gaps.push({ x, w: pit ? 34 + ((i + k) * 13) % 9 : 14, type: pit ? 'pit' : 'wall' }); } }
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
-    for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < 4; x += 380 + Math.random() * 260, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: 2 }); }
+    const td = dailyIs('TREASURE DAY'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1), k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(), type = r < (dailyIs('TREASURE DAY') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
@@ -1901,6 +1963,7 @@ function stageCleared() {
 }
 function afterClear() {
   const S = STAGES[stageIdx];
+  if (daily && stageIdx >= DAILY_STAGES - 1) { score += 5000; mode = 'victory'; endTimer = 0; TH = THEMES[4]; return; }
   if (stageIdx < STAGES.length - 1) saveRun(stageIdx + 1);
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme, actOf(stageIdx + 1));
   else openStory(cycle === 0 ? 'THE END' : 'CYCLE ' + (cycle + 1) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
@@ -2072,7 +2135,7 @@ function bossAttack(e, dx, p2) {
 function updateShots() {
   const realHero = hero;
   for (const s of shots) {
-    s.t++; hero = nearestPlayer(s.x);
+    s.t++; hero = nearestPlayer(s.x); hitEl = SHOT_EL[s.type] || null;
     const dx = hero.x - s.x, dy = hero.y - s.y;
     if (s.type === 'orb' || s.type === 'bolt') {
       s.x += s.vx;
@@ -2134,7 +2197,7 @@ function updateShots() {
       s.hit.add(c); openChest(c); if (s.type === 'mbolt' && !s.big) s.dead = true;
     }
   }
-  hero = realHero;
+  hitEl = null; hero = realHero;
   shots = shots.filter(s => !s.dead);
 }
 function drawShots() {
@@ -2241,6 +2304,8 @@ function buildList(w) { // later stages and cycles throw bigger crowds
 function spawnFoe(t, x, hasBoss) {
   const f = makeFighter(t, x, rnd(Y_MIN + 6, Y_MAX - 6)), tn = STAGES[stageIdx].tint;
   if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn);
+  if (dailyIs('IRON FOES')) { f.hp = f.maxhp = Math.round(f.maxhp * 1.5); }
+  if (dailyIs('SWIFT FOES')) f.k = Object.assign({}, f.k, { spd: f.k.spd * 1.2 });
   if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && Math.random() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
     f.elite = true; f.glow = '255,200,80'; f.hp = f.maxhp = Math.round(f.maxhp * 1.8); f.h = Math.round(f.h * 1.12);
     f.k = Object.assign({}, f.k, { name: 'ELITE ' + f.k.name, scale: f.k.scale * 1.12, spd: f.k.spd * 1.15, armor2: '#ffd24a' });
@@ -2321,7 +2386,7 @@ function updateVents() {
       if (t % 2 === 0) spawn(v.x, v.y, 4, 3, { s0: 0.3, s1: 1, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 10, l1: 22, add: true, size: 2, up: 3.4, g: 0.1 });
       for (const f of [...enemies, ...players()]) {
         if (f.dead || v.hit.has(f) || f.z > 60 || f.mount) continue;
-        if (Math.abs(f.x - v.x) < 18 && Math.abs(f.y - v.y) < 10) { v.hit.add(f); hurt(f, f.pn ? 9 : 14, 'down', { x: v.x, face: 1, pn: 0 }); if (f.pn) floatText(f.x, f.y - 50, 'SCORCHED', '#ff8a2a', 8); }
+        if (Math.abs(f.x - v.x) < 18 && Math.abs(f.y - v.y) < 10) { v.hit.add(f); hitEl = 'fire'; hurt(f, f.pn ? 9 : 14, 'down', { x: v.x, face: 1, pn: 0 }); hitEl = null; if (f.pn) floatText(f.x, f.y - 50, 'SCORCHED', '#ff8a2a', 8); }
       }
     } else if (t >= 70 && t < 100 && t % 5 === 0 && Math.abs(v.x - cam - W / 2) < W) spawn(v.x, v.y, 2, 1, { s0: 0.2, s1: 0.5, c: '#ffb43a', l0: 8, l1: 14, add: true, size: 1, up: 1, g: 0 });
   }
@@ -2383,6 +2448,7 @@ function step() {
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
+    else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openSelect(false, true); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
@@ -2403,14 +2469,14 @@ function step() {
     }
     return;
   }
-  if (mode === 'victory') { endTimer++; updateParts(); if (endTimer > 30) { if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
+  if (mode === 'victory') { endTimer++; updateParts(); if (endTimer > 30) { if (daily) { if (isHit('start') || isHit('back')) endRun(true); } else if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
   if (isHit('pause') && !hero.dead && !dragon) { openPause(); return; }
   if (isHit('inv') && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
   for (const p of players()) withHero(p, () => updateHero(p));
-  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura();
+  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
@@ -2882,10 +2948,12 @@ function drawChests() {
   for (const c of chests) {
     const x = Math.round(c.x - cam + (c.shake > 0 ? (c.shake-- % 2 ? 1 : -1) : 0)), y = Math.round(c.y); if (x < -20 || x > W + 20) continue;
     g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 11, 3.5, 0, 0, 7); g.fill();
+    const gd = c.type === 'gold', cb = gd ? '#c8a020' : '#7a4a22', ch = gd ? '#ffe066' : '#9a6430', cl = gd ? '#a07a10' : '#6a3c1a';
+    if (gd && !c.open) { g.globalCompositeOperation = 'lighter'; glowDot(g, x, y - 8, 22 + Math.sin(tickN * 0.1) * 2, '255,210,80', 0.35); g.globalCompositeOperation = 'source-over'; }
     g.fillStyle = '#0a0610'; g.fillRect(x - 10, y - 14, 20, 14);
-    g.fillStyle = '#7a4a22'; g.fillRect(x - 9, y - 9, 18, 8); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 9, 18, 2);
-    if (c.open) { g.fillStyle = '#ffd24a'; g.fillRect(x - 7, y - 11, 14, 3); g.fillStyle = '#7a4a22'; g.fillRect(x - 9, y - 19, 18, 4); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 19, 18, 1); }
-    else { g.fillStyle = '#6a3c1a'; g.fillRect(x - 9, y - 14, 18, 6); g.fillStyle = '#9a6430'; g.fillRect(x - 9, y - 14, 18, 1); g.fillStyle = '#c8a040'; g.fillRect(x - 1, y - 11, 3, 5); g.fillRect(x - 9, y - 12, 18, 1); if ((tickN >> 4) % 6 === 0) { g.fillStyle = '#fff1b0'; g.fillRect(x + 5, y - 15, 2, 2); } }
+    g.fillStyle = cb; g.fillRect(x - 9, y - 9, 18, 8); g.fillStyle = ch; g.fillRect(x - 9, y - 9, 18, 2);
+    if (c.open) { g.fillStyle = '#ffd24a'; g.fillRect(x - 7, y - 11, 14, 3); g.fillStyle = cb; g.fillRect(x - 9, y - 19, 18, 4); g.fillStyle = ch; g.fillRect(x - 9, y - 19, 18, 1); }
+    else { g.fillStyle = cl; g.fillRect(x - 9, y - 14, 18, 6); g.fillStyle = ch; g.fillRect(x - 9, y - 14, 18, 1); g.fillStyle = '#c8a040'; g.fillRect(x - 1, y - 11, 3, 5); g.fillRect(x - 9, y - 12, 18, 1); if ((tickN >> 4) % 6 === 0) { g.fillStyle = '#fff1b0'; g.fillRect(x + 5, y - 15, 2, 2); } }
   }
 }
 function drawItems() {
@@ -3107,6 +3175,20 @@ function drawWyrm(f, sx, sy) {
     if ((tickN >> 1) & 1) { g.fillStyle = '#ff3b2a'; g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - 112), 3, 7); g.fillRect(Math.round(sx) - 1, Math.round(sy - f.z - 103), 3, 2); }
   }
 }
+function drawElemIcon(el, x, y) { // 7x7 pixel glyphs: flame, snowflake, bolt
+  const c = ELEM[el].col, w = ELEM[el].col2; g.fillStyle = '#0a0610'; g.fillRect(x - 1, y - 1, 9, 9);
+  if (el === 'fire') { g.fillStyle = c; g.fillRect(x + 2, y, 2, 2); g.fillRect(x + 1, y + 2, 4, 3); g.fillRect(x, y + 4, 6, 2); g.fillStyle = w; g.fillRect(x + 2, y + 4, 2, 3); }
+  else if (el === 'frost') { g.fillStyle = c; g.fillRect(x + 3, y, 1, 7); g.fillRect(x, y + 3, 7, 1); g.fillStyle = w; g.fillRect(x + 1, y + 1, 1, 1); g.fillRect(x + 5, y + 1, 1, 1); g.fillRect(x + 1, y + 5, 1, 1); g.fillRect(x + 5, y + 5, 1, 1); }
+  else { g.fillStyle = c; g.fillRect(x + 3, y, 3, 1); g.fillRect(x + 2, y + 1, 2, 1); g.fillRect(x + 1, y + 2, 3, 1); g.fillRect(x + 2, y + 3, 4, 1); g.fillRect(x + 3, y + 4, 2, 1); g.fillRect(x + 2, y + 5, 2, 1); g.fillStyle = w; g.fillRect(x + 3, y + 2, 1, 1); }
+}
+function drawElemTags(e, x, y, right) { // weak (green up-arrow) and resistant (red down-arrow) elements of a monster, shown beside its health bar
+  const t = ELEM_RES[e.kind]; if (!t) return; let i = 0;
+  for (const el of ELEMS) {
+    const v = t[el]; if (!v || (v > 0.9 && v < 1.1)) continue; const xx = right ? x - i * 18 : x + i * 18; i++;
+    drawElemIcon(el, xx, y); g.fillStyle = v > 1 ? '#7aff9a' : '#ff6a6a';
+    if (v > 1) { g.fillRect(xx + 9, y + 1, 1, 5); g.fillRect(xx + 8, y + 2, 3, 1); } else { g.fillRect(xx + 9, y + 1, 1, 5); g.fillRect(xx + 8, y + 4, 3, 1); }
+  }
+}
 function drawHUD() {
   if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
@@ -3123,16 +3205,16 @@ function drawHUD() {
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); drawCoins(W - 46, 46, rpg.coins, 14);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
-  if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); }
+  if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
   else text((cycle ? 'CYCLE ' + (cycle + 1) + '  ' : '') + 'STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, cycle ? '#e0a8ff' : '#b8a8c8', 'center');
   if (stageCard > 0) { const a = Math.min(1, stageCard / 40, (190 - stageCard) / 25); g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(0, 92, W, 70); text((cycle ? 'CYCLE ' + (cycle + 1) + '  ' : '') + 'STAGE ' + (stageIdx + 1), W / 2, 114, 12, '#ffb43a', 'center'); text(STAGES[stageIdx].name, W / 2, 138, 20, '#fff1d0', 'center'); text(STAGES[stageIdx].tag, W / 2, 154, 8, '#c9a8ff', 'center'); g.globalAlpha = 1; }
-  if (lastEnemy && lastEnemy !== bossRef && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); if (lastEnemy.barrier > 0) bar(W - 142, 30, 130, 4, lastEnemy.barrier, lastEnemy.bmax, '#9ae8ff', '#1a2440'); }
+  if (lastEnemy && lastEnemy !== bossRef && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); if (lastEnemy.barrier > 0) bar(W - 142, 30, 130, 4, lastEnemy.barrier, lastEnemy.bmax, '#9ae8ff', '#1a2440'); if (rpg.lvl >= 10) drawElemTags(lastEnemy, W - 160, 21, true); }
   if (goBlink > 0 && (goBlink >> 4) & 1) { text('GO', W - 40, 120, 18, '#fff1b0', 'center'); g.fillStyle = '#fff1b0'; g.beginPath(); g.moveTo(W - 22, 105); g.lineTo(W - 8, 115); g.lineTo(W - 22, 125); g.fill(); }
   if (msgT > 0) { g.globalAlpha = Math.min(1, msgT / 30); text(msg, W / 2, 88, msg.length > 10 ? 14 : 18, '#ff8a4a', 'center'); g.globalAlpha = 1; }
 }
 
 const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
-let donateBox = null, langBox = null;
+let donateBox = null, langBox = null, dailyBox = null;
 function drawDonate(y) {
   const t = tr('LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D');
   g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
@@ -3144,8 +3226,9 @@ function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } c
 screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !langBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !langBox && !dailyBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
+  if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openSelect(false, true); return; }
   if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
@@ -3158,9 +3241,10 @@ addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 /* ---------- hero select ---------- */
 let selBoxes = [];
-function openSelect(two) { coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
+function openSelect(two, dly) { sel.daily = !!dly; coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
 function confirmSelect() {
   setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
+  if (sel.daily) { sel.daily = false; startDaily(); return; }
   runInfo = loadRun(); if (runInfo) { resumeSel = runInfo.coins > 0 ? 0 : 1; mode = 'resume'; SFX.pick(); return; }
   startCampaign(sel.coop);
 }
@@ -3206,8 +3290,11 @@ function drawTitleOverlay() {
   g.fillStyle = gr; g.fillText('EMBERFALL', W / 2, y);
   text('THE ASHEN VOW', W / 2, y + 22, 12, '#c9a8ff', 'center');
   if ((tickN >> 5) & 1) text('ENTER: 1 PLAYER     2: CO-OP', W / 2, 190, 12, '#ffffff', 'center');
-  text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
-  text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
+  { const dt = tr('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name); g.font = '8px "Courier New",monospace'; const dw = g.measureText(dt).width + 12; dailyBox = { x: W / 2 - dw / 2, y: 196, w: dw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.6)'; g.fillRect(dailyBox.x, dailyBox.y, dw, 13); g.strokeStyle = '#8a6a1a'; g.strokeRect(dailyBox.x + 0.5, dailyBox.y + 0.5, dw - 1, 12); text('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name, W / 2, 205, 8, '#ffd24a', 'center'); }
+  if (!window.touchActive) { // the keyboard hints would sit under the touch buttons, so touch players do not see them
+    text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
+    text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
+  }
   drawDonate(H - 12);
   { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10; langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12); text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
@@ -3215,7 +3302,7 @@ function drawTitleOverlay() {
 }
 
 function render() {
-  donateBox = null; langBox = null;
+  donateBox = null; langBox = null; dailyBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -3350,7 +3437,7 @@ function initTouch() {
   stick.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); stick.setPointerCapture(e.pointerId); dir(e); });
   stick.addEventListener('pointermove', e => { if (e.buttons || e.pressure > 0) dir(e); });
   stick.addEventListener('pointerup', rel); stick.addEventListener('pointercancel', rel);
-  const show = () => { for (const d of all) d.classList.add('on'); };
+  const show = () => { window.touchActive = true; for (const d of all) d.classList.add('on'); };
   if ((window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window) show();
   addEventListener('touchstart', show, { once: true, passive: true });
 }
