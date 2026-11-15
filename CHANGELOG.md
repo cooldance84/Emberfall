@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.4] - 2026-11-15
+- Dragon's Wrath now needs both full mana (60) and at least one Ember Jar. The HUD tells you when only the jar is missing.
+
 ## [1.19.3] - 2026-11-15
 - The Blacksmith marks worn items with an EQUIPPED label, in the list and above the item card.
 

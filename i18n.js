@@ -4,6 +4,7 @@
 
 /* whole sentences (story, tags, tooltips): matched exactly */
 const HU_EXACT = {
+  "WRATH NEEDS AN EMBER JAR": "A HARAGHOZ PARÁZSKANCSÓ KELL",
   "FORGE YOUR GEAR UP TO +7 FOR GOLD": "KOVÁCSOLD A FELSZERELÉSED +7-IG ARANYÉRT",
   "NOTHING TO FORGE": "NINCS MIT KOVÁCSOLNI",
   /* elements */
