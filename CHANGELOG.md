@@ -2,8 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.25.2] - 2026-11-15
+- Discarding on a phone: only legendary and mythic items ask for a second tap; everything else is dropped at once. (Moved from 1.25.1's wording.)
+
 ## [1.25.1] - 2026-11-15
-- Phones can finally discard items: in the backpack tap JUMP twice on the selected item (the first tap only asks, so a slip never costs an item). The hints in the backpack show the touch buttons on touch devices.
+- Phones can finally discard items: in the backpack tap JUMP on the selected item. Legendary and mythic items ask first (tap JUMP again within two seconds), everything else goes at once. The hints in the backpack show the touch buttons on touch devices.
 - The browser's own page translation is switched off for the game and its touch buttons (it garbled the button labels); use the in-game language setting instead.
 
 ## [1.25.0] - 2026-11-15

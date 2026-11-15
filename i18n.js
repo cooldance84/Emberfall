@@ -259,7 +259,7 @@ const HU_PHRASE = { "TRIAL": "PRÓBA",
 };
 
 /* word-order rules for strings with numbers and names in them */
-Object.assign(HU_EXACT, { "OK     EQUIP/UNEQUIP": "OK     FELVESZ/LEVESZ", "JUMP   DISCARD (2X)": "UGRÁS  ELDOB (2X)", "GEAR   CLOSE": "FELSZ. BEZÁR", "TAP JUMP AGAIN TO DISCARD": "ELDOBÁSHOZ KATTINTS ÚJRA: UGRÁS", "VS STATUS": "ÁLLAPOT ELLEN", "TRIAL": "PRÓBA", "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
+Object.assign(HU_EXACT, { "OK     EQUIP/UNEQUIP": "OK     FELVESZ/LEVESZ", "JUMP   DISCARD": "UGRÁS  ELDOB", "GEAR   CLOSE": "FELSZ. BEZÁR", "TAP JUMP AGAIN TO DISCARD": "ELDOBÁSHOZ NYOMD MEG ÚJRA: UGRÁS", "VS STATUS": "ÁLLAPOT ELLEN", "TRIAL": "PRÓBA", "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
 const HU_RULES = [
   [/^TRIAL ([IVX+0-9]+) COMPLETE$/, m => m[1] + ". PRÓBA KÉSZ"],
   [/^TRIAL ([IVX+0-9]+)$/, m => "PRÓBA " + m[1]],

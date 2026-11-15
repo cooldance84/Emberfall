@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.25.1';
+const VERSION = '1.25.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -997,9 +997,9 @@ function updateInv() {
     }
   }
   if ((pressed.KeyX || pressed.Delete) && inv.z === 'bag' && rpg.bag[inv.i]) { rpg.bag.splice(inv.i, 1); saveGame(); SFX.hit(); }
-  else if (pressed.TJump && inv.z === 'bag' && rpg.bag[inv.i]) { // on a phone the JUMP button discards, but only on the second tap, so a slip never costs an item
+  else if (pressed.TJump && inv.z === 'bag' && rpg.bag[inv.i]) { // on a phone the JUMP button discards; legendary and mythic items ask first (a second tap), the rest go at once
     const it = rpg.bag[inv.i];
-    if (inv.dc === it && invNoteT > 0) { rpg.bag.splice(inv.i, 1); inv.dc = null; invNoteT = 0; saveGame(); SFX.hit(); }
+    if (it.rar < 3 || (inv.dc === it && invNoteT > 0)) { rpg.bag.splice(inv.i, 1); inv.dc = null; invNoteT = 0; saveGame(); SFX.hit(); }
     else { inv.dc = it; invNote = 'TAP JUMP AGAIN TO DISCARD'; invNoteT = 120; SFX.land(); }
   }
 }
@@ -1019,7 +1019,7 @@ function drawInv() {
   for (let i = 0; i < BAG_MAX; i++) { const [x, y] = bagPos(i); slotBox(x, y, rpg.bag[i], inv.z === 'bag' && inv.i === i); }
   text('ITEMS ' + rpg.bag.length + '/' + BAG_MAX, 251, 164, 8, '#8a7a9a', 'center');
   if (invNoteT > 0) text(invNote, 251, 226, 8, '#ff6a6a', 'center');
-  text(IS_TOUCH ? 'OK     EQUIP/UNEQUIP' : 'ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text(IS_TOUCH ? 'JUMP   DISCARD (2X)' : 'X      DISCARD', 192, 196, 7, '#b8a8c8'); text(IS_TOUCH ? 'GEAR   CLOSE' : 'I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
+  text(IS_TOUCH ? 'OK     EQUIP/UNEQUIP' : 'ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text(IS_TOUCH ? 'JUMP   DISCARD' : 'X      DISCARD', 192, 196, 7, '#b8a8c8'); text(IS_TOUCH ? 'GEAR   CLOSE' : 'I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
   drawCoins(198, 240, rpg.coins, 14); text('COINS', 244, 244, 7, '#b8a8c8');
   const it = invItem();
   drawTip(it, inv.z === 'bag' && it ? (rpg.eq[it.slot] || null) : undefined, 324, 6);
