@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.21.0';
+const VERSION = '1.21.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -670,8 +670,9 @@ const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS); const R = RARITY[rar];
   const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV); // drops land around your level; now and then a find a few levels above it
-  const Q = Math.random() ** 1.5, qm = 0.7 + 0.8 * Q; // roll quality: mostly average, rarely perfect. A great legendary can beat a poor mythic
-  const sc = k => (k === 'str' || k === 'cdmg') ? 1 + il * 0.045 : 1 + il * 0.012;
+  const Q = Math.random() ** 1.5, qm = 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic
+  const lc = Math.pow(il / 70, 1.6); // item level counts more than before: same strength at level 70, clearly weaker below it
+  const sc = k => (k === 'str' || k === 'cdmg') ? 1 + 3.15 * lc : 1 + 0.84 * lc;
   const first = pickOf(SLOT_PRIMARY[slot]);
   const keys = [first, ...STAT_KEYS.filter(k => k !== first).sort(() => Math.random() - 0.5)];
   const n = R.n[0] + (R.n[1] > R.n[0] ? (Math.random() * (R.n[1] - R.n[0] + 1) | 0) : 0);

@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.21.1] - 2026-11-15
+- Item level matters more: a level 50 item is now clearly stronger than a level 35 one of the same rarity (about 30% more instead of 22%, and it wins 80% of the time instead of 68%). Level 70 items are unchanged; lower-level items are a bit weaker than before, so the climb feels steeper.
+- The roll quality range is a little narrower (a poor roll hurts less), a great legendary still beats a poor mythic about one time in ten.
+- Items you already own keep their stats.
+
 ## [1.21.0] - 2026-11-15
 - Elements are now earned, not just given by level. Choosing an element at the Blacksmith is free and starts at tier I; every further tier (one more unlocks each 10 levels) is bought with gold: II 364, III 696, IV 1103, V 1597, VI 2174, VII 2830.
 - To switch element you first dismiss the current one at the Blacksmith (it asks you to press Enter twice). You get 75% of the gold you put into it back, and the next element starts again at tier I.
