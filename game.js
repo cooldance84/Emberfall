@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.1';
+const VERSION = '1.19.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -553,6 +553,27 @@ const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
 const pickOf = a => a[Math.random() * a.length | 0];
 const ELEMS = ['fire', 'frost', 'bolt'];
+/* ---------- elemental specialisation: fire, frost or lightning, unlocked at level 10, a new tier every 10 levels ---------- */
+const ELEM = {
+  fire: { name: 'FIRE', col: '#ff7a2a', col2: '#ffd070', rgb: '255,130,40', info: 'BURNING: DAMAGE OVER TIME' },
+  frost: { name: 'FROST', col: '#7ad8ff', col2: '#e8faff', rgb: '120,210,255', info: 'CHILL, THEN DEEP FREEZE' },
+  bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '200,170,255', info: 'ARCS THAT SHOCK AND STUN' }
+};
+const ELEM_TIERS = {
+  fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES'],
+  frost: ['CHILL: SLOWS ENEMIES', 'FASTER FROST BUILDUP', 'DEEP FREEZE: SHORT STASIS', 'FROZEN FOES TAKE +20% DAMAGE', 'LONGER FREEZE, DEEPER CHILL', 'FREEZING SPREADS A FROST BURST', 'FROZEN FOES SHATTER ON DEATH'],
+  bolt: ['ARCS LEAP TO A NEARBY FOE', 'LONGER, STRONGER ARCS', 'SHOCK: BRIEF STUN', 'ARCS HIT 2 FOES', 'LONGER STUN', 'LIGHTNING STRIKES THE TARGET', 'ARCS HIT 3 FOES']
+};
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09]; // status damage as a share of one normal hit
+// weakness (>1) and resistance (<1) by monster: never below 0.4 or above 1.4, so nothing is immune and nothing is helpless
+const ELEM_RES = {
+  boss: { fire: 0.6, frost: 1.25 }, witch: { fire: 1.25, bolt: 0.6 }, smith: { fire: 0.6, frost: 1.25 }, king: { bolt: 1.25, frost: 0.7 }, wyrm: { fire: 0.5, frost: 1.3 },
+  wisp: { fire: 1.25, bolt: 0.7 }, runner: { frost: 1.25, fire: 0.75 }, guard: { bolt: 1.25, frost: 0.75 }, wraith: { frost: 1.25, fire: 0.6 },
+  archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
+};
+const elemTier = () => rpg.elem && rpg.lvl >= 10 ? clamp(Math.floor(rpg.lvl / 10), 1, 7) : 0;
+const elemCost = () => 250 + rpg.lvl * 12; // gold to change element at the Blacksmith; the first choice is free
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null };
 let PS = null, floats = [];
 
@@ -1002,27 +1023,6 @@ function hurt(e, dmg, kind, from) {
   else if (!isBoss(e)) { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
   return true;
 }
-/* ---------- elemental specialisation: fire, frost or lightning, unlocked at level 10, a new tier every 10 levels ---------- */
-const ELEM = {
-  fire: { name: 'FIRE', col: '#ff7a2a', col2: '#ffd070', rgb: '255,130,40', info: 'BURNING: DAMAGE OVER TIME' },
-  frost: { name: 'FROST', col: '#7ad8ff', col2: '#e8faff', rgb: '120,210,255', info: 'CHILL, THEN DEEP FREEZE' },
-  bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '200,170,255', info: 'ARCS THAT SHOCK AND STUN' }
-};
-const ELEM_TIERS = {
-  fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES'],
-  frost: ['CHILL: SLOWS ENEMIES', 'FASTER FROST BUILDUP', 'DEEP FREEZE: SHORT STASIS', 'FROZEN FOES TAKE +20% DAMAGE', 'LONGER FREEZE, DEEPER CHILL', 'FREEZING SPREADS A FROST BURST', 'FROZEN FOES SHATTER ON DEATH'],
-  bolt: ['ARCS LEAP TO A NEARBY FOE', 'LONGER, STRONGER ARCS', 'SHOCK: BRIEF STUN', 'ARCS HIT 2 FOES', 'LONGER STUN', 'LIGHTNING STRIKES THE TARGET', 'ARCS HIT 3 FOES']
-};
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09]; // status damage as a share of one normal hit
-// weakness (>1) and resistance (<1) by monster: never below 0.4 or above 1.4, so nothing is immune and nothing is helpless
-const ELEM_RES = {
-  boss: { fire: 0.6, frost: 1.25 }, witch: { fire: 1.25, bolt: 0.6 }, smith: { fire: 0.6, frost: 1.25 }, king: { bolt: 1.25, frost: 0.7 }, wyrm: { fire: 0.5, frost: 1.3 },
-  wisp: { fire: 1.25, bolt: 0.7 }, runner: { frost: 1.25, fire: 0.75 }, guard: { bolt: 1.25, frost: 0.75 }, wraith: { frost: 1.25, fire: 0.6 },
-  archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
-};
-const elemTier = () => rpg.elem && rpg.lvl >= 10 ? clamp(Math.floor(rpg.lvl / 10), 1, 7) : 0;
-const elemCost = () => 250 + rpg.lvl * 12; // gold to change element at the Blacksmith; the first choice is free
 const elBase = () => 9 * pstats().mult;
 function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0 }); }
 function elNear(e, r) { return enemies.filter(o => o !== e && !o.dead && o.kind !== 'imp' && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.6); }

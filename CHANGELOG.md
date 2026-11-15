@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.2] - 2026-11-15
+- Fix: the game stayed black for heroes who had already chosen an element (the saved element was read before the element code was defined).
+
 ## [1.19.1] - 2026-11-15
 - The Blacksmith now forges all your gear: every worn item (helm, armor, boots, ring, amulet, weapon) and everything in your pack, up to +7. The list scrolls when it is long.
 - Weapons keep +10% stats and +2 main stat per level; other gear gets +6% and +1 per level, so forging everything stays balanced.
