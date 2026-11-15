@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.22.3] - 2026-11-15
+- Link preview for sharing (Facebook etc.): Open Graph / Twitter meta tags and a 1200x630 cover image (docs/og-image.jpg), page title and description.
+
 ## [1.22.2] - 2026-11-15
 - The backpack is always sorted: plain items first, then magic, rare, legendary, mythic; inside a rarity by slot and then the higher item level first. It re-sorts on pickup, equip, unequip and load.
 - Barriers are one-time: a barrier mage no longer re-raises its own shield after you break it, and an ally can only be shielded once.
