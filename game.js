@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.21.1';
+const VERSION = '1.22.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -571,14 +571,14 @@ const ELEM_TIERS = {
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09]; // status damage as a share of one normal hit
 // weakness (>1) and resistance (<1) by monster: never below 0.4 or above 1.4, so nothing is immune and nothing is helpless
-const ELEM_RES = {
-  boss: { fire: 0.6, frost: 1.25 }, witch: { fire: 1.25, bolt: 0.6 }, smith: { fire: 0.6, frost: 1.25 }, king: { bolt: 1.25, frost: 0.7 }, wyrm: { fire: 0.5, frost: 1.3 },
-  wisp: { fire: 1.25, bolt: 0.7 }, runner: { frost: 1.25, fire: 0.75 }, guard: { bolt: 1.25, frost: 0.75 }, wraith: { frost: 1.25, fire: 0.6 },
-  archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
-};
+// Rock-paper-scissors: every elemental monster resists its own element and is weak to the one that beats it. Fire loses to frost, frost to lightning, lightning to fire. The third element is neutral.
+// Never immune: buildup is floored at 40%, resistance only slows it.
+const MON_EL = { boss: 'fire', smith: 'fire', king: 'fire', wyrm: 'frost', witch: 'bolt', bomber: 'fire', caller: 'fire', runner: 'fire', archer: 'frost', wraith: 'frost', knight: 'frost', wisp: 'bolt', warder: 'bolt', guard: 'bolt' };
+const EL_WEAK = { fire: 'frost', frost: 'bolt', bolt: 'fire' };
+const ELEM_RES = {}; for (const k in MON_EL) ELEM_RES[k] = { [MON_EL[k]]: 0.6, [EL_WEAK[MON_EL[k]]]: 1.25 };
 const elemAvail = () => clamp(Math.floor(rpg.lvl / 10), 0, 7);                          // highest tier your level allows
 const elemTier = () => rpg.elem ? clamp(Math.min(rpg.et | 0, elemAvail()), 0, 7) : 0;      // tiers are bought at the Blacksmith with gold
-const ENEMY_EL = { bomber: 'fire', boss: 'fire', smith: 'fire', king: 'fire', wyrm: 'fire', archer: 'frost', wraith: 'frost', caller: 'frost', wisp: 'bolt', witch: 'bolt', warder: 'bolt', knight: 'bolt' };
+const ENEMY_EL = MON_EL; // the element a monster's own attacks carry (for your resist gear)
 const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
 let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
 const gearSum = (key, el) => { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it[key] && it[key].k === el) n += it[key].v; } return n; };
@@ -1659,7 +1659,7 @@ function drawPause() {
     const E = rpg.elem && ELEM[rpg.elem], T = elemTier(), L = [];
     L.push(['HITS BUILD UP A STATUS ON FOES;', '#e8dcc8']); L.push(['AT 100 IT TRIGGERS. TIERS UNLOCK EVERY 10 LEVELS;', '#e8dcc8']); L.push(['BUY THEM AT THE BLACKSMITH. DISMISS: 75% BACK.', '#e8dcc8']);
     L.push(['FIRE: BURNING.  FROST: CHILL, FREEZE.', '#e8dcc8']); L.push(['LIGHTNING: ARCS AND STUN.', '#e8dcc8']);
-    L.push(['MONSTERS ARE WEAK (GREEN) OR', '#9aff9a']); L.push(['RESISTANT (RED) - NEVER IMMUNE.', '#ff9a9a']);
+    L.push(['FROST BEATS FIRE, LIGHTNING BEATS FROST,', '#9aff9a']); L.push(['FIRE BEATS LIGHTNING. NEVER IMMUNE.', '#ff9a9a']);
     L.push([rpg.lvl < 10 ? 'REACH LEVEL 10, THEN SEE THE BLACKSMITH.' : E ? 'YOURS: ' + E.name + ' TIER ' + ROMAN[T] : 'PICK YOUR ELEMENT AT THE BLACKSMITH.', E ? E.col : '#ffd24a']);
     if (E) L.push([ELEM_TIERS[rpg.elem][T - 1], E.col2]);
     L.push(['GEAR: +% POWER FOR YOUR ELEMENT, +% RESIST', '#8fb8ff']); L.push(['AGAINST FIRE, FROST OR LIGHTNING FOES.', '#8fb8ff']);

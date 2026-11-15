@@ -82,3 +82,7 @@ Hero flavour (the main stat scales the buildup):
 ## Status after v1.18.0
 
 Phase 1 and the visuals/translation of phase 4 are done, with a first balance pass. Still open: weakness and resistance icons on the boss bar (the tables already exist), item elemental damage and resistance affixes, a deeper balance pass with items.
+
+## Rock-paper-scissors (v1.22.0)
+
+Frost beats fire, lightning beats frost, fire beats lightning. Each elemental monster resists its own element (x0.6) and is weak to its counter (x1.25); the third is neutral. Bosses: Colossus, Forgemaster and Cinder King are fire, Mire Matron lightning, Wyrm frost.
