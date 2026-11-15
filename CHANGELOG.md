@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.14.0] - 2026-11-15
+- The campaign now has seven acts and 35 stages (was four acts, 20 stages), with seven Heart-Embers to recover.
+- Fifteen new stages in three new acts: the Withered Wilds (green fog and rain), the Gilded Dunes (gold and sparks) and the Eclipse Gate (a dark blood eclipse). The old fourth act (the Last Road to the First Flame) is now act VII, the finale.
+- New story scenes between the acts, in English and Hungarian.
+- Bosses go up to VII (Cinder King VII, Ember Wyrm VII).
+- Monster health tiers for every act (+20% up to +180% in act VII), and stage difficulty and XP are re-paced to the longer story: level 70 now arrives around stage 33.
+
 ## [1.13.0] - 2026-11-15
 - Your run is now saved on the device you play on (stage, cycle, coins, gold, score, for each hero). When you come back and pick the same hero, you can continue that stage for one continue coin, or start a new campaign and lose the old run. With no coins left, the run is over.
 - Monster health grows by tier: act II monsters have 20% more health, act III 45%, act IV 75%, and the Ashen Cycles more on top.

@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.13.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.14.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -77,10 +77,10 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Gear tiers](docs/screenshots/gear-tiers.jpg) | ![New monsters](docs/screenshots/new-enemies.jpg) |
 | ![Boss limbs](docs/screenshots/boss-limbs.jpg) | ![Casters and a chasm](docs/screenshots/casters-chasm.jpg) |
 
-## The campaign: four acts, twenty stages
-The story now runs through **20 stages in four acts**. Each act ends with an Ember Wyrm and a new Heart-Ember; the old bosses return stronger (Colossus II, Matron III and so on) in new places such as the Drowned Cathedral and the World-Forge. Clearing every stage gives enough XP to reach **level 70 in a single run** (around stage 18 if you clear everything, around stage 20 if you skip some fights). After the last stage the Ashen Cycles keep going for as long as you like.
+## The campaign: seven acts, thirty-five stages
+The story runs through **35 stages in seven acts**, and Nolan (or Panni, or Luca) has to recover **seven Heart-Embers**. Each act ends with an Ember Wyrm; the old bosses return stronger (Colossus II up to Wyrm VII) in new places such as the Drowned Cathedral, the Withered Wilds, the Gilded Dunes, the Eclipse Gate and the World-Forge. Levelling is paced to the whole story: **level 70 arrives around stage 33** if you clear everything. After the last stage the Ashen Cycles keep going for as long as you like.
 
-Every act has its own palette and weather, so the later stages do not look like the first five: Act I keeps the original embers, Act II turns to frost and snow, Act III to deep crimson with ash and storms, and Act IV to violet with drifting light motes. Rain, thunderstorms, blizzards, forge sparks and ash fall through the stages.
+Every act has its own palette and weather: Act I keeps the original embers, Act II turns to frost and snow, Act III to deep crimson with ash and storms, Act IV to a sickly green with rain, Act V to golden sand and sparks, Act VI to a dark blood eclipse with storms, and Act VII to violet with drifting light motes. Monster health also rises with every act.
 
 | | |
 |---|---|

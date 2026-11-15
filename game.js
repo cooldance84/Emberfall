@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.13.0';
+const VERSION = '1.14.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -48,11 +48,11 @@ const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2Pad
 let vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
-const areaLv = () => Math.round(4 + stageIdx * 2.8) + cycle * 60;          // how deep in the endless loop you are
+const areaLv = () => Math.round(4 + stageIdx * 1.6) + cycle * 60;          // how deep in the endless loop you are
 const monLv = () => Math.max(areaLv(), rpg.lvl - 12);            // an over-levelled hero meets monsters of their own league
 const late = () => Math.max(0, monLv() - 30);                    // past the middle of the campaign the ramp steepens
-const HP_TIER = [1, 1.2, 1.45, 1.75];                            // every act (tier) adds a flat layer of monster health
-const hpTier = () => cycle ? HP_TIER[3] * (1 + 0.15 * cycle) : HP_TIER[Math.min(3, (stageIdx / 5) | 0)];
+const HP_TIER = [1, 1.2, 1.45, 1.75, 2.05, 2.4, 2.8];                            // every act (tier) adds a flat layer of monster health
+const hpTier = () => cycle ? HP_TIER[6] * (1 + 0.15 * cycle) : HP_TIER[Math.min(6, (stageIdx / 5) | 0)];
 const hpMul = () => (1 + (monLv() - 4) * 0.12 + late() * late() * 0.004) * hpTier();  // monsters get tougher every stage, tier and cycle
 const dmgMul = () => 1 + (monLv() - 4) * 0.055 + late() * late() * 0.0012;
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
@@ -324,7 +324,7 @@ const buildTheme = T => Object.assign({}, T, {
 });
 const THEMES = THEME_DEF.map(buildTheme);
 /* act palettes: later acts regrade every colour of a theme (frost, deep crimson, violet-gold) */
-const ACT_GRADE = [{ c: null, s: 1, l: 1 }, { c: 205, k: 0.75, s: 0.85, l: 1.1 }, { c: 355, k: 0.7, s: 1.15, l: 0.92 }, { c: 275, k: 0.7, s: 1.05, l: 1.02 }];
+const ACT_GRADE = [{ c: null, s: 1, l: 1 }, { c: 205, k: 0.75, s: 0.85, l: 1.1 }, { c: 355, k: 0.7, s: 1.15, l: 0.92 }, { c: 128, k: 0.68, s: 1.05, l: 0.95 }, { c: 42, k: 0.66, s: 1.15, l: 1.08 }, { c: 330, k: 0.72, s: 1.2, l: 0.78 }, { c: 275, k: 0.7, s: 1.05, l: 1.02 }];
 function gradeRGB(r, g, b, G) {
   r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let h = 0, s = 0, l = (mx + mn) / 2;
   if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
@@ -345,13 +345,13 @@ function gradeVal(v, G) {
 }
 const _actThemes = {};
 function themeFor(idx, act) {
-  act = Math.max(0, Math.min(3, act | 0)); if (!act) return THEMES[idx];
+  act = Math.max(0, Math.min(6, act | 0)); if (!act) return THEMES[idx];
   const key = act + ':' + idx; if (!_actThemes[key]) { const T = {}; for (const k in THEME_DEF[idx]) T[k] = k === 'fogA' ? THEME_DEF[idx][k] : gradeVal(THEME_DEF[idx][k], ACT_GRADE[act]); _actThemes[key] = buildTheme(T); }
   return _actThemes[key];
 }
-const actOf = si => Math.min(3, (si / 5) | 0);
+const actOf = si => Math.min(6, (si / 5) | 0);
 /* weather: what falls through each act and theme */
-const WEATHER = [[null, 'rain', 'sparks', 'storm', 'ash'], ['snow', 'snow', 'blizzard', 'blizzard', 'snow'], ['ash', 'storm', 'ash', 'storm', 'sparks'], ['motes', 'rain', 'sparks', 'storm', 'motes']];
+const WEATHER = [[null, 'rain', 'sparks', 'storm', 'ash'], ['snow', 'snow', 'blizzard', 'blizzard', 'snow'], ['ash', 'storm', 'ash', 'storm', 'sparks'], ['rain', 'motes', 'rain', 'storm', 'motes'], ['ash', 'sparks', 'ash', 'storm', 'sparks'], ['storm', 'ash', 'blizzard', 'storm', 'ash'], ['motes', 'rain', 'sparks', 'storm', 'motes']];
 let weather = 'ash';
 const wh = (i, s) => { const v = Math.sin(i * 12.9898 + s * 78.233) * 43758.5453; return v - Math.floor(v); };
 function updateWeather() { if ((weather === 'storm') && ((tickN + 137) % 540 === 0 || (tickN + 137) % 540 === 11)) flashA = Math.max(flashA, 0.4); }
@@ -425,20 +425,26 @@ const STAGES = [
 ];
 const MINION = [null, 'wisp', 'runner', 'guard', 'wraith'];
 STAGES.forEach((S, si) => { if (!si) return; S.waves.forEach((w, wi) => { if (!wi) return; let i = w.e.indexOf('h'); if (i >= 0) w.e[i] = MINION[si]; if (wi >= 3 && si >= 2) { i = w.e.indexOf('h'); if (i >= 0) w.e[i] = MINION[si - 1]; } }); });
-/* ---------- four acts, twenty stages: the story carries you to level 70 ---------- */
-const ACT_ROMAN = ['I', 'II', 'III', 'IV'];
+/* ---------- seven acts, thirty-five stages: the story carries you to level 70 ---------- */
+const ACT_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 const EXTRA_NAMES = ['THE SHATTERED BRIDGE', 'THE DROWNED CATHEDRAL', 'THE COLD FOUNDRY', 'THE BONE CITADEL', 'THE SECOND SANCTUM',
   'THE ASHEN WASTES', 'THE BLACK FEN', 'THE MOLTEN DEEP', 'THE HOLLOW CROWN', 'THE BURNING STAIR',
+  'THE WITHERED WILDS', 'THE ROTTING MIRE', 'THE GREEN FURNACE', 'THE THORN THRONE', 'THE FOURTH SANCTUM',
+  'THE GILDED DUNES', 'THE SUNKEN TEMPLE', 'THE BRASS FOUNDRY', 'THE AMBER CROWN', 'THE FIFTH SANCTUM',
+  'THE ECLIPSE GATE', 'THE BLOOD FEN', 'THE HOLLOW FORGE', 'THE MIDNIGHT THRONE', 'THE SIXTH SANCTUM',
   'THE LAST ROAD', 'THE LOST MARSH', 'THE WORLD-FORGE', 'THE ENDLESS THRONE', 'THE FIRST FLAME'];
 const BOSS_OF = ['boss', 'witch', 'smith', 'king', 'wyrm'];
 const BOSS_TC = { boss: 'The Cinder Colossus', witch: 'The Mire Matron', smith: 'The Forgemaster', king: 'The Cinder King', wyrm: 'The Ember Wyrm' };
 const BOSS_RET = { boss: 'THE CINDER COLOSSUS RETURNS FROM THE SLAG', witch: 'THE MIRE MATRON RISES FROM THE FEN', smith: 'THE FORGEMASTER REFORGES HIS ARMY', king: 'THE CINDER KING WEARS A CROWN OF NEW FIRE', wyrm: 'THE EMBER WYRM HUNGERS ONCE MORE' };
 const ACT_END = [
-  ['The Ember Wyrm falls, and the first Heart-Ember is Nolan\'s. But a crack runs through its glass: this flame is only one of four.', 'Three embers still burn in the dark. Nolan turns north, where the road bends into the Shattered Bridge.'],
+  ['The Ember Wyrm falls, and the first Heart-Ember is Nolan\'s. But a crack runs through its glass: this flame is only one of seven.', 'Six embers still burn in the dark. Nolan turns north, where the road bends into the Shattered Bridge.'],
   ['The second ember warms Nolan\'s palm, and the hills below turn green for a single night.', 'Then the wind shifts. Beyond the Second Sanctum the Ashen Wastes begin, and the husks there never sleep.'],
-  ['The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.', 'One flame remains, buried at the world\'s oldest forge. Nolan does not rest. The Last Road begins here.']
+  ['The third ember joins the others. Their light is brighter than the dawn, and the ash recoils.', 'Four flames remain. Beyond the Burning Stair a sickly green fog rolls over the Withered Wilds.'],
+  ['The fourth ember drives the fog back, and for the first time in years birds sing over the mire.', 'Southward the ash turns to golden sand. Somewhere in the Gilded Dunes the fifth flame lies buried.'],
+  ['The fifth ember blazes like a small sun, and the dunes glitter with glass where its light passes.', 'Then the sky darkens at noon. An eclipse hangs over the world, and the sixth flame waits beyond the Eclipse Gate.'],
+  ['The sixth ember tears the eclipse open, and daylight floods the Midnight Throne.', 'One flame remains, buried at the world\'s oldest forge. Nolan does not rest. The Last Road begins here.']
 ];
-for (let i = 5; i < 20; i++) {
+for (let i = 5; i < 35; i++) {
   const b = STAGES[i % 5], act = Math.floor(i / 5);
   STAGES.push({ name: EXTRA_NAMES[i - 5], tag: BOSS_RET[BOSS_OF[i % 5]], theme: b.theme, end: b.end + act * 200, tint: b.tint,
     waves: b.waves.map(w => ({ x: Math.round(w.x * (1 + 0.06 * act)), e: w.e.slice() })), clear: [] });
@@ -498,7 +504,7 @@ function makeFighter(kind, x, y) {
     inv: 0, flash: 0, combo: 0, queued: false, hits: new Set(), cool: rnd(20, 70), armor: k.poise || 70, mana: 0, dead: false, fade: 0, h: k.h, vases: 0, mount: null, vase: false, dir: 1, fled: false, gone: false
   };
   if (kind !== 'hero' && kind !== 'imp') o.hp = o.maxhp = Math.round(k.hp * hpMul());
-  if (BOSSES[kind] && stageIdx >= 5) o.k = Object.assign({}, k, { name: k.name + ' ' + ACT_ROMAN[Math.min(3, (stageIdx / 5) | 0)] });
+  if (BOSSES[kind] && stageIdx >= 5) o.k = Object.assign({}, k, { name: k.name + ' ' + ACT_ROMAN[Math.min(6, (stageIdx / 5) | 0)] });
   if (kind !== 'hero' && kind !== 'imp') { // v1.11: quicker foes, tougher bosses
     const bs = !!BOSSES[kind]; o.k = Object.assign({}, o.k, { spd: k.spd * (bs ? 1.15 : 1.3) });
     if (bs) { o.hp = o.maxhp = Math.round(o.hp * 1.35); o.k.poise = Math.round((k.poise || 70) * 1.3); o.armor = o.k.poise; }
@@ -631,7 +637,7 @@ function dropGear(x, y, rar) {
 }
 function onKill(e) {
   const boss = isBoss(e);
-  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12)));
+  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42)); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
   const n = boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
   for (let i = 0; i < n; i++) {
@@ -1330,7 +1336,7 @@ function updateMinion(e) {
           } else { shots.push({ type: 'bolt', x: e.x + e.face * 16, y: e.y, z: 30, vx: e.face * 2.6, t: 0, dmg: k.dmg, life: 200 }); SFX.swing(); }
         } else {
           for (const p of players()) if (!p.dead && Math.abs(p.x - e.x) < 320) shots.push({ type: 'rune', x: p.x + p.vx * 18, y: clamp(p.y + (p.vy || 0) * 18, Y_MIN, Y_MAX), t: 0, delay: 54, r: 24, dmg: k.dmg, pool: stageIdx >= 5 ? 200 : 150 });
-          if (stageIdx >= 10 || cycle) shots.push({ type: 'rune', x: clamp(hero.x + rnd(-70, 70), cam + 20, cam + W - 20), y: rnd(Y_MIN, Y_MAX), t: 0, delay: 66, r: 24, dmg: k.dmg, pool: 150 });
+          if (stageIdx >= 15 || cycle) shots.push({ type: 'rune', x: clamp(hero.x + rnd(-70, 70), cam + 20, cam + W - 20), y: rnd(Y_MIN, Y_MAX), t: 0, delay: 66, r: 24, dmg: k.dmg, pool: 150 });
           tone('sawtooth', 180, 420, 0.3, 0.05);
         }
         e.st = 'eatk'; e.t = 0;
@@ -2030,7 +2036,7 @@ function updateStage() {
   if (lockX !== Infinity && w && ambW !== waveIdx && (stageIdx >= 1 || cycle) && !w.e.some(t => BOSSES[t])) { // ambush: fresh foes burst in from both sides
     const alive = enemies.filter(e => e.kind !== 'imp' && !e.dead).length;
     if (alive <= Math.max(1, Math.floor(waveN / 3))) {
-      ambW = waveIdx; const pool = w.e.filter(t => !BOSSES[t]), n = 2 + (stageIdx >= 10 || cycle ? 1 : 0);
+      ambW = waveIdx; const pool = w.e.filter(t => !BOSSES[t]), n = 2 + (stageIdx >= 15 || cycle ? 1 : 0);
       for (let i = 0; i < n; i++) spawnFoe(pool[(i + waveIdx) % pool.length] || 'h', i % 2 ? cam + W + 30 + i * 18 : cam - 30 - i * 18, false);
       msg = 'AMBUSH!'; msgT = 80; SFX.big(); shake = Math.max(shake, 4);
     }
