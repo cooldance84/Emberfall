@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.16.0';
+const VERSION = '1.17.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -543,6 +543,12 @@ const WNAMES = {
   panni: { base: ['Ash Staff', 'Oak Wand', 'Ember Rod'], magic: ['Staff', 'Wand', 'Rod'], leg: ['Starfall Staff', 'Wand of Kindling'], myth: ["Panni's Last Spell", 'Staff of the First Flame'] },
   luca: { base: ['Rusty Dagger', 'Iron Knife', 'Ash Dirk'], magic: ['Daggers', 'Knives', 'Dirks'], leg: ['Twin Fangs', 'Nightsting'], myth: ["Luca's Last Shadow", 'Whisper and Woe'] }
 };
+const MAX_UP = 7;
+function itemSt(it, up) { // every forge level adds 10% to the weapon's stats and +2 to the main stat
+  up = up == null ? (it.up | 0) : up; if (!up) return it.st;
+  const o = {}; for (const k in it.st) o[k] = Math.round(it.st[k] * (1 + 0.1 * up)); o.str = (o.str || 0) + 2 * up; return o;
+}
+const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
 const pickOf = a => a[Math.random() * a.length | 0];
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
@@ -553,7 +559,7 @@ const xpNeed = l => Math.round(XPN[0] + XPN[1] * l);
 function pstats() {
   if (PS) return PS;
   const C = cls(), s = { str: 4 + rpg.lvl, crit: C.crit, cdmg: C.cdmg, hit: 90 };
-  for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it) for (const q in it.st) s[q] += it.st[q]; }
+  for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it) { const st = itemSt(it); for (const q in st) s[q] += st[q]; } }
   if (CLS === 'luca') { s.crit += Math.floor(s.str * 0.08); s.hit += Math.floor(s.str * 0.05); }
   // soft caps: stacked mythic gear makes you strong, not untouchable
   s.crit = Math.min(CLS === 'luca' ? 70 : 60, s.crit); s.hit = Math.min(100, s.hit);
@@ -576,6 +582,7 @@ function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape 
     else { o.armor = '#6a5238'; o.armor2 = '#a07a4a'; o.cloth = '#5a2a2a'; }
   }
   if (o.gt.weapon >= 3) o.wlen = base.wlen + 3;
+  o.wup = eq.weapon ? eq.weapon.up | 0 : 0;
   o.glowRgb = Math.max(0, ...SLOTS.map(r)) >= 2 ? RARITY[Math.max(...SLOTS.map(r))].rgb : null;
   return o;
 }
@@ -654,9 +661,9 @@ function onKill(e) {
   }
 }
 const GOLD_MULT = [1, 3, 5, 8, 20];
-const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar]);
+const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar] * (1 + 0.25 * (it.up | 0)));
 const itemPrice = it => Math.round(itemValue(it) * 2.5);
-const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.lvl || 1) === (b.lvl || 1);
+const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.lvl || 1) === (b.lvl || 1) && (a.up | 0) === (b.up | 0);
 function isDuplicate(it) { return Object.values(rpg.eq).some(o => sameItem(o, it)) || rpg.bag.some(o => sameItem(o, it)); }
 function pickupGear(it, bought) {
   const R = RARITY[it.rar];
@@ -674,7 +681,7 @@ function updateFloats() { for (const f of floats) { f.t++; f.y -= 0.45; } floats
 function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (56 - f.t) / 18); text(f.s, Math.round(f.x - cam), Math.round(f.y), f.size, f.col, 'center'); } g.globalAlpha = 1; }
 
 /* ---- persistence: character + leaderboard live in localStorage ---- */
-const validItem = it => !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string');
+const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) it.up = clamp(it.up | 0, 0, MAX_UP); return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
 function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
@@ -834,14 +841,15 @@ const bagPos = i => [192 + (i & 3) * 31, 30 + (i >> 2) * 31];
 function drawTip(it, cmp, x, y) {
   if (!it) { text('EMPTY', x + 75, y + 24, 9, '#6a5a7a', 'center'); return; }
   const R = RARITY[it.rar];
-  text(it.name, x + 8, y + 26, it.name.length > 20 ? 8 : 9, R.col);
+  const nm = iname(it), ist = itemSt(it), cst = cmp ? itemSt(cmp) : null;
+  text(nm, x + 8, y + 26, nm.length > 20 ? 8 : 9, R.col);
   text(R.name + ' ' + SLOT_NAME[it.slot], x + 8, y + 38, 8, '#9a90a8');
   text('REQUIRES LV ' + (it.lvl || 1), x + 8, y + 49, 8, canWear(it) ? '#9a90a8' : '#ff6a6a');
   let yy = y + 62;
-  for (const k of STAT_KEYS) if (it.st[k]) { text('+' + it.st[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
+  for (const k of STAT_KEYS) if (ist[k]) { text('+' + ist[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
   if (cmp !== undefined) {
     yy += 8; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
-    for (const k of STAT_KEYS) { const d = (it.st[k] || 0) - ((cmp && cmp.st[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
+    for (const k of STAT_KEYS) { const d = (ist[k] || 0) - ((cst && cst[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
   }
 }
 function openInv(from) { inv.from = from; inv.z = 'bag'; inv.i = 0; mode = 'inv'; SFX.pick(); }
@@ -1630,6 +1638,63 @@ function drawCoins(x, y, n, gap) { // up to three slots, then one coin and a cou
   if (n <= 3) { for (let i = 0; i < 3; i++) drawCoin(x + i * gap, y, i < n); return; }
   drawCoin(x, y, true); text('x' + n, x + 9, y + 4, 9, '#ffd24a');
 }
+/* ---------- the blacksmith: after every stage, forge weapons up to +7 for gold ---------- */
+const FORGE_P = [1, 1, 1, 0.8, 0.65, 0.5, 0.35]; // chance to reach the next level from +0 ... +6
+const forgeCost = it => Math.round((40 + (it.lvl || 1) * 5) * (1 + 0.75 * (it.up | 0)) * [1, 1.2, 1.5, 1.8, 2.2][it.rar]);
+let forge = null;
+function forgeList() { const a = []; if (rpg.eq.weapon) a.push({ it: rpg.eq.weapon, worn: true }); for (const it of rpg.bag) if (it.slot === 'weapon') a.push({ it }); a.push({ go: true }); return a; }
+function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0 }; mode = 'forge'; SFX.pick(); }
+function updateForge() {
+  const f = forge, L = forgeList(); if (f.noteT > 0) f.noteT--; if (f.fx > 0) f.fx--; f.i = Math.min(f.i, L.length - 1);
+  if (isHit('up')) { f.i = (f.i + L.length - 1) % L.length; SFX.pick(); }
+  if (isHit('down')) { f.i = (f.i + 1) % L.length; SFX.pick(); }
+  const say = (t, ok) => { f.note = t; f.noteT = 110; f.ok = ok; };
+  const leave = () => { const n = f.next; forge = null; mode = 'play'; saveGame(); n(); };
+  if (isHit('back')) { leave(); return; }
+  if (!(isHit('start') || isHit('atk'))) return;
+  const o = L[f.i]; if (o.go) { leave(); return; }
+  const it = o.it, up = it.up | 0;
+  if (up >= MAX_UP) { say('ALREADY AT +7 (MAX)', false); return; }
+  const c = forgeCost(it); if (rpg.gold < c) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
+  rpg.gold -= c;
+  if (Math.random() < FORGE_P[up]) { it.up = up + 1; PS = null; heroStats(false); say(tr('SUCCESS!') + '  ' + tr(it.name) + ' +' + it.up, true); SFX.magic(); f.fx = 40; }
+  else { say('THE FORGE FAILED. THE GOLD IS GONE', false); SFX.die(); f.fx = -1; }
+  saveGame();
+}
+function drawForge() {
+  const f = forge, L = forgeList(); g.fillStyle = 'rgba(10,4,2,0.92)'; g.fillRect(0, 0, W, H);
+  const gl = g.createRadialGradient(130, 250, 10, 130, 250, 200); gl.addColorStop(0, 'rgba(255,110,30,0.22)'); gl.addColorStop(1, 'rgba(255,60,10,0)'); g.fillStyle = gl; g.fillRect(0, 0, W, H);
+  text('THE BLACKSMITH', W / 2, 24, 14, '#ff9a4a', 'center'); text('FORGE WEAPONS UP TO +7 FOR GOLD', W / 2, 36, 8, '#e0b890', 'center');
+  text('GOLD ' + rpg.gold, W - 14, 24, 11, '#ffd24a', 'right');
+  g.fillStyle = 'rgba(255,140,60,0.35)'; g.fillRect(16, 42, W - 32, 1);
+  if (L.length === 1) text('NO WEAPONS TO FORGE', 133, 62, 8, '#8a7a6a', 'center');
+  L.forEach((o, i) => {
+    const y = 62 + (L.length === 1 ? 1 : i) * 20, sel = i === f.i; if (y > 200) return;
+    if (sel) { g.fillStyle = 'rgba(255,140,60,0.18)'; g.fillRect(14, y - 11, 238, 17); g.strokeStyle = '#ff9a4a'; g.strokeRect(14.5, y - 10.5, 237, 16); }
+    if (o.go) { text((sel ? '> ' : '  ') + 'BACK TO THE ROAD', 20, y, 8, '#9fd0ff'); return; }
+    const it = o.it, nm = iname(it), mx = (it.up | 0) >= MAX_UP;
+    if (o.worn) text('E', 8, y, 7, '#c9a8ff');
+    text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, RARITY[it.rar].col);
+    text(mx ? 'MAX' : forgeCost(it) + 'G', 246, y, 8, mx ? '#8a7a6a' : rpg.gold >= forgeCost(it) ? '#ffd24a' : '#ff6a6a', 'right');
+  });
+  // anvil and hammer
+  const ax = 92, ay = 238; g.fillStyle = '#2a2428'; g.fillRect(ax - 26, ay - 14, 52, 9); g.fillRect(ax - 12, ay - 5, 24, 10); g.fillRect(ax - 20, ay + 5, 40, 6); g.fillStyle = '#5a5258'; g.fillRect(ax - 26, ay - 14, 52, 2); g.fillRect(ax - 34, ay - 12, 10, 4);
+  const hs = f.fx > 0 ? Math.sin(f.fx * 0.6) * 0.8 : -0.4; g.save(); g.translate(ax + 34, ay - 30); g.rotate(hs); g.fillStyle = '#5a3a22'; g.fillRect(-2, -2, 4, 26); g.fillStyle = '#6a6e78'; g.fillRect(-9, -8, 18, 9); g.fillStyle = '#9aa0aa'; g.fillRect(-9, -8, 18, 2); g.restore();
+  if (f.fx > 0 && f.fx % 3 === 0) for (let i = 0; i < 4; i++) { g.fillStyle = i % 2 ? '#ffd070' : '#ff8a2a'; g.fillRect(ax + rnd(-20, 20), ay - 16 - rnd(0, 26), 2, 2); }
+  const o = L[f.i];
+  g.fillStyle = 'rgba(30,16,10,0.9)'; g.fillRect(262, 50, 204, 178); g.strokeStyle = '#c96a2e'; g.strokeRect(262.5, 50.5, 203, 177);
+  if (o && !o.go) {
+    const it = o.it, up = it.up | 0; drawTip(it, undefined, 258, 36);
+    if (up < MAX_UP) {
+      const a = itemSt(it), b = itemSt(it, up + 1); let yy = 170;
+      text('FORGE TO +' + (up + 1) + '    CHANCE ' + Math.round(FORGE_P[up] * 100) + '%', 270, yy, 8, '#ffb46a'); yy += 12;
+      for (const k of STAT_KEYS) { const d = (b[k] || 0) - (a[k] || 0); if (d) { text('+' + d + STATS[k].sfx + ' ' + statName(k), 270, yy, 8, '#7aff9a'); yy += 11; } }
+    } else text('FULLY FORGED', 364, 190, 9, '#ffd24a', 'center');
+  } else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
+  if (f.noteT > 0) text(f.note, W / 2, 236, 9, f.ok ? '#7aff9a' : '#ff8a6a', 'center');
+  text('W/S CHOOSE   ENTER FORGE   ESC LEAVE', W / 2, 252, 8, '#c8a890', 'center');
+  text('FAILED FORGING KEEPS THE LEVEL BUT TAKES THE GOLD', W / 2, 264, 7, '#8a6a5a', 'center');
+}
 function openShop(next) {
   const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
     let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r);
@@ -1683,7 +1748,7 @@ function drawShop() {
   text('* PREMIUM SHELF: BEST ODDS FOR LEGENDARY AND MYTHIC    DUPLICATES BECOME GOLD', W / 2, 261, 6, '#8a7aa0', 'center');
 }
 function stageCleared() {
-  score += 3000; saveGame(); openShop(afterClear);
+  score += 3000; saveGame(); openShop(() => openForge(afterClear));
 }
 function afterClear() {
   const S = STAGES[stageIdx];
@@ -2173,6 +2238,7 @@ function step() {
   if (mode === 'story') { updateStory(); return; }
   if (mode === 'inv') { updateInv(); return; }
   if (mode === 'shop') { updateShop(); return; }
+  if (mode === 'forge') { updateForge(); return; }
   if (mode === 'pause') { updatePause(); return; }
   if (mode === 'name') { updateName(); return; }
   if (mode === 'board') { updateBoard(); return; }
@@ -2568,7 +2634,9 @@ function drawHuman(f, sx, sy) {
   limb(shx, shy, hxp, hyp, big ? 6 : 5, k.skin, -Math.cos(ang) * 2, -Math.sin(ang) * 2);
   limb(shx, shy, (shx + hxp) / 2, (shy + hyp) / 2, big ? 7 : 6, k.armor, 0, 0);
   R(hxp - 2, hyp - 2, 4, 4, C(dk(k.skin)) === '#ffffff' ? '#fff' : k.skin);
-  g.save(); g.translate(hxp, hyp); g.rotate(ang); drawWeapon(g, C, f.k.wk || kind, bl, wT); g.restore();
+  g.save(); g.translate(hxp, hyp); g.rotate(ang); drawWeapon(g, C, f.k.wk || kind, bl, wT);
+  if (k.wup >= 3 && !white) { const a = 0.08 * (k.wup - 2) + Math.sin(tickN * 0.2) * 0.05; g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(255,${200 - k.wup * 10},120,${a})`; g.fillRect(-4, -bl - 6, 8, bl + 4); g.globalCompositeOperation = 'source-over'; }
+  g.restore();
   // front pauldron
   P([shx - 5, shy - 4, shx + 5, shy - 4, shx + 6, shy + 3, shx - 4, shy + 3], k.armor2); R(shx - 5, shy - 4, 11, 1.5, lt(k.armor2)); R(shx - 4, shy + 1, 10, 2, dk(k.armor2));
   if (kind === 'smith') { R(shx - 3, shy - 17, 5, 13, '#3a3e48'); R(shx - 4, shy - 18, 7, 2, '#5c616c'); R(-12 + lean, -52 - bob, 5, 15, '#3a3e48'); R(-13 + lean, -53 - bob, 7, 2, '#5c616c'); }
@@ -2670,7 +2738,7 @@ function drawItems() {
       }
       g.fillStyle = '#0a0610'; g.fillRect(x - 8, yy - 17, 16, 16); g.strokeStyle = R.col; g.lineWidth = 1; g.strokeRect(x - 7.5, yy - 16.5, 15, 15);
       drawIcon(g, it.it.slot, x - 7, yy - 16, 0.88, R.col);
-      if (it.it.rar > 0 || (Math.abs(it.x - hero.x) < 70 && Math.abs(it.y - hero.y) < 30)) text(it.it.name, x, yy - 21 - (li++ % 3) * 9, 7, R.col, 'center');
+      if (it.it.rar > 0 || (Math.abs(it.x - hero.x) < 70 && Math.abs(it.y - hero.y) < 30)) text(iname(it.it), x, yy - 21 - (li++ % 3) * 9, 7, R.col, 'center');
       continue;
     }
     const b = Math.sin(it.t * 0.1) * 2;
@@ -3004,6 +3072,7 @@ function render() {
   else drawHUD();
   if (intro) drawIntro();
   if (mode === 'shop') drawShop();
+  if (mode === 'forge') drawForge();
   if (mode === 'inv') drawInv();
   if (mode === 'pause') drawPause();
   if (mode === 'gameover') {

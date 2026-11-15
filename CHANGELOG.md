@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.17.0] - 2026-11-15
+- The Blacksmith: after the Ember Market at the end of every stage, you can forge your weapons (worn or in your pack) up to +7 for gold.
+- Every forge level adds 10% to all of the weapon's stats and +2 to your main stat (STR, INT or DEX). The price grows with each level, item level and rarity.
+- Forging is safe up to +3; after that the chance drops (80%, 65%, 50%, 35% for +7). A failure keeps the level but the gold is spent.
+- Weapons forged to +3 or more glow, brighter with every level, and show their level in the name (e.g. "Dawnbreaker +5").
+
 ## [1.16.0] - 2026-11-15
 - New item rarity: Rare (yellow), between Magic (blue) and Legendary (orange-brown). Rare items roll 3 or 4 stats, drop at about 15% from stage 3, sell for more than magic items and show up in the market too.
 - Rare gear tints your hero gold-yellow; legendary keeps its orange-brown tint, mythic its crimson.
