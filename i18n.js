@@ -202,7 +202,7 @@ const HU_EXACT = {
 };
 
 /* stage names, characters, skills and short UI words: replaced inside longer strings, longest first */
-const HU_PHRASE = {
+const HU_PHRASE = { "TRIAL": "PRÓBA",
   "THE BROKEN GATE": "A TÖRÖTT KAPU", "THE SUNKEN MARSH": "A SÜLLYEDT LÁP", "THE EMBER FORGE": "A PARÁZSKOHÓ", "THE OBSIDIAN THRONE": "AZ OBSZIDIÁN TRÓN", "THE HEART-EMBER SANCTUM": "A SZÍVPARÁZS-SZENTÉLY",
   "THE SHATTERED BRIDGE": "A ROMBOLT HÍD", "THE DROWNED CATHEDRAL": "A FULLADT KATEDRÁLIS", "THE COLD FOUNDRY": "A HIDEG ÖNTÖDE", "THE BONE CITADEL": "A CSONTVÁR", "THE SECOND SANCTUM": "A MÁSODIK SZENTÉLY",
   "THE ASHEN WASTES": "A HAMVAS PUSZTASÁG", "THE BLACK FEN": "A FEKETE MOCSÁR", "THE MOLTEN DEEP": "AZ OLVADT MÉLY", "THE HOLLOW CROWN": "AZ ÜREGES KORONA", "THE BURNING STAIR": "AZ ÉGŐ LÉPCSŐ",
@@ -259,8 +259,14 @@ const HU_PHRASE = {
 };
 
 /* word-order rules for strings with numbers and names in them */
-Object.assign(HU_EXACT, { "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
+Object.assign(HU_EXACT, { "VS STATUS": "ÁLLAPOT ELLEN", "TRIAL": "PRÓBA", "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
 const HU_RULES = [
+  [/^TRIAL ([IVX+0-9]+) COMPLETE$/, m => m[1] + ". PRÓBA KÉSZ"],
+  [/^TRIAL ([IVX+0-9]+)$/, m => "PRÓBA " + m[1]],
+  [/^ENTER: BEGIN TRIAL ([IVX+0-9]+)  \(\+1 COIN, TOUGHER FOES\)$/, m => "ENTER: " + m[1] + ". PRÓBA KEZDÉSE  (+1 ÉRME, ERŐSEBB ELLENSÉG)"],
+  [/^FORGE LEVEL \+(\d+) UNLOCKED$/, m => "KOVÁCSOLÁS +" + m[1] + " FELOLDVA"],
+  [/^CLEAR EMBER TRIAL ([IVX]+) TO FORGE \+(\d+)$/, m => "TELJESÍTSD A(Z) " + m[1] + ". PRÓBÁT: KOVÁCSOLÁS +" + m[2]],
+  [/^ALREADY AT \+10 \(MAX\)$/, m => "MÁR +10 (MAX)"],
   [/^(VOWBOUND|BULWARK|EMBERHEART) SET  (\d)\/6$/, m => ({ VOWBOUND: "ESKÜKÖTÖTT", BULWARK: "BÁSTYA", EMBERHEART: "PARÁZSSZÍV" })[m[1]] + " SZETT  " + m[2] + "/6"],
   [/^(VOWBOUND|BULWARK|EMBERHEART) SET DROP!$/, m => ({ VOWBOUND: "ESKÜKÖTÖTT", BULWARK: "BÁSTYA", EMBERHEART: "PARÁZSSZÍV" })[m[1]] + " SZETT ZSÁKMÁNY!"],
   [/^UPGRADE TO TIER ([IVX]+)   (\d+G)$/, m => "FEJLESZTÉS: " + m[1] + ". FOKOZAT   " + m[2]],
