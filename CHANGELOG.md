@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.0] - 2026-11-15
+- Loot with a chase: every item now rolls a quality (shown as ROLL %). Most are average, a few are near perfect (a PERFECT ROLL! message appears at 90%+).
+- Rarities overlap: a great legendary beats a poor mythic about one time in seven, while a mythic is still clearly stronger on average. Item level still matters: a higher-level legendary beats a lower-level mythic.
+- Now and then an item drops a few levels above you, something to level up for.
+- Level luck: higher levels raise the legendary and mythic drop chances a little (about +3.5% and +2% at level 70).
+- Older items keep working; they simply show no roll.
+
 ## [1.18.3] - 2026-11-15
 - Dragon's Wrath now bursts open every treasure chest on screen.
 

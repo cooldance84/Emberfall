@@ -225,6 +225,8 @@ const HU_PHRASE = {
 
 /* word-order rules for strings with numbers and names in them */
 const HU_RULES = [
+  [/^ROLL (\d+)%$/, m => "MINŐSÉG " + m[1] + "%"],
+  [/^PERFECT ROLL!$/, () => "TÖKÉLETES DOBÁS!"],
   [/^(FIRE|FROST|LIGHTNING) TIER ([IVX]+): (.+)$/, m => tr(m[1]) + " " + m[2] + ". FOKOZAT: " + tr(m[3])],
   [/^(FIRE|FROST|LIGHTNING)  TIER ([IVX]+)$/, m => tr(m[1]) + "  " + m[2] + ". FOKOZAT"],
   [/^ELEM (FIRE|FROST|LIGHTNING) ([IVX]+)$/, m => "ELEM " + tr(m[1]) + " " + m[2]],

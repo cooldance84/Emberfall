@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.18.3';
+const VERSION = '1.19.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -623,8 +623,9 @@ function levelUp(lv0) {
 }
 function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +legendary 7%. 4+: +mythic 1%
   const t = tierOf();
-  if (t >= 3 && Math.random() < 0.01) return 4;
-  if (t >= 2 && Math.random() < 0.07) return 3;
+  const lk = rpg.lvl || 1; // a little level luck: the higher you are, the better the top drops
+  if (t >= 3 && Math.random() < 0.01 + lk * 0.0003) return 4;
+  if (t >= 2 && Math.random() < 0.07 + lk * 0.0005) return 3;
   if (t >= 2 && Math.random() < 0.16) return 2;
   if (t >= 1 && Math.random() < 0.34) return 1;
   return 0;
@@ -632,23 +633,25 @@ function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +le
 const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS); const R = RARITY[rar];
-  const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2, 1, MAX_LV); // drops land around your level, a little above or below
+  const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV); // drops land around your level; now and then a find a few levels above it
+  const Q = Math.random() ** 1.5, qm = 0.7 + 0.8 * Q; // roll quality: mostly average, rarely perfect. A great legendary can beat a poor mythic
   const sc = k => (k === 'str' || k === 'cdmg') ? 1 + il * 0.045 : 1 + il * 0.012;
   const first = pickOf(SLOT_PRIMARY[slot]);
   const keys = [first, ...STAT_KEYS.filter(k => k !== first).sort(() => Math.random() - 0.5)];
   const n = R.n[0] + (R.n[1] > R.n[0] ? (Math.random() * (R.n[1] - R.n[0] + 1) | 0) : 0);
   const st = {};
-  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * sc(k))); }
+  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * qm * sc(k))); }
   const WN = slot === 'weapon' && WNAMES[CLS];
   const base = WN ? WN.magic : MAGIC_BASE[slot];
   const name = rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
     : rar === 3 ? pickOf(WN ? WN.leg : LEG_NAMES[slot]) : pickOf(WN ? WN.myth : MYTH_NAMES[slot]);
-  return { slot, rar, name, st, lvl: il };
+  return { slot, rar, name, st, lvl: il, q: Math.round(Q * 100) };
 }
 function dropGear(x, y, rar) {
   const R = RARITY[rar];
   items.push({ x, y, t: 0, kind: 'gear', it: genItem(rar), z: 14, vz: 3.4 });
   spawn(x, y, 14, 10 + rar * 8, { c: [R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
+  if (items[items.length - 1].it.q >= 90 && rar < 3) floatText(x, y - 58, 'PERFECT ROLL!', '#ffd24a', 8);
   if (rar >= 3) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 4 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
   else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
@@ -667,7 +670,7 @@ function onKill(e) {
 const GOLD_MULT = [1, 3, 5, 8, 20];
 const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar] * (1 + 0.25 * (it.up | 0)));
 const itemPrice = it => Math.round(itemValue(it) * 2.5);
-const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.lvl || 1) === (b.lvl || 1) && (a.up | 0) === (b.up | 0);
+const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.q | 0) === (b.q | 0) && (a.lvl || 1) === (b.lvl || 1) && (a.up | 0) === (b.up | 0);
 function isDuplicate(it) { return Object.values(rpg.eq).some(o => sameItem(o, it)) || rpg.bag.some(o => sameItem(o, it)); }
 function pickupGear(it, bought) {
   const R = RARITY[it.rar];
@@ -849,6 +852,7 @@ function drawTip(it, cmp, x, y) {
   text(nm, x + 8, y + 26, nm.length > 20 ? 8 : 9, R.col);
   text(R.name + ' ' + SLOT_NAME[it.slot], x + 8, y + 38, 8, '#9a90a8');
   text('REQUIRES LV ' + (it.lvl || 1), x + 8, y + 49, 8, canWear(it) ? '#9a90a8' : '#ff6a6a');
+  if (it.q != null) text('ROLL ' + it.q + '%', x + 146, y + 49, 8, it.q >= 85 ? '#ffd24a' : it.q >= 50 ? '#9affb8' : '#7a7088', 'right');
   let yy = y + 62;
   for (const k of STAT_KEYS) if (ist[k]) { text('+' + ist[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
   if (cmp !== undefined) {
