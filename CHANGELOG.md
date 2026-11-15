@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.15.0] - 2026-11-15
+- You can now hold up to 9 continue coins (was 3) and buy several in the Ember Market. The first ones cost 600 gold; once you hold three or more, each extra coin costs 300 gold more than the last.
+- The coin display shows a count when you hold more than three.
+
 ## [1.14.1] - 2026-11-15
 - Healing food now stays on the ground while you are at full health, so you can come back for it after you take damage. In co-op it goes to the player who needs it.
 

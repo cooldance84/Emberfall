@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.14.1';
+const VERSION = '1.15.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -707,7 +707,7 @@ function drawResume() {
   text(C.name + '  LV ' + rpg.lvl, W / 2, 60, 14, C.col, 'center');
   text('UNFINISHED RUN ON THIS DEVICE', W / 2, 82, 9, '#c9a8ff', 'center');
   text((o.cycle ? 'CYCLE ' + (o.cycle + 1) + '  ' : '') + 'STAGE ' + (o.stage + 1) + '  ' + STAGES[o.stage].name, W / 2, 100, 10, '#fff1d0', 'center');
-  for (let i = 0; i < 3; i++) drawCoin(W / 2 - 14 + i * 14, 116, i < o.coins);
+  drawCoins(W / 2 - 14, 116, o.coins, 14);
   text('SCORE ' + (o.score | 0) + '    GOLD ' + (o.gold | 0), W / 2, 136, 8, '#ffd24a', 'center');
   const opt = (i, s, ok) => { const y = 168 + i * 22, on = resumeSel === i; if (on) { g.fillStyle = 'rgba(60,30,90,0.8)'; g.fillRect(W / 2 - 150, y - 13, 300, 18); } text((on ? '> ' : '') + s, W / 2, y, 10, !ok ? '#6a5a70' : on ? '#ffffff' : '#b8a8c8', 'center'); };
   opt(0, can ? 'CONTINUE THIS STAGE  (USES 1 COIN)' : 'NO COINS LEFT TO CONTINUE', can);
@@ -878,7 +878,7 @@ function drawInv() {
   text('ITEMS ' + rpg.bag.length + '/' + BAG_MAX, 251, 164, 8, '#8a7a9a', 'center');
   if (invNoteT > 0) text(invNote, 251, 226, 8, '#ff6a6a', 'center');
   text('ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text('X      DISCARD', 192, 196, 7, '#b8a8c8'); text('I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
-  for (let i = 0; i < 3; i++) drawCoin(198 + i * 14, 240, i < rpg.coins); text('COINS', 244, 244, 7, '#b8a8c8');
+  drawCoins(198, 240, rpg.coins, 14); text('COINS', 244, 244, 7, '#b8a8c8');
   const it = invItem();
   drawTip(it, inv.z === 'bag' && it ? (rpg.eq[it.slot] || null) : undefined, 324, 6);
 }
@@ -1606,12 +1606,18 @@ function startCampaign(two) {
   openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(0), 0);
 }
 function nextCycle() {
-  cycle++; rpg.coins = Math.min(3, rpg.coins + 1);
+  cycle++; rpg.coins = Math.min(MAX_COINS, rpg.coins + 1);
   for (const p of players()) { p.dead = false; p.fade = 0; p.hp = p.maxhp; p.mana = Math.max(p.mana, 60); }
   openStory('THE ASH RETURNS', 'CYCLE ' + (cycle + 1), STORY.loop, () => beginStage(0), 0);
 }
 function continueStage() {
   saveRun(stageIdx); const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
+}
+const MAX_COINS = 9;
+const coinPrice = () => 600 + 300 * Math.max(0, rpg.coins - 2); // the more coins you hold, the dearer the next one
+function drawCoins(x, y, n, gap) { // up to three slots, then one coin and a count
+  if (n <= 3) { for (let i = 0; i < 3; i++) drawCoin(x + i * gap, y, i < n); return; }
+  drawCoin(x, y, true); text('x' + n, x + 9, y + 4, 9, '#ffd24a');
 }
 function openShop(next) {
   const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
@@ -1621,7 +1627,7 @@ function openShop(next) {
   };
   shop = { i: 0, note: '', noteT: 0, next, stock: [
     { kind: 'heal', name: 'FULL HEAL', price: 80, info: 'RESTORES THE WHOLE PARTY' },
-    { kind: 'coin', name: 'CONTINUE COIN', price: 600, info: 'AN EXTRA LIFE (MAX 3)' },
+    { kind: 'coin', name: 'CONTINUE COIN', price: coinPrice(), info: 'AN EXTRA LIFE (MAX 9)' },
     ...[0, 1, 2, 3].map(i => { const it = mk(i); return { kind: 'gear', it, name: it.name, price: itemPrice(it), prem: i === 3 }; }),
     { kind: 'go', name: 'LEAVE THE MARKET', price: 0 }
   ] };
@@ -1636,12 +1642,12 @@ function updateShop() {
   const o = s.stock[s.i], say = t => { s.note = t; s.noteT = 90; };
   if (o.kind === 'go') { const n = s.next; shop = null; mode = 'play'; n(); return; }
   if (o.sold) { say('SOLD OUT'); return; }
+  if (o.kind === 'coin' && rpg.coins >= MAX_COINS) { say('COINS ARE FULL'); return; }
   if (rpg.gold < o.price) { say('NOT ENOUGH GOLD'); SFX.land(); return; }
-  if (o.kind === 'coin' && rpg.coins >= 3) { say('COINS ARE FULL'); return; }
   if (o.kind === 'gear' && rpg.bag.length >= BAG_MAX && (rpg.eq[o.it.slot] || !canWear(o.it))) { say('PACK FULL'); return; }
   rpg.gold -= o.price; SFX.pick();
   if (o.kind === 'heal') { for (const p of players()) { p.dead = false; p.fade = 0; p.hp = p.maxhp; } say('PARTY HEALED'); }
-  else if (o.kind === 'coin') { rpg.coins++; say('+1 CONTINUE COIN'); }
+  else if (o.kind === 'coin') { rpg.coins++; o.price = coinPrice(); say('+1 CONTINUE COIN'); }
   else { pickupGear(o.it, true); o.sold = true; say('BOUGHT ' + o.name); }
   saveGame();
 }
@@ -2861,7 +2867,7 @@ function drawHUD() {
   if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
   if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
   if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
-  text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); for (let i = 0; i < 3; i++) drawCoin(W - 46 + i * 14, 46, i < rpg.coins);
+  text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); drawCoins(W - 46, 46, rpg.coins, 14);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
   if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); }
@@ -2992,7 +2998,7 @@ function render() {
   if (mode === 'gameover') {
     g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, W, H); text('YOU HAVE FALLEN', W / 2, 106, 22, '#e0431f', 'center'); text('SCORE ' + score, W / 2, 132, 12, '#fff1b0', 'center');
     text('STAGE ' + (stageIdx + 1) + ': ' + STAGES[stageIdx].name, W / 2, 148, 8, '#b8a8c8', 'center');
-    for (let i = 0; i < 3; i++) drawCoin(W / 2 - 28 + i * 28, 168, i < rpg.coins);
+    drawCoins(W / 2 - 28, 168, rpg.coins, 28);
     if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); drawDonate(226); }
   }
   if (mode === 'victory') {
