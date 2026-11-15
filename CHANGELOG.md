@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.13.0] - 2026-11-15
+- Your run is now saved on the device you play on (stage, cycle, coins, gold, score, for each hero). When you come back and pick the same hero, you can continue that stage for one continue coin, or start a new campaign and lose the old run. With no coins left, the run is over.
+- Monster health grows by tier: act II monsters have 20% more health, act III 45%, act IV 75%, and the Ashen Cycles more on top.
+- Monsters follow your progress: an over-levelled hero (more than 12 levels above the stage) meets monsters of their own level, so replaying early stages at level 70 is no longer a walk.
+
 ## [1.12.0] - 2026-11-15
 - Three playable heroes with their own saves: Nolan (STR warrior), Panni (INT sorceress with ranged arcane bolts and faster Dragon's Wrath) and Luca (DEX rogue with fast twin-dagger combos, higher crit and +50% backstabs). Pick on the new hero select screen; in co-op the second player picks too.
 - Each hero has their own look: Panni wears a pointed hat and Luca a hood and scarf, and both change with gear rarity like Nolan's helm. Weapons have their own names (staves and daggers), and the story uses the chosen hero's name.

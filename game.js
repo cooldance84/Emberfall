@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.12.0';
+const VERSION = '1.13.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -49,9 +49,12 @@ let vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hint
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const areaLv = () => Math.round(4 + stageIdx * 2.8) + cycle * 60;          // how deep in the endless loop you are
-const late = () => Math.max(0, areaLv() - 30);                  // past the middle of the campaign the ramp steepens
-const hpMul = () => 1 + (areaLv() - 4) * 0.12 + late() * late() * 0.004;  // monsters get tougher every stage and cycle
-const dmgMul = () => 1 + (areaLv() - 4) * 0.055 + late() * late() * 0.0012;
+const monLv = () => Math.max(areaLv(), rpg.lvl - 12);            // an over-levelled hero meets monsters of their own league
+const late = () => Math.max(0, monLv() - 30);                    // past the middle of the campaign the ramp steepens
+const HP_TIER = [1, 1.2, 1.45, 1.75];                            // every act (tier) adds a flat layer of monster health
+const hpTier = () => cycle ? HP_TIER[3] * (1 + 0.15 * cycle) : HP_TIER[Math.min(3, (stageIdx / 5) | 0)];
+const hpMul = () => (1 + (monLv() - 4) * 0.12 + late() * late() * 0.004) * hpTier();  // monsters get tougher every stage, tier and cycle
+const dmgMul = () => 1 + (monLv() - 4) * 0.055 + late() * late() * 0.0012;
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
 const keysOf = (a, pn) => pn === 2 ? (KEYMAP2[a] || []) : (coop ? KEYMAP[a].filter(c => !c.startsWith('Arrow')) : KEYMAP[a]);
 const inD = (f, a) => keysOf(a, f.pn).some(c => keys[c]);
@@ -676,6 +679,35 @@ function loadGame() {
 function loadBoard() { try { const a = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
 function saveBoard(b) { try { localStorage.setItem(BOARD_KEY, JSON.stringify(b.slice(0, 10))); } catch (e) { } }
 loadGame();
+/* ---------- the run is cached on this device: resuming a stage costs a continue coin ---------- */
+const runKey = c => 'emberfall_run_v1_' + (c || CLS);
+function saveRun(stage) { try { localStorage.setItem(runKey(), JSON.stringify({ stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
+function loadRun(c) { try { const o = JSON.parse(localStorage.getItem(runKey(c)) || 'null'); return o && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
+function clearRun() { try { localStorage.removeItem(runKey()); } catch (e) { } }
+let resumeSel = 0, runInfo = null;
+function resumeRun() {
+  const o = runInfo; coop = sel.coop; cycle = o.cycle | 0; resetGame(); rpg.coins = Math.max(0, (o.coins | 0) - 1); rpg.gold = o.gold | 0; score = o.score | 0; shop = null;
+  saveRun(o.stage); beginStage(o.stage); msg = 'CONTINUED  (-1 COIN)'; msgT = 140;
+}
+function updateResume() {
+  const can = runInfo.coins > 0;
+  if (isHit('up') || isHit('down') || isHit('left') || isHit('right')) { resumeSel = can ? 1 - resumeSel : 1; SFX.pick(); }
+  if (isHit('back')) { mode = 'select'; return; }
+  if (isHit('start') || isHit('atk')) { if (resumeSel === 0 && can) resumeRun(); else { clearRun(); startCampaign(sel.coop); } }
+}
+function drawResume() {
+  g.fillStyle = 'rgba(4,2,10,0.7)'; g.fillRect(0, 0, W, H);
+  const o = runInfo, can = o.coins > 0, C = cls();
+  text(C.name + '  LV ' + rpg.lvl, W / 2, 60, 14, C.col, 'center');
+  text('UNFINISHED RUN ON THIS DEVICE', W / 2, 82, 9, '#c9a8ff', 'center');
+  text((o.cycle ? 'CYCLE ' + (o.cycle + 1) + '  ' : '') + 'STAGE ' + (o.stage + 1) + '  ' + STAGES[o.stage].name, W / 2, 100, 10, '#fff1d0', 'center');
+  for (let i = 0; i < 3; i++) drawCoin(W / 2 - 14 + i * 14, 116, i < o.coins);
+  text('SCORE ' + (o.score | 0) + '    GOLD ' + (o.gold | 0), W / 2, 136, 8, '#ffd24a', 'center');
+  const opt = (i, s, ok) => { const y = 168 + i * 22, on = resumeSel === i; if (on) { g.fillStyle = 'rgba(60,30,90,0.8)'; g.fillRect(W / 2 - 150, y - 13, 300, 18); } text((on ? '> ' : '') + s, W / 2, y, 10, !ok ? '#6a5a70' : on ? '#ffffff' : '#b8a8c8', 'center'); };
+  opt(0, can ? 'CONTINUE THIS STAGE  (USES 1 COIN)' : 'NO COINS LEFT TO CONTINUE', can);
+  opt(1, 'NEW CAMPAIGN  (THE OLD RUN IS LOST)', true);
+  text('ENTER: CHOOSE    ESC: BACK', W / 2, 250, 8, '#8a7a9a', 'center');
+}
 function peekSave(c) { try { const o = JSON.parse(localStorage.getItem(saveKey(c)) || 'null') || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
@@ -688,6 +720,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let nameBuf = [0, 0, 0], namePos = 0, pendingRun = null, boardHi = -1, resetArm = 0, leatherCv = null;
 let inv = { z: 'bag', i: 0, from: 'play' }, invNote = '', invNoteT = 0;
 function endRun(won) {
+  clearRun();
   if (won) score += rpg.coins * 1500 + rpg.gold * 2;
   saveGame();
   const b = loadBoard();
@@ -1559,9 +1592,10 @@ function beginStage(i) {
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
     if (!p.dead && i > 0) p.hp = Math.min(p.maxhp, p.hp + 70);
   }
-  mode = 'play';
+  mode = 'play'; saveRun(i);
 }
 function startCampaign(two) {
+  clearRun();
   coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3; rpg.gold = 0; shop = null;
   openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(0), 0);
 }
@@ -1571,7 +1605,7 @@ function nextCycle() {
   openStory('THE ASH RETURNS', 'CYCLE ' + (cycle + 1), STORY.loop, () => beginStage(0), 0);
 }
 function continueStage() {
-  const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
+  saveRun(stageIdx); const keep = score; newHero(); heroStats(true); score = keep; beginStage(stageIdx);
 }
 function openShop(next) {
   const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
@@ -1630,6 +1664,7 @@ function stageCleared() {
 }
 function afterClear() {
   const S = STAGES[stageIdx];
+  if (stageIdx < STAGES.length - 1) saveRun(stageIdx + 1);
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme, actOf(stageIdx + 1));
   else openStory(cycle === 0 ? 'THE END' : 'CYCLE ' + (cycle + 1) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
 }
@@ -2111,6 +2146,7 @@ function step() {
     updateParts(); cam += 0.3; return;
   }
   if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
+  if (mode === 'resume') { updateResume(); updateParts(); cam += 0.3; return; }
   if (mode === 'story') { updateStory(); return; }
   if (mode === 'inv') { updateInv(); return; }
   if (mode === 'shop') { updateShop(); return; }
@@ -2841,6 +2877,7 @@ function drawDonate(y) {
 }
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
+  if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (!donateBox && !langBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
@@ -2857,7 +2894,11 @@ addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode =
 /* ---------- hero select ---------- */
 let selBoxes = [];
 function openSelect(two) { coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
-function confirmSelect() { setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings(); startCampaign(sel.coop); }
+function confirmSelect() {
+  setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
+  runInfo = loadRun(); if (runInfo) { resumeSel = runInfo.coins > 0 ? 0 : 1; mode = 'resume'; SFX.pick(); return; }
+  startCampaign(sel.coop);
+}
 function updateSelect() {
   const mv = (pn) => (inH({ pn }, 'right') ? 1 : 0) - (inH({ pn }, 'left') ? 1 : 0);
   const d1 = mv(1); if (d1) { sel.a = (sel.a + d1 + 3) % 3; SFX.pick(); }
@@ -2936,6 +2977,7 @@ function render() {
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
   else if (mode === 'select') drawSelect();
+  else if (mode === 'resume') drawResume();
   else drawHUD();
   if (intro) drawIntro();
   if (mode === 'shop') drawShop();

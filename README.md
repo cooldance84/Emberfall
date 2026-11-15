@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.12.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.13.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -61,6 +61,8 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **RPG layer:** levels up to **70**. Items roll **STR, crit chance, crit damage and hit chance**. Gear has six slots (helm, armor, boots, weapon, ring, amulet), and what you wear shows on the hero.
 - **Loot by stage:** stage 1 drops only white items. Stage 2 adds magic (blue). Stage 3 adds legendary at 10%. Stage 4 and 5 add mythic at 3%.
 - **3 continue coins** per run, worth 1,500 points each if unspent when you win.
+- **Runs are saved on your device:** close the game mid-campaign and pick the same hero later to continue the stage for **one continue coin**, or start over. With no coins left, the run is over.
+- **Monsters grow with the story:** every act adds a layer of monster health (+20%, +45%, +75%), and a hero far above the stage's level meets monsters of their own level.
 - **Leatherboard:** top 10 scores with initials. Your character, gear, settings and the board are saved in your browser.
 - **2-player co-op:** press **2** on the title screen.
 - **Procedural music** for each stage, a **pause menu**, **gamepad** and **touch** support.
