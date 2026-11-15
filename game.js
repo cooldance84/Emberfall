@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.2';
+const VERSION = '1.19.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1807,7 +1807,7 @@ function drawForge() {
     if (o.go) { text((sel ? '> ' : '  ') + 'BACK TO THE ROAD', 20, y, 8, '#9fd0ff'); return; }
     if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); text(rpg.elem ? elemCost() + 'G' : 'FREE', 246, y, 8, !rpg.elem || rpg.gold >= elemCost() ? '#ffd24a' : '#ff6a6a', 'right'); return; }
     const it = o.it, nm = iname(it), mx = (it.up | 0) >= MAX_UP;
-    if (o.worn) text('E', 8, y, 7, '#c9a8ff');
+    if (o.worn) { text('E', 8, y, 7, '#c9a8ff'); g.fillStyle = 'rgba(160,120,255,0.28)'; g.fillRect(172, y - 7, 40, 10); text('EQUIPPED', 192, y, 6, '#d9c4ff', 'center'); }
     text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, RARITY[it.rar].col);
     text(mx ? 'MAX' : forgeCost(it) + 'G', 246, y, 8, mx ? '#8a7a6a' : rpg.gold >= forgeCost(it) ? '#ffd24a' : '#ff6a6a', 'right');
   });
@@ -1833,6 +1833,7 @@ function drawForge() {
     }
   } else if (o && !o.go) {
     const it = o.it, up = it.up | 0; drawTip(it, undefined, 258, 36);
+    if (o.worn) { g.fillStyle = 'rgba(160,120,255,0.3)'; g.fillRect(398, 56, 62, 12); text('EQUIPPED', 429, 65, 7, '#e4d6ff', 'center'); }
     if (up < MAX_UP) {
       const a = itemSt(it), b = itemSt(it, up + 1); let yy = 170;
       text('FORGE TO +' + (up + 1) + '    CHANCE ' + Math.round(FORGE_P[up] * 100) + '%', 270, yy, 8, '#ffb46a'); yy += 12;

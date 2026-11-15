@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.3] - 2026-11-15
+- The Blacksmith marks worn items with an EQUIPPED label, in the list and above the item card.
+
 ## [1.19.2] - 2026-11-15
 - Fix: the game stayed black for heroes who had already chosen an element (the saved element was read before the element code was defined).
 
