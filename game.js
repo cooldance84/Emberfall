@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.25.0';
+const VERSION = '1.25.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -29,6 +29,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { keys[e.code] = false; });
 /* ---- gamepad + touch feed the same key tables with virtual key codes ---- */
 const PADNAMES = ['Left', 'Right', 'Up', 'Down', 'A', 'B', 'X', 'Y', 'RB', 'LB', 'LT', 'Select', 'Start'];
+const IS_TOUCH = typeof window !== 'undefined' && (('ontouchstart' in window) || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches));
 function setV(code, on) { on = !!on; if (on && !keys[code]) pressed[code] = true; keys[code] = on; }
 function feedPad(p, pre) {
   const b = i => !!(p && p.buttons[i] && p.buttons[i].pressed), ax = p ? p.axes[0] || 0 : 0, ay = p ? p.axes[1] || 0 : 0;
@@ -996,6 +997,11 @@ function updateInv() {
     }
   }
   if ((pressed.KeyX || pressed.Delete) && inv.z === 'bag' && rpg.bag[inv.i]) { rpg.bag.splice(inv.i, 1); saveGame(); SFX.hit(); }
+  else if (pressed.TJump && inv.z === 'bag' && rpg.bag[inv.i]) { // on a phone the JUMP button discards, but only on the second tap, so a slip never costs an item
+    const it = rpg.bag[inv.i];
+    if (inv.dc === it && invNoteT > 0) { rpg.bag.splice(inv.i, 1); inv.dc = null; invNoteT = 0; saveGame(); SFX.hit(); }
+    else { inv.dc = it; invNote = 'TAP JUMP AGAIN TO DISCARD'; invNoteT = 120; SFX.land(); }
+  }
 }
 function drawInv() {
   g.fillStyle = 'rgba(6,3,12,0.92)'; g.fillRect(0, 0, W, H);
@@ -1013,7 +1019,7 @@ function drawInv() {
   for (let i = 0; i < BAG_MAX; i++) { const [x, y] = bagPos(i); slotBox(x, y, rpg.bag[i], inv.z === 'bag' && inv.i === i); }
   text('ITEMS ' + rpg.bag.length + '/' + BAG_MAX, 251, 164, 8, '#8a7a9a', 'center');
   if (invNoteT > 0) text(invNote, 251, 226, 8, '#ff6a6a', 'center');
-  text('ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text('X      DISCARD', 192, 196, 7, '#b8a8c8'); text('I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
+  text(IS_TOUCH ? 'OK     EQUIP/UNEQUIP' : 'ENTER  EQUIP/UNEQUIP', 192, 184, 7, '#b8a8c8'); text(IS_TOUCH ? 'JUMP   DISCARD (2X)' : 'X      DISCARD', 192, 196, 7, '#b8a8c8'); text(IS_TOUCH ? 'GEAR   CLOSE' : 'I/TAB  CLOSE', 192, 208, 7, '#b8a8c8');
   drawCoins(198, 240, rpg.coins, 14); text('COINS', 244, 244, 7, '#b8a8c8');
   const it = invItem();
   drawTip(it, inv.z === 'bag' && it ? (rpg.eq[it.slot] || null) : undefined, 324, 6);
@@ -3504,7 +3510,7 @@ function initTouch() {
     '.tb{position:fixed;z-index:10;border-radius:50%;background:rgba(255,200,120,.16);border:2px solid rgba(255,220,160,.5);color:#ffe9c0;font:bold 13px monospace;display:none;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none}' +
     '.tb.on{display:flex}.tb:active,.tb.dn{background:rgba(255,200,120,.45)}';
   document.head.appendChild(css);
-  const mk = (cls, style, txt) => { const d = document.createElement('div'); d.className = cls; d.style.cssText = style; if (txt) d.textContent = txt; document.body.appendChild(d); return d; };
+  const mk = (cls, style, txt) => { const d = document.createElement('div'); d.className = cls + ' notranslate'; d.setAttribute('translate', 'no'); d.style.cssText = style; if (txt) d.textContent = txt; document.body.appendChild(d); return d; };
   const all = [];
   const btn = (txt, code, right, bottom, size) => {
     const d = mk('tb', 'width:' + size + 'px;height:' + size + 'px;right:' + right + 'px;bottom:' + bottom + 'px', txt); d.dataset.k = txt; all.push(d);
