@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.19.5] - 2026-11-15
+- Dragon's Wrath needs only an Ember Jar now; the mana bar is gone. Each jar still adds 15% to the wrath.
+
 ## [1.19.4] - 2026-11-15
 - Dragon's Wrath now needs both full mana (60) and at least one Ember Jar. The HUD tells you when only the jar is missing.
 

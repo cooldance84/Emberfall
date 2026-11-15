@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.19.4';
+const VERSION = '1.19.5';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1298,7 +1298,7 @@ function updateHeroCore(f) {
       } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? mtype(f.mount).jump : (f.k.jump || 5.4); f.vx = mx * (f.mount ? mtype(f.mount).spd * 0.92 : 1.5); f.t = 0; f.hits.clear(); }
       else if (inH(f, 'skill') && castSkill(f)) { }
       else if (inH(f, 'atk')) { if (f.mount) { f.st = 'ratk'; f.t = 0; f.hits.clear(); SFX.swing(); } else startAttack(f, 0); }
-      else if (inH(f, 'magic') && f.mana >= 60 && f.vases >= 1 && !dragon) castDragon();
+      else if (inH(f, 'magic') && f.vases >= 1 && !dragon) castDragon();
       break;
     }
     case 'atk': {
@@ -1541,7 +1541,7 @@ function updateImpSpawn() {
 }
 function castDragon() {
   const v = hero.vases;
-  hero.mana -= 60; hero.vases = 0; hero.st = 'magic'; hero.t = 0; hero.inv = 190;
+  hero.vases = 0; hero.st = 'magic'; hero.t = 0; hero.inv = 190;
   dragon = { t: 0, v, mult: 1 + 0.15 * v, size: 1 + 0.15 * v, by: hero };
   msg = v ? `DRAGON'S WRATH  +${v * 15}%` : "DRAGON'S WRATH"; msgT = 120; SFX.magic();
 }
@@ -3108,14 +3108,13 @@ function drawHUD() {
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
   text(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
-  bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 && hero.vases ? '#ffd24a' : '#c08a2a', '#2e2010');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
-  text(hero.mana >= 60 && !hero.vases ? 'WRATH NEEDS AN EMBER JAR' : 'SHIFT: DRAGON WRATH', 12, 52, 8, hero.mana >= 60 && hero.vases ? '#ffd24a' : hero.mana >= 60 ? '#7fd0ff' : '#6a5a40');
+  text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
   { const S = skillOf(hero); if (S) { text('U: ' + S.name, 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
   for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
   text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
   if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
-  if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 && p.vases ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
+  if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
   if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); drawCoins(W - 46, 46, rpg.coins, 14);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
