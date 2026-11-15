@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.24.0';
+const VERSION = '1.25.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -384,6 +384,7 @@ function drawWeather() {
 }
 
 /* ---------- game state ---------- */
+let decals = []; // marks the fights leave on the floor: scorch, frost, blood
 let mode = 'title', cam = 0, lockX = Infinity, hero, enemies, items, parts, shake = 0, freeze = 0;
 let score = 0, waveIdx = 0, goBlink = 0, tickN = 0, lastEnemy = null, endTimer = 0, msg = '', msgT = 0;
 let mounts = [], dragon = null, impT = 240, flashA = 0;
@@ -1030,7 +1031,7 @@ function newHero() {
 }
 function resetGame() {
   newHero(); heroStats(true); floats = []; intro = null;
-  enemies = []; items = []; parts = []; cam = 0; lockX = Infinity; score = 0; waveIdx = 0; shake = 0; freeze = 0; endTimer = 0;
+  enemies = []; items = []; parts = []; decals = []; cam = 0; lockX = Infinity; score = 0; waveIdx = 0; shake = 0; freeze = 0; endTimer = 0;
   lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0; shots = []; story = null; bossRef = null; stageCard = 0; clearT = 0;
 }
 resetGame();
@@ -1241,7 +1242,7 @@ function groundPhysics(f) {
       f.hp = 0; f.dead = true; f.fade = 0; f.pitT = 1; f.pitY = f.y; SFX.die(); onKill(f); score += f.kind === 'b' ? 600 : 300; floatText(f.x, f.y - 50, 'INTO THE ABYSS!', '#ffd24a', 8); return true; } }
     if (f.z <= 0) { f.z = 0; if (f.vz < -1.5) { f.vz *= -0.35; f.vx *= 0.6; dust(f.x, f.y, 5); SFX.land(); } else { f.vz = 0; f.vx *= 0.8; } }
     f.t++;
-    if (f.hp <= 0 && !f.dead && f.z === 0 && f.t > 20) { f.dead = true; f.fade = 0; SFX.die(); if (!f.pn) { onKill(f); score += isBoss(f) ? 5000 : f.kind === 'b' ? 400 : 150; if (isBoss(f)) { shake = 14; flashA = 0.5; sparks(f.x, f.y, 30, true); sparks(f.x, f.y, 55, true); SFX.big(); } if (Math.random() < (f.kind === 'h' ? 0.22 : 0.6)) items.push({ x: f.x, y: f.y, t: 0, kind: 'meat' }); } }
+    if (f.hp <= 0 && !f.dead && f.z === 0 && f.t > 20) { f.dead = true; f.fade = 0; SFX.die(); if (!f.pn) { onKill(f); addDecal(f); score += isBoss(f) ? 5000 : f.kind === 'b' ? 400 : 150; if (isBoss(f)) { shake = 14; flashA = 0.5; sparks(f.x, f.y, 30, true); sparks(f.x, f.y, 55, true); SFX.big(); } if (Math.random() < (f.kind === 'h' ? 0.22 : 0.6)) items.push({ x: f.x, y: f.y, t: 0, kind: 'meat' }); } }
     if (f.hp > 0 && f.t > 55) { f.st = 'getup'; f.t = 0; }
     return true;
   }
@@ -1830,7 +1831,7 @@ function drawStory() {
 function beginStage(i) {
   stageIdx = i; const S = STAGES[i]; TH = themeFor(S.theme, actOf(i)); weather = WEATHER[actOf(i)][S.theme]; WAVES = S.waves; STAGE_END = S.end;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
-  impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
+  decals = []; impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
   intro = null; slashes = []; vents = []; chests = [];
   gaps = []; ambW = -1;
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 320 : S.end - 300, n = i === 0 ? 2 : 2 + Math.min(3, actOf(i) + ((i % 5) >= 2 ? 1 : 0));
@@ -2559,6 +2560,28 @@ function tileLayer(layer, par, yoff) {
 const TORCH_GAP = 300;
 function torchPositions() { const a = []; const s = Math.floor((cam - 60) / TORCH_GAP); for (let i = s; i < s + 4; i++) a.push(i * TORCH_GAP + 150); return a; }
 
+function addDecal(f) { // a lasting mark where a foe fell: the longer it lies, the fainter it gets
+  if (f.pn || f.isMount || f.pitT) return;
+  const sc = ((f.k && f.k.scale) || 1) * (isBoss(f) ? 1.8 : 1), dots = [];
+  for (let i = 0; i < 5; i++) dots.push({ dx: rnd(-22, 22) * sc, dy: rnd(-4, 4) * sc, r: rnd(1, 2.6) });
+  decals.push({ x: f.x, y: f.y, sc, el: ENEMY_EL[f.kind] || null, born: tickN, seed: dots });
+  if (decals.length > 36) decals.shift();
+}
+function drawDecals() {
+  const DL = 1500;
+  decals = decals.filter(d => tickN - d.born < DL);
+  for (const d of decals) {
+    const sx = Math.round(d.x - cam); if (sx < -60 || sx > W + 60) continue;
+    const age = tickN - d.born, a = Math.min(1, age / 10) * (1 - age / DL), fresh = Math.max(0, 1 - age / 150), y = Math.round(d.y);
+    const col = d.el === 'frost' ? '170,225,255' : d.el === 'bolt' ? '255,235,120' : d.el === 'fire' ? '30,10,8' : '60,12,16';
+    g.fillStyle = `rgba(${col},${(d.el === 'frost' ? 0.22 : 0.4) * a})`; g.beginPath(); g.ellipse(sx, y, 17 * d.sc, 5 * d.sc, 0, 0, 7); g.fill();
+    for (const p of d.seed) { g.fillStyle = `rgba(${col},${0.35 * a})`; g.fillRect(Math.round(sx + p.dx), Math.round(y + p.dy), Math.ceil(p.r), 1); }
+    if (fresh > 0 && (d.el === 'fire' || d.el === 'bolt')) { // fresh scorch still glows for a moment
+      g.globalCompositeOperation = 'lighter'; g.fillStyle = d.el === 'fire' ? `rgba(255,120,40,${0.28 * fresh})` : `rgba(255,240,140,${0.25 * fresh})`;
+      g.beginPath(); g.ellipse(sx, y, 11 * d.sc, 3 * d.sc, 0, 0, 7); g.fill(); g.globalCompositeOperation = 'source-over';
+    }
+  }
+}
 function drawWorld() {
   const T = TH;
   g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
@@ -2974,6 +2997,7 @@ function drawFighter0(f) {
   if (f.kind === 'wyrm') { drawWyrm(f, sx, sy); return; }
   const sh = clamp(1 - f.z / 90, 0.3, 1) * f.k.scale * (f.mount ? 1.7 : 1);
   g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 12 * sh, 4 * sh, 0, 0, 7); g.fill();
+  if (!f.pn && !f.dead && ENEMY_EL[f.kind]) { const E = ELEM[ENEMY_EL[f.kind]]; g.strokeStyle = `rgba(${E.rgb},${0.38 + 0.12 * Math.sin(tickN * 0.1 + f.x)})`; g.lineWidth = 1; g.beginPath(); g.ellipse(Math.round(sx), Math.round(sy), 14 * sh, 5 * sh, 0, 0, 7); g.stroke(); } // the ring shows what a foe is made of: fire, frost or lightning
   if (f.glow && !f.dead) { g.globalCompositeOperation = 'lighter'; glowDot(g, Math.round(sx), Math.round(sy) - 2, 26 + Math.sin(tickN * 0.1) * 3, f.glow, 0.32); g.globalCompositeOperation = 'source-over'; }
   if (f.mount) {
     drawDragon(sx, sy - f.z, mountLook(f.mount, { face: f.face, anim: f.anim, flash: f.flash, moving: f.st === 'walk', breathe: f.st === 'ratk' || f.jf > 0 || f.st === 'wind' || f.st === 'eatk' }));
@@ -3374,7 +3398,7 @@ function render() {
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
   g.save(); g.translate(Math.round(sx), Math.round(sy));
-  drawWorld(); drawFog();
+  drawWorld(); drawDecals(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
   drawChests(); drawItems(); drawVentsAndSlashes(false);
   const list = [...enemies, ...mounts, ...players()].sort((a, b) => a.y - b.y);

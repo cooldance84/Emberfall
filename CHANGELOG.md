@@ -2,7 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
-## [1.24.0] - 2026-11-15
+## [1.25.0] - 2026-11-15
+- Visual polish: foes that carry an element (bosses, warders, knights, archers, wraiths...) now stand in a thin ring of their element's colour (fire, frost, lightning), so you can read weakness and resistance at a glance.
+- The fights leave lasting marks on the floor: dark stains, scorch that still glows for a moment, frost patches, lightning scorch. They fade after about 25 seconds and never outlive the stage.
+ - 2026-11-15
 - Ember Trials replace the endless "cycles". After the campaign each Trial (I-X) starts again from stage 1 with foes that have 20% more life and hit 12% harder, compounding; difficulty stops growing at Trial X. Within a Trial the stages ramp like the campaign, no more 60-level jumps.
 - Rewards grow with the Trials: gold +25% per Trial, set drop chance +15% per Trial, a little extra mythic luck. Clearing Trial I, II and III opens forge levels +8, +9 and +10 (chances 30%, 25%, 20%).
 - Emberheart set reworked: 2 pieces +8 STR +12% element power; 4 pieces +8 STR, +25% element power and +30% damage to burning, frozen, stunned or chilled foes.
