@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.18.3] - 2026-11-15
+- Dragon's Wrath now bursts open every treasure chest on screen.
+
 ## [1.18.2] - 2026-11-15
 - Fix: Panni's arcane bolts and the Dragon shockwaves now open treasure chests too (before, her bolts flew over them).
 

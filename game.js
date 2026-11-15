@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.18.2';
+const VERSION = '1.18.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1555,6 +1555,7 @@ function dragonImpact() {
     e.inv = 0; if (e.st === 'down' || e.st === 'getup') e.st = 'idle';
     hurt(e, dmg, 'down', { x: cam + W / 2, face: 1 });
   }
+  for (const c of chests) if (!c.open && c.x > cam - 10 && c.x < cam + W + 10) { c.hp = 1; openChest(c); } // the wrath smashes every chest on screen open
   shake = 22; freeze = 8; flashA = 1;
   SFX.big(); tone('sawtooth', 70, 20, 0.9, 0.14);
   for (let i = 0; i < 3; i++) parts.push({ ring: true, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
