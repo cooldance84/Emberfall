@@ -259,7 +259,10 @@ const HU_PHRASE = {
 };
 
 /* word-order rules for strings with numbers and names in them */
+Object.assign(HU_EXACT, { "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
 const HU_RULES = [
+  [/^(VOWBOUND|BULWARK|EMBERHEART) SET  (\d)\/6$/, m => ({ VOWBOUND: "ESKÜKÖTÖTT", BULWARK: "BÁSTYA", EMBERHEART: "PARÁZSSZÍV" })[m[1]] + " SZETT  " + m[2] + "/6"],
+  [/^(VOWBOUND|BULWARK|EMBERHEART) SET DROP!$/, m => ({ VOWBOUND: "ESKÜKÖTÖTT", BULWARK: "BÁSTYA", EMBERHEART: "PARÁZSSZÍV" })[m[1]] + " SZETT ZSÁKMÁNY!"],
   [/^UPGRADE TO TIER ([IVX]+)   (\d+G)$/, m => "FEJLESZTÉS: " + m[1] + ". FOKOZAT   " + m[2]],
   [/^NEXT TIER AT LEVEL (\d+)$/, m => "KÖVETKEZŐ FOKOZAT: " + m[1] + ". SZINTEN"],
   [/^DISMISS ELEMENT   \+(\d+)G BACK$/, m => "ELEM ELVETÉSE   +" + m[1] + "A VISSZA"],

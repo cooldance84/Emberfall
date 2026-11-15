@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.23.0] - 2026-11-15
+- Gear sets: three sets (Vowbound: crit, Bulwark: life and resist, Emberheart: strength and element power). Legendary (20%) and mythic (35%) drops from item level 50 up can be set pieces.
+- Wear 2 or 4 pieces of one set for a bonus; sets combine freely (2+2, 4+2). The tooltip shows which bonuses are on, counting the item as worn; set pieces carry a coloured marker in the backpack.
+
 ## [1.22.3] - 2026-11-15
 - Link preview for sharing (Facebook etc.): Open Graph / Twitter meta tags and a 1200x630 cover image (docs/og-image.jpg), page title and description.
 

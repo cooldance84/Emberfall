@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.22.3';
+const VERSION = '1.23.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -537,6 +537,18 @@ const STATS = {
 };
 const STAT_KEYS = Object.keys(STATS);
 const SLOT_PRIMARY = { weapon: ['str', 'cdmg'], helm: ['crit', 'hit'], armor: ['str', 'hit'], boots: ['hit', 'crit'], ring: ['crit', 'cdmg'], amulet: ['str', 'cdmg', 'crit', 'hit'] };
+/* ---------- gear sets: legendary and mythic pieces from item level 50 up can belong to a set; wear 2 or 4 pieces of the same set for a bonus. Sets combine freely (2+2, 4+2...) ---------- */
+const SET_MIN_LV = 50, SET_CH = { 3: 0.2, 4: 0.35 };
+const SETS = {
+  vow: { name: 'VOWBOUND', pre: 'Vowbound', col: '#ff6a8a', b: [[2, { crit: 6, cdmg: 25 }], [4, { crit: 14, cdmg: 70 }]] },
+  bulwark: { name: 'BULWARK', pre: 'Bulwark', col: '#6ad8ff', b: [[2, { hp: 15 }], [4, { hp: 30, res: 20 }]] },
+  ember: { name: 'EMBERHEART', pre: 'Emberheart', col: '#ffb45a', b: [[2, { str: 6, ep: 12 }], [4, { str: 12, ep: 30 }]] }
+};
+const SET_UNIT = { crit: ['%', 'CRIT'], cdmg: ['%', 'CRIT DMG'], hp: ['%', 'MAX HP'], res: ['%', 'ALL RESIST'], ep: ['%', 'ELEM POWER'] };
+function setCount(id, skipSlot) { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it.set === id && sl !== skipSlot) n++; } return n; }
+function setTier(id, n) { let b = null; for (const [need, v] of SETS[id].b) if (n >= need) b = v; return b; }
+function setBonus(key) { let t = 0; for (const id in SETS) { const b = setTier(id, setCount(id)); if (b && b[key]) t += b[key]; } return t; }
+function setBonusText(b) { return Object.keys(b).map(k => '+' + b[k] + (k === 'str' ? ' ' + tr(statName('str')) : SET_UNIT[k][0] + ' ' + tr(SET_UNIT[k][1]))).join(' '); }
 const BASE_NAMES = { weapon: ['Rusted Sword', 'Iron Blade', 'Ash Cleaver'], helm: ['Worn Cap', 'Iron Helm', 'Husk Visor'], armor: ['Ragged Vest', 'Chain Shirt', 'Ash Plate'], boots: ['Old Boots', 'Road Greaves', 'Cinder Treads'], ring: ['Copper Ring', 'Bone Band', 'Ash Loop'], amulet: ['Bone Charm', 'Tin Pendant', 'Ash Locket'] };
 const MAGIC_BASE = { weapon: ['Sword', 'Blade', 'Axe'], helm: ['Helm', 'Cap', 'Hood'], armor: ['Mail', 'Vest', 'Plate'], boots: ['Boots', 'Greaves', 'Treads'], ring: ['Ring', 'Band', 'Loop'], amulet: ['Amulet', 'Charm', 'Pendant'] };
 const RARE_PRE = ['Runed', 'Grim', 'Stormforged', 'Bloodsworn', 'Dread', 'Sunlit', 'Wyrmbone', 'Ashborn'];
@@ -582,8 +594,8 @@ const ENEMY_EL = MON_EL; // the element a monster's own attacks carry (for your 
 const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
 let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
 const gearSum = (key, el) => { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it[key] && it[key].k === el) n += it[key].v; } return n; };
-const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem)) : 0;   // % bonus to your element's buildup and damage
-const elemResist = el => el ? Math.min(60, gearSum('er', el)) / 100 : 0;        // share of that element's damage you ignore
+const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem) + setBonus('ep')) : 0;   // % bonus to your element's buildup and damage
+const elemResist = el => el ? Math.min(60, gearSum('er', el) + setBonus('res')) / 100 : 0;        // share of that element's damage you ignore
 const elemTierCost = t => t <= 1 ? 0 : Math.round(120 * Math.pow(t, 1.6)); // tier I is free, the rest cost gold
 const elemRefund = () => Math.floor((rpg.eg | 0) * 0.75);                  // dismissing your element returns 75% of the gold you put into it
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null, et: 0, eg: 0 };
@@ -595,12 +607,13 @@ function pstats() {
   if (PS) return PS;
   const C = cls(), s = { str: 4 + rpg.lvl, crit: C.crit, cdmg: C.cdmg, hit: 90 };
   for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it) { const st = itemSt(it); for (const q in st) s[q] += st[q]; } }
+  s.str += setBonus('str'); s.crit += setBonus('crit'); s.cdmg += setBonus('cdmg'); // set bonuses
   if (CLS === 'luca') { s.crit += Math.floor(s.str * 0.08); s.hit += Math.floor(s.str * 0.05); }
   // soft caps: stacked mythic gear makes you strong, not untouchable
   s.crit = Math.min(CLS === 'luca' ? 70 : 60, s.crit); s.hit = Math.min(100, s.hit);
   if (s.cdmg > 250) s.cdmg = Math.min(500, Math.round(250 + (s.cdmg - 250) * 0.35));
   s.mult = (1 + Math.min(s.str, 120) * C.mul + Math.max(0, s.str - 120) * C.mul * 0.45) * (dailyIs('GLASS CANNON') ? 1.5 : 1);
-  s.maxhp = Math.round(C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2));
+  s.maxhp = Math.round((C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2)) * (1 + setBonus('hp') / 100));
   return (PS = s);
 }
 const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a6a24', armor2: '#ffe84a', cloth: '#6a5a14', blade: '#fff6b0' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
@@ -680,9 +693,11 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * qm * sc(k))); }
   const WN = slot === 'weapon' && WNAMES[CLS];
   const base = WN ? WN.magic : MAGIC_BASE[slot];
-  const name = rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
+  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] ? pickOf(Object.keys(SETS)) : null;
+  const name = setId ? SETS[setId].pre + ' ' + pickOf(base) : rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
     : rar === 3 ? pickOf(WN ? WN.leg : LEG_NAMES[slot]) : pickOf(WN ? WN.myth : MYTH_NAMES[slot]);
   const it = { slot, rar, name, st, lvl: il, q: Math.round(Q * 100) };
+  if (setId) it.set = setId;
   if (rar >= 1) { // elemental affixes: power for your own element, resistance against what the monsters throw
     const ch = [0, 0.14, 0.3, 0.55, 0.9][rar], roll = b => Math.round((b + il * 0.14) * (0.8 + 0.4 * Q));
     if (Math.random() < ch) it.ea = { k: pickOf(ELEMS), v: roll(6) };
@@ -695,6 +710,7 @@ function dropGear(x, y, rar) {
   items.push({ x, y, t: 0, kind: 'gear', it: genItem(rar), z: 14, vz: 3.4 });
   spawn(x, y, 14, 10 + rar * 8, { c: [R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
   if (items[items.length - 1].it.q >= 90 && rar < 3) floatText(x, y - 58, 'PERFECT ROLL!', '#ffd24a', 8);
+  const di = items[items.length - 1].it; if (di.set) floatText(x, y - 62, SETS[di.set].name + ' SET DROP!', SETS[di.set].col, 8);
   if (rar >= 3) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 4 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
   else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
@@ -736,7 +752,7 @@ function updateFloats() { for (const f of floats) { f.t++; f.y -= 0.45; } floats
 function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (56 - f.t) / 18); text(f.s, Math.round(f.x - cam), Math.round(f.y), f.size, f.col, 'center'); } g.globalAlpha = 1; }
 
 /* ---- persistence: character + leaderboard live in localStorage ---- */
-const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) { it.up = clamp(it.up | 0, 0, MAX_UP); for (const k of ['ea', 'er']) if (it[k] && !(ELEMS.includes(it[k].k) && it[k].v > 0)) delete it[k]; else if (it[k]) it[k].v = Math.min(99, it[k].v | 0); } return ok; };
+const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) { it.up = clamp(it.up | 0, 0, MAX_UP); if (it.set && !(SETS[it.set] && it.rar >= 3)) delete it.set; for (const k of ['ea', 'er']) if (it[k] && !(ELEMS.includes(it[k].k) && it[k].v > 0)) delete it[k]; else if (it[k]) it[k].v = Math.min(99, it[k].v | 0); } return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
 /* ---------- daily challenge: five stages, a fresh hero, one rule of the day, its own leaderboard; your real hero and run are never touched ---------- */
 let daily = null, boardView = 0; // boardView 0 = all time, 1 = today's daily
@@ -909,6 +925,7 @@ function slotBox(x, y, it, sel, ghost) {
   g.strokeStyle = it ? RARITY[it.rar].col : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
   if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, RARITY[it.rar].col);
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
+  if (it && it.set) { g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); }
   if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
   if (sel) { g.strokeStyle = (tickN >> 3) & 1 ? '#ffd24a' : '#fff1b0'; g.lineWidth = 2; g.strokeRect(x - 2, y - 2, 30, 30); }
 }
@@ -926,8 +943,14 @@ function drawTip(it, cmp, x, y) {
   for (const k of STAT_KEYS) if (ist[k]) { text('+' + ist[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
   if (it.ea) { text('+' + it.ea.v + '% ' + ELEM[it.ea.k].name + ' POWER', x + 8, yy, 8, ELEM[it.ea.k].col); yy += 12; }
   if (it.er) { text('+' + it.er.v + '% ' + ELEM[it.er.k].name + ' RESIST', x + 8, yy, 8, ELEM[it.er.k].col2); yy += 12; }
+  if (it.set) { // set info: which bonuses are on, counting this piece as worn
+    const S = SETS[it.set], n = setCount(it.set, it.slot) + 1;
+    text(S.name + ' SET  ' + n + '/6', x + 8, yy + 2, 8, S.col); yy += 13;
+    for (const [need, b] of S.b) { text(need + ': ' + setBonusText(b), x + 8, yy, 7, n >= need ? S.col : '#6a5a7a'); yy += 10; }
+    yy += 2;
+  }
   if (cmp !== undefined) {
-    yy += 8; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
+    yy += 6; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
     for (const k of STAT_KEYS) { const d = (ist[k] || 0) - ((cst && cst[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
     for (const key of ['ea', 'er']) for (const el of ELEMS) { // elemental power and resist count in the comparison too
       const d = ((it[key] && it[key].k === el) ? it[key].v : 0) - ((cmp && cmp[key] && cmp[key].k === el) ? cmp[key].v : 0);
