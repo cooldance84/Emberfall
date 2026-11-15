@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.14.0';
+const VERSION = '1.14.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2060,7 +2060,7 @@ function updateItems() {
       if (it.z === undefined) { it.z = 8; it.vz = 3; }
       it.z += it.vz; it.vz -= 0.3; if (it.z < 0) { it.z = 0; it.vz = it.vz < -1.2 ? -it.vz * 0.4 : 0; }
     }
-    const P = players().find(p => !p.dead && Math.abs(it.x - p.x) <= 16 && Math.abs(it.y - p.y) <= 14); if (!P) continue;
+    const P = players().find(p => !p.dead && Math.abs(it.x - p.x) <= 16 && Math.abs(it.y - p.y) <= 14 && (it.kind !== 'meat' || p.hp < p.maxhp)); if (!P) continue; // healing stays on the ground while you are at full health
     if (it.kind === 'gear') {
       if (it.t < 14) continue;
       if (!withHero(P, () => pickupGear(it.it))) { if (!it.warn) { it.warn = 1; floatText(P.x, P.y - 60, 'PACK FULL', '#ff6a6a', 8); } continue; }

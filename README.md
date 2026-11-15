@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.14.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.14.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 

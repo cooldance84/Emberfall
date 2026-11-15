@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.14.1] - 2026-11-15
+- Healing food now stays on the ground while you are at full health, so you can come back for it after you take damage. In co-op it goes to the player who needs it.
+
 ## [1.14.0] - 2026-11-15
 - The campaign now has seven acts and 35 stages (was four acts, 20 stages), with seven Heart-Embers to recover.
 - Fifteen new stages in three new acts: the Withered Wilds (green fog and rain), the Gilded Dunes (gold and sparks) and the Eclipse Gate (a dark blood eclipse). The old fourth act (the Last Road to the First Flame) is now act VII, the finale.
