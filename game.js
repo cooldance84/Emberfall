@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.22.1';
+const VERSION = '1.22.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -715,6 +715,11 @@ const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar]
 const itemPrice = it => Math.round(itemValue(it) * 2.5);
 const sameItem = (a, b) => !!a && !!b && a.slot === b.slot && a.name === b.name && a.rar === b.rar && (a.q | 0) === (b.q | 0) && (a.lvl || 1) === (b.lvl || 1) && (a.up | 0) === (b.up | 0);
 function isDuplicate(it) { return Object.values(rpg.eq).some(o => sameItem(o, it)) || rpg.bag.some(o => sameItem(o, it)); }
+// the backpack is always sorted: plain items first, then by rarity; inside a rarity by slot, then the higher item level first
+function sortBag(keep) {
+  rpg.bag.sort((a, b) => a.rar - b.rar || SLOTS.indexOf(a.slot) - SLOTS.indexOf(b.slot) || (b.lvl || 1) - (a.lvl || 1) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+  if (keep && typeof inv !== 'undefined') inv.i = Math.max(0, rpg.bag.indexOf(keep));
+}
 function pickupGear(it, bought) {
   const R = RARITY[it.rar];
   if (!bought && isDuplicate(it)) { // already owned: it turns into gold and score
@@ -722,7 +727,7 @@ function pickupGear(it, bought) {
     floatText(hero.x, hero.y - 60, 'DUPLICATE  +' + gd + 'G  +' + pt + 'PTS', '#ffd24a', 8); SFX.pick(); return true;
   }
   if (!rpg.eq[it.slot] && canWear(it)) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, R.col, 8); }
-  else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); floatText(hero.x, hero.y - 60, it.name, R.col, 8); }
+  else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); sortBag(); floatText(hero.x, hero.y - 60, it.name, R.col, 8); }
   else return false;
   saveGame(); return true;
 }
@@ -759,7 +764,7 @@ function loadGame() {
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
       rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 7); rpg.eg = Math.max(0, o.eg | 0); // older saves keep the tiers they had earned
-      rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX);
+      rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); sortBag();
       rpg.eq = {}; for (const s of SLOTS) if (o.eq && validItem(o.eq[s]) && o.eq[s].slot === s) rpg.eq[s] = o.eq[s];
       rpg.ini = String(o.ini || 'AAA').toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
     }
@@ -951,10 +956,10 @@ function updateInv() {
     if (inv.z === 'bag') {
       const it = rpg.bag[inv.i];
       if (it && !canWear(it)) { invNote = 'NEEDS LEVEL ' + (it.lvl || 1); invNoteT = 90; SFX.hit(); }
-      else if (it) { const old = rpg.eq[it.slot]; rpg.eq[it.slot] = it; if (old) rpg.bag[inv.i] = old; else rpg.bag.splice(inv.i, 1); PS = null; heroStats(false); saveGame(); SFX.pick(); }
+      else if (it) { const old = rpg.eq[it.slot]; rpg.eq[it.slot] = it; if (old) rpg.bag[inv.i] = old; else rpg.bag.splice(inv.i, 1); sortBag(old); PS = null; heroStats(false); saveGame(); SFX.pick(); }
     } else {
       const s = EQ_ORDER[inv.i], it = rpg.eq[s];
-      if (it && rpg.bag.length < BAG_MAX) { rpg.bag.push(it); delete rpg.eq[s]; PS = null; heroStats(false); saveGame(); SFX.pick(); }
+      if (it && rpg.bag.length < BAG_MAX) { rpg.bag.push(it); sortBag(); delete rpg.eq[s]; PS = null; heroStats(false); saveGame(); SFX.pick(); }
     }
   }
   if ((pressed.KeyX || pressed.Delete) && inv.z === 'bag' && rpg.bag[inv.i]) { rpg.bag.splice(inv.i, 1); saveGame(); SFX.hit(); }
@@ -1400,7 +1405,7 @@ function updateEnemy(e) {
   e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
   if (e.dead) { e.fade++; if (e.pitT) e.pitT++; return; }
   if (e.leap && e.st !== 'eatk' && e.st !== 'wind') { e.leap = 0; e.z = 0; }
-  if (e.barrier === 0 && e.bmax && e.kind === 'warder' && tickN - e.bbreak > 900 && tickN - (e.lastHit || 0) > 300) { e.barrier = e.bmax; spawn(e.x, e.y, e.h * 0.5, 16, { c: ['#9ae8ff', '#b88aff'], add: true, l0: 12, l1: 24, up: 1.5 }); SFX.magic(); }
+  // a barrier is one-time: once it is broken it never comes back
   if (groundPhysics(e)) return;
   if ((e.st === 'idle' || e.st === 'walk') && e.cool < 5000) e.cool -= isBoss(e) ? (e.p2 ? 0.5 : 0.3) : 0.2;
   if (!isBoss(e) && !e.leap) { // husks hop across chasms and barricades
@@ -1522,9 +1527,9 @@ function updateMinion(e) {
       if (e.t % 3 === 0) spawn(e.x + e.face * 8, e.y, 52, 1, { c: ai === 'warder' ? ['#9ae8ff', '#b88aff'] : ['#ffb43a', '#ff5a1f'], s0: 0.2, s1: 0.6, l0: 8, l1: 16, add: true, up: 1, g: 0 });
       if (e.t >= k.windup) {
         if (ai === 'warder') {
-          const allies = enemies.filter(o => o !== e && !o.dead && !isBoss(o) && o.kind !== 'imp' && !(o.barrier > 0) && Math.abs(o.x - e.x) < 170);
+          const allies = enemies.filter(o => o !== e && !o.dead && !isBoss(o) && o.kind !== 'imp' && !(o.barrier > 0) && !o.warded && Math.abs(o.x - e.x) < 170);
           if (e.barrier > 0 && allies.length && enemies.filter(o => o.ward === e && o.barrier > 0).length < 2 && Math.random() < 0.6) {
-            const o = allies[Math.random() * allies.length | 0]; o.ward = e; o.barrier = o.bmax = Math.round(o.maxhp * 0.6);
+            const o = allies[Math.random() * allies.length | 0]; o.ward = e; o.warded = true; o.barrier = o.bmax = Math.round(o.maxhp * 0.6);
             zap(e.x + e.face * 8, e.y, 50, o.x, o.y, o.h * 0.6); spawn(o.x, o.y, o.h * 0.5, 14, { c: ['#9ae8ff', '#b88aff'], add: true, l0: 10, l1: 22 }); SFX.magic();
           } else { shots.push({ type: 'bolt', x: e.x + e.face * 16, y: e.y, z: 30, vx: e.face * 2.6, t: 0, dmg: k.dmg, life: 200 }); SFX.swing(); }
         } else {
