@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.20.0';
+const VERSION = '1.21.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -576,15 +576,17 @@ const ELEM_RES = {
   wisp: { fire: 1.25, bolt: 0.7 }, runner: { frost: 1.25, fire: 0.75 }, guard: { bolt: 1.25, frost: 0.75 }, wraith: { frost: 1.25, fire: 0.6 },
   archer: { fire: 1.25, frost: 0.6 }, bomber: { frost: 1.3, fire: 0.5 }, knight: { bolt: 1.25, fire: 0.75 }, warder: { bolt: 1.25 }, caller: { frost: 1.25, fire: 0.6 }
 };
-const elemTier = () => rpg.elem && rpg.lvl >= 10 ? clamp(Math.floor(rpg.lvl / 10), 1, 7) : 0;
+const elemAvail = () => clamp(Math.floor(rpg.lvl / 10), 0, 7);                          // highest tier your level allows
+const elemTier = () => rpg.elem ? clamp(Math.min(rpg.et | 0, elemAvail()), 0, 7) : 0;      // tiers are bought at the Blacksmith with gold
 const ENEMY_EL = { bomber: 'fire', boss: 'fire', smith: 'fire', king: 'fire', wyrm: 'fire', archer: 'frost', wraith: 'frost', caller: 'frost', wisp: 'bolt', witch: 'bolt', warder: 'bolt', knight: 'bolt' };
 const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
 let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
 const gearSum = (key, el) => { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it[key] && it[key].k === el) n += it[key].v; } return n; };
 const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem)) : 0;   // % bonus to your element's buildup and damage
 const elemResist = el => el ? Math.min(60, gearSum('er', el)) / 100 : 0;        // share of that element's damage you ignore
-const elemCost = () => 250 + rpg.lvl * 12; // gold to change element at the Blacksmith; the first choice is free
-let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null };
+const elemTierCost = t => t <= 1 ? 0 : Math.round(120 * Math.pow(t, 1.6)); // tier I is free, the rest cost gold
+const elemRefund = () => Math.floor((rpg.eg | 0) * 0.75);                  // dismissing your element returns 75% of the gold you put into it
+let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null, et: 0, eg: 0 };
 let PS = null, floats = [];
 
 const XPN = [62, 31];
@@ -652,7 +654,7 @@ function levelUp(lv0) {
   const sk = SKILLS.filter(k => k.lv > (lv0 || 0) && k.lv <= rpg.lvl).pop();
   if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + sk.name + '  (U)'; msgT = 220; }
   if (rpg.lvl >= 10 && !rpg.elem && lv0 < 10) { msg = 'ELEMENT UNLOCKED - SEE THE BLACKSMITH'; msgT = 240; }
-  else if (rpg.elem && Math.floor(rpg.lvl / 10) > Math.floor((lv0 || 0) / 10) && elemTier()) { msg = ELEM[rpg.elem].name + ' TIER ' + ROMAN[elemTier()] + ': ' + ELEM_TIERS[rpg.elem][elemTier() - 1]; msgT = 240; }
+  else if (rpg.elem && elemAvail() > (rpg.et | 0) && Math.floor(rpg.lvl / 10) > Math.floor((lv0 || 0) / 10)) { msg = 'NEW ' + ELEM[rpg.elem].name + ' TIER READY - SEE THE BLACKSMITH'; msgT = 240; }
   saveGame();
 }
 function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +legendary 7%. 4+: +mythic 1%
@@ -744,7 +746,7 @@ const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + Stri
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
-function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem })); } catch (e) { } }
+function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -755,6 +757,7 @@ function loadGame() {
     const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
+      rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 7); rpg.eg = Math.max(0, o.eg | 0); // older saves keep the tiers they had earned
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX);
       rpg.eq = {}; for (const s of SLOTS) if (o.eq && validItem(o.eq[s]) && o.eq[s].slot === s) rpg.eq[s] = o.eq[s];
       rpg.ini = String(o.ini || 'AAA').toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
@@ -796,7 +799,7 @@ function drawResume() {
 function peekSave(c) { try { const o = migrateSave(JSON.parse(localStorage.getItem(saveKey(c)) || 'null')) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
-  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; loadGame(); saveSettings();
+  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; PS = null; loadGame(); saveSettings();
   if (hero) heroStats(true);
 }
 
@@ -816,7 +819,7 @@ function endRun(won) {
 }
 function startDaily() {
   daily = { date: dayStr(), mod: dayMod() }; coop = false; cycle = 0;
-  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
+  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
   beginStage(0); msg = 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function toTitle() { if (daily) { daily = null; boardView = 0; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
@@ -1653,7 +1656,7 @@ function drawPause() {
   }
   if (pausePg === 3) { // how the elements work
     const E = rpg.elem && ELEM[rpg.elem], T = elemTier(), L = [];
-    L.push(['HITS BUILD UP A STATUS ON FOES;', '#e8dcc8']); L.push(['AT 100 IT TRIGGERS. A NEW TIER EVERY 10 LEVELS.', '#e8dcc8']);
+    L.push(['HITS BUILD UP A STATUS ON FOES;', '#e8dcc8']); L.push(['AT 100 IT TRIGGERS. TIERS UNLOCK EVERY 10 LEVELS;', '#e8dcc8']); L.push(['BUY THEM AT THE BLACKSMITH. DISMISS: 75% BACK.', '#e8dcc8']);
     L.push(['FIRE: BURNING.  FROST: CHILL, FREEZE.', '#e8dcc8']); L.push(['LIGHTNING: ARCS AND STUN.', '#e8dcc8']);
     L.push(['MONSTERS ARE WEAK (GREEN) OR', '#9aff9a']); L.push(['RESISTANT (RED) - NEVER IMMUNE.', '#ff9a9a']);
     L.push([rpg.lvl < 10 ? 'REACH LEVEL 10, THEN SEE THE BLACKSMITH.' : E ? 'YOURS: ' + E.name + ' TIER ' + ROMAN[T] : 'PICK YOUR ELEMENT AT THE BLACKSMITH.', E ? E.col : '#ffd24a']);
@@ -1824,19 +1827,33 @@ const FORGE_P = [1, 1, 1, 0.8, 0.65, 0.5, 0.35]; // chance to reach the next lev
 const forgeCost = it => Math.round((40 + (it.lvl || 1) * 5) * (1 + 0.75 * (it.up | 0)) * [1, 1.2, 1.5, 1.8, 2.2][it.rar]);
 let forge = null;
 function forgeList() { const a = []; if (rpg.lvl >= 10) a.push({ el: true }); for (const sl of SLOTS) if (rpg.eq[sl]) a.push({ it: rpg.eq[sl], worn: true }); for (const it of rpg.bag) a.push({ it }); a.push({ go: true }); return a; }
-function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0, pick: null }; mode = 'forge'; SFX.pick(); }
+function openForge(next) { forge = { i: 0, note: '', noteT: 0, next, fx: 0, pick: null, menu: null, arm: 0 }; mode = 'forge'; SFX.pick(); }
 function updateForge() {
   const f = forge, L = forgeList(); if (f.noteT > 0) f.noteT--; if (f.fx > 0) f.fx--; f.i = Math.min(f.i, L.length - 1);
   const say = (t, ok) => { f.note = t; f.noteT = 110; f.ok = ok; };
-  if (f.pick !== null) { // choosing the element
+  if (f.arm > 0) f.arm--;
+  if (f.pick !== null) { // choosing an element (only while you carry none)
     if (isHit('up')) { f.pick = (f.pick + 2) % 3; SFX.pick(); }
     if (isHit('down')) { f.pick = (f.pick + 1) % 3; SFX.pick(); }
     if (isHit('back')) { f.pick = null; return; }
     if (isHit('start') || isHit('atk')) {
-      const el = ELEMS[f.pick], cost = rpg.elem ? elemCost() : 0;
-      if (el === rpg.elem) { say('YOU ALREADY CARRY THAT ELEMENT', false); return; }
-      if (rpg.gold < cost) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
-      rpg.gold -= cost; rpg.elem = el; f.pick = null; PS = null; heroStats(false); saveGame(); SFX.magic(); f.fx = 40; say(tr('ELEMENT CHOSEN:') + ' ' + tr(ELEM[el].name), true);
+      const el = ELEMS[f.pick]; rpg.elem = el; rpg.et = Math.min(1, elemAvail()); rpg.eg = 0; f.pick = null; PS = null; heroStats(false); saveGame(); SFX.magic(); f.fx = 40; say(tr('ELEMENT CHOSEN:') + ' ' + tr(ELEM[el].name), true);
+    }
+    return;
+  }
+  if (f.menu !== null) { // your element: upgrade a tier, or dismiss it for a refund
+    if (isHit('up') || isHit('down')) { f.menu ^= 1; f.arm = 0; SFX.pick(); }
+    if (isHit('back')) { f.menu = null; f.arm = 0; return; }
+    if (isHit('start') || isHit('atk')) {
+      if (f.menu === 0) {
+        const nt = (rpg.et | 0) + 1, cost = elemTierCost(nt);
+        if (nt > 7) say('YOUR ELEMENT IS AT ITS PEAK', false);
+        else if (nt > elemAvail()) say('REACH LEVEL ' + nt * 10 + ' FIRST', false);
+        else if (rpg.gold < cost) { say('NOT ENOUGH GOLD', false); SFX.land(); }
+        else { rpg.gold -= cost; rpg.eg = (rpg.eg | 0) + cost; rpg.et = nt; PS = null; heroStats(false); saveGame(); SFX.magic(); f.fx = 40; say(tr(ELEM[rpg.elem].name) + ' ' + tr('TIER') + ' ' + ROMAN[nt] + '!', true); }
+      } else if (f.arm > 0) {
+        const back = elemRefund(); rpg.gold += back; rpg.elem = null; rpg.et = 0; rpg.eg = 0; f.menu = null; f.arm = 0; PS = null; heroStats(false); saveGame(); SFX.land(); say(tr('ELEMENT DISMISSED.') + ' +' + back + ' ' + tr('GOLD BACK'), true);
+      } else { f.arm = 200; say('PRESS ENTER AGAIN TO DISMISS IT FOR GOOD', false); }
     }
     return;
   }
@@ -1846,7 +1863,7 @@ function updateForge() {
   if (isHit('back')) { leave(); return; }
   if (!(isHit('start') || isHit('atk'))) return;
   const o = L[f.i]; if (o.go) { leave(); return; }
-  if (o.el) { f.pick = Math.max(0, ELEMS.indexOf(rpg.elem)); SFX.pick(); return; }
+  if (o.el) { if (rpg.elem) f.menu = 0; else f.pick = 0; SFX.pick(); return; }
   const it = o.it, up = it.up | 0;
   if (up >= MAX_UP) { say('ALREADY AT +7 (MAX)', false); return; }
   const c = forgeCost(it); if (rpg.gold < c) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
@@ -1867,7 +1884,7 @@ function drawForge() {
     if (i < top) return; const y = 62 + (L.length === 1 ? 1 : i - top) * 20, sel = i === f.i; if (y > 200) return;
     if (sel) { g.fillStyle = 'rgba(255,140,60,0.18)'; g.fillRect(14, y - 11, 238, 17); g.strokeStyle = '#ff9a4a'; g.strokeRect(14.5, y - 10.5, 237, 16); }
     if (o.go) { text((sel ? '> ' : '  ') + 'BACK TO THE ROAD', 20, y, 8, '#9fd0ff'); return; }
-    if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); text(rpg.elem ? elemCost() + 'G' : 'FREE', 246, y, 8, !rpg.elem || rpg.gold >= elemCost() ? '#ffd24a' : '#ff6a6a', 'right'); return; }
+    if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); { const nt = (rpg.et | 0) + 1, can = rpg.elem && nt <= elemAvail(); text(!rpg.elem ? 'FREE' : can ? elemTierCost(nt) + 'G' : rpg.et >= 7 ? 'MAX' : '', 246, y, 8, !rpg.elem || (can && rpg.gold >= elemTierCost(nt)) ? '#ffd24a' : can ? '#ff6a6a' : '#8a7a6a', 'right'); } return; }
     const it = o.it, nm = iname(it), mx = (it.up | 0) >= MAX_UP;
     if (o.worn) { text('E', 8, y, 7, '#c9a8ff'); g.fillStyle = 'rgba(160,120,255,0.28)'; g.fillRect(172, y - 7, 40, 10); text('EQUIPPED', 192, y, 6, '#d9c4ff', 'center'); }
     text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, RARITY[it.rar].col);
@@ -1884,14 +1901,21 @@ function drawForge() {
     if (f.pick !== null) {
       text('PICK AN ELEMENT', 364, 64, 9, '#ffd24a', 'center');
       ELEMS.forEach((k, i) => { const y = 84 + i * 30, sel = i === f.pick; if (sel) { g.fillStyle = 'rgba(255,140,60,0.2)'; g.fillRect(268, y - 11, 192, 26); }
-        text((sel ? '> ' : '  ') + ELEM[k].name + (k === rpg.elem ? '  (NOW)' : ''), 272, y, 9, ELEM[k].col); text(ELEM[k].info, 276, y + 11, 7, '#c8b8a0'); });
-      text(rpg.elem ? 'CHANGING COSTS ' + elemCost() + ' GOLD' : 'THE FIRST CHOICE IS FREE', 364, 184, 8, '#ffb46a', 'center');
-      text('YOUR TIERS ARE KEPT WHEN YOU CHANGE', 364, 196, 7, '#a89078', 'center'); text('ENTER CHOOSE   ESC BACK', 364, 214, 7, '#a89078', 'center');
+        text((sel ? '> ' : '  ') + ELEM[k].name, 272, y, 9, ELEM[k].col); text(ELEM[k].info, 276, y + 11, 7, '#c8b8a0'); });
+      text('THE FIRST CHOICE IS FREE', 364, 184, 8, '#ffb46a', 'center');
+      text('IT STARTS AT TIER I. BUY MORE WITH GOLD', 364, 196, 7, '#a89078', 'center'); text('ENTER CHOOSE   ESC BACK', 364, 214, 7, '#a89078', 'center');
     } else {
       text(E ? E.name + '  TIER ' + ROMAN[T] : 'NO ELEMENT YET', 364, 64, 9, E ? E.col : '#ffd24a', 'center');
-      if (E) ELEM_TIERS[rpg.elem].forEach((d, i) => text(ROMAN[i + 1] + '  LV ' + (i + 1) * 10 + '  ' + d, 270, 82 + i * 13, 7, i < T ? E.col2 : '#6a5a50'));
+      if (E) ELEM_TIERS[rpg.elem].forEach((d, i) => text(ROMAN[i + 1] + '  LV ' + (i + 1) * 10 + '  ' + d, 270, 80 + i * 12, 7, i < T ? E.col2 : '#6a5a50'));
       else { text('FIRE   FROST   LIGHTNING', 364, 90, 8, '#e0c8a0', 'center'); text('HITS BUILD UP A STATUS ON FOES', 364, 110, 7, '#c8b8a0', 'center'); text('A NEW TIER EVERY 10 LEVELS', 364, 122, 7, '#c8b8a0', 'center'); }
-      text('ENTER TO ' + (E ? 'CHANGE' : 'CHOOSE'), 364, 214, 7, '#a89078', 'center');
+      if (E) {
+        const nt = (rpg.et | 0) + 1, can = nt <= elemAvail(), sel0 = f.menu === 0, sel1 = f.menu === 1;
+        const up = nt > 7 ? 'PEAK REACHED' : can ? 'UPGRADE TO TIER ' + ROMAN[nt] + '   ' + elemTierCost(nt) + 'G' : 'NEXT TIER AT LEVEL ' + nt * 10;
+        if (f.menu !== null) { g.fillStyle = 'rgba(255,140,60,0.2)'; g.fillRect(266, (sel0 ? 168 : 182), 196, 14); }
+        text((sel0 ? '> ' : '  ') + up, 270, 178, 7, nt <= 7 && can ? (rpg.gold >= elemTierCost(nt) ? '#ffd24a' : '#ff6a6a') : '#8a7a6a');
+        text((sel1 ? '> ' : '  ') + 'DISMISS ELEMENT   +' + elemRefund() + 'G BACK', 270, 192, 7, f.arm > 0 ? '#ff8a6a' : '#c8b8a0');
+        text(f.menu !== null ? 'ENTER CONFIRM   ESC BACK' : 'ENTER TO MANAGE', 364, 214, 7, '#a89078', 'center');
+      } else text('ENTER TO CHOOSE', 364, 214, 7, '#a89078', 'center');
     }
   } else if (o && !o.go) {
     const it = o.it, up = it.up | 0; drawTip(it, undefined, 258, 36);
@@ -1903,7 +1927,7 @@ function drawForge() {
     } else text('FULLY FORGED', 364, 190, 9, '#ffd24a', 'center');
   } else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
   if (f.noteT > 0) text(f.note, W / 2, 236, 9, f.ok ? '#7aff9a' : '#ff8a6a', 'center');
-  text(f.pick !== null ? 'W/S CHOOSE   ENTER CONFIRM   ESC BACK' : 'W/S CHOOSE   ENTER FORGE   ESC LEAVE', W / 2, 252, 8, '#c8a890', 'center');
+  text(f.pick !== null || f.menu !== null ? 'W/S CHOOSE   ENTER CONFIRM   ESC BACK' : 'W/S CHOOSE   ENTER FORGE   ESC LEAVE', W / 2, 252, 8, '#c8a890', 'center');
   text('FAILED FORGING KEEPS THE LEVEL BUT TAKES THE GOLD', W / 2, 264, 7, '#8a6a5a', 'center');
 }
 function openShop(next) {
@@ -2444,7 +2468,7 @@ function step() {
   pollPad(); musicTick();
   if (mode === 'title') {
     if (resetArm > 0) resetArm--;
-    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
+    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }

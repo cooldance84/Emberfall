@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.21.0] - 2026-11-15
+- Elements are now earned, not just given by level. Choosing an element at the Blacksmith is free and starts at tier I; every further tier (one more unlocks each 10 levels) is bought with gold: II 364, III 696, IV 1103, V 1597, VI 2174, VII 2830.
+- To switch element you first dismiss the current one at the Blacksmith (it asks you to press Enter twice). You get 75% of the gold you put into it back, and the next element starts again at tier I.
+- Older saves keep the tiers they had already earned. The level-up message now says when a new tier is ready to buy.
+- The ELEMENTS help page in the pause menu explains the new rules.
+
 ## [1.20.0] - 2026-11-15
 - Elemental gear: magic and better items can roll "+% <element> POWER" (boosts your own element's buildup and damage) and "+% <element> RESIST" (cuts damage from monsters of that element, up to 60%). Fire comes from bombers, bosses, vents and fire waves; frost from archers and wraiths; lightning from wisps, witches and knights.
 - Boss bar and target bar now show each monster's weak (green arrow up) and resistant (red arrow down) elements once you reach level 10.
