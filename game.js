@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.11.0';
+const VERSION = '1.12.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -49,8 +49,9 @@ let vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hint
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const areaLv = () => Math.round(4 + stageIdx * 2.8) + cycle * 60;          // how deep in the endless loop you are
-const hpMul = () => 1 + (areaLv() - 4) * 0.12;                // monsters get tougher every stage and cycle
-const dmgMul = () => 1 + (areaLv() - 4) * 0.055;
+const late = () => Math.max(0, areaLv() - 30);                  // past the middle of the campaign the ramp steepens
+const hpMul = () => 1 + (areaLv() - 4) * 0.12 + late() * late() * 0.004;  // monsters get tougher every stage and cycle
+const dmgMul = () => 1 + (areaLv() - 4) * 0.055 + late() * late() * 0.0012;
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
 const keysOf = (a, pn) => pn === 2 ? (KEYMAP2[a] || []) : (coop ? KEYMAP[a].filter(c => !c.startsWith('Arrow')) : KEYMAP[a]);
 const inD = (f, a) => keysOf(a, f.pn).some(c => keys[c]);
@@ -62,10 +63,26 @@ function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } fin
 let crtOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
 let LANG = 'en';
+/* ---------- three heroes: Nolan (STR warrior), Panni (INT sorceress), Luca (DEX rogue) ---------- */
+const CLASSES = {
+  nolan: { name: 'NOLAN', stat: 'STR', kind: 'hero', hp0: 136, hpl: 4, crit: 5, cdmg: 150, mul: 0.025, role: 'WARRIOR', col: '#9fd0ff', desc: ['STRENGTH: MORE HEALTH, HEAVY SWORD', '3-HIT COMBO, THE LAST HIT KNOCKS DOWN'] },
+  panni: { name: 'PANNI', stat: 'INT', kind: 'panni', hp0: 108, hpl: 3, crit: 5, cdmg: 150, mul: 0.028, role: 'SORCERESS', col: '#d8b8ff', desc: ['INTELLECT: SPELL POWER, FASTER WRATH', 'ARCANE BOLTS FROM RANGE, BIG 3RD BLAST'] },
+  luca: { name: 'LUCA', stat: 'DEX', kind: 'luca', hp0: 118, hpl: 3.4, crit: 14, cdmg: 165, mul: 0.022, role: 'ROGUE', col: '#9affb8', desc: ['DEXTERITY: CRITS, SPEED, ACCURACY', 'FAST 4-HIT DAGGERS, BACKSTABS +50%'] }
+};
+const CLS_ORDER = ['nolan', 'panni', 'luca'];
+let CLS = 'nolan', CLS2 = 'luca', loadedCls = null, sel = { a: 0, b: 2, coop: false };
+const cls = () => CLASSES[CLS];
+const clsName = c => CLASSES[c].name[0] + CLASSES[c].name.slice(1).toLowerCase();
+function heroize(t) { // story text follows the chosen hero
+  if (CLS === 'nolan' || typeof t !== 'string') return t;
+  const n = clsName(CLS);
+  return t.replace(/Nolan's Last Dawn/g, "Nolan's Last Dawn").replace(/Nolané/g, CLS === 'luca' ? 'Lucáé' : 'Pannié').replace(/Nolan/g, n).replace(/NOLAN/g, cls().name)
+    .replace(/the sword/g, CLS === 'panni' ? 'the staff' : 'the daggers').replace(/a sword/g, CLS === 'panni' ? 'a staff' : 'twin daggers').replace(/kardot/g, CLS === 'panni' ? 'varázsbotot' : 'tőröket');
+}
 function tr(s) { return (LANG === 'hu' && typeof huTranslate === 'function' && typeof s === 'string') ? huTranslate(s) : s; }
 function setLang(l) { LANG = l; saveSettings(); if (typeof refreshTouchLabels === 'function') refreshTouchLabels(); }
-function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false; crtOn = o.crt !== false; if (o.lang === 'hu' || o.lang === 'en') LANG = o.lang; } } catch (e) { } }
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, lang: LANG })); } catch (e) { } }
+function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false; crtOn = o.crt !== false; if (o.lang === 'hu' || o.lang === 'en') LANG = o.lang; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls; } } catch (e) { } }
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, lang: LANG, cls: CLS })); } catch (e) { } }
 loadSettings();
 
 /* ---------- audio (tiny synth) ---------- */
@@ -449,7 +466,9 @@ let WAVES = STAGES[0].waves, STAGE_END = STAGES[0].end, TH = THEMES[0];
 let stageIdx = 0, story = null, bossRef = null, stageCard = 0, clearT = 0, shots = [];
 
 const KINDS = {
-  hero: { name: 'NOLAN', hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
+  hero: { name: 'NOLAN', cls: 'nolan', jump: 5.4, hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
+  panni: { name: 'PANNI', cls: 'panni', look: 'hero', jump: 5.4, hp: 140, spd: 1.45, scale: 1, h: 44, skin: '#f0c09a', hair: '#e8c060', armor: '#4a2a7a', armor2: '#c9a8ff', cloth: '#3a1a6a', wlen: 28, wwid: 2, wcol: '#c9a8ff', wk: 'pstaff' },
+  luca: { name: 'LUCA', cls: 'luca', look: 'hero', jump: 6.0, hp: 140, spd: 1.8, scale: 1, h: 44, skin: '#d8a070', hair: '#2a1a12', armor: '#2a3a2e', armor2: '#8affb0', cloth: '#1a2a20', wlen: 14, wwid: 2, wcol: '#dfe9f5', wk: 'dagger' },
   imp: { name: 'PILFERER', hp: 20, spd: 1.8, scale: 0.8, h: 36, skin: '#79b04a', hair: '#3a5a22', armor: '#7a5a32', armor2: '#c9962e', cloth: '#4a3320', wlen: 12, wwid: 2, wcol: '#cfd4de', windup: 99, rng: 0, dmg: 0 },
   h: { name: 'ASHEN HUSK', hp: 44, spd: 0.8, scale: 1, h: 44, skin: '#6e6a74', hair: '#2c2a30', armor: '#4a3a3a', armor2: '#ff7a2a', cloth: '#2b2226', wlen: 22, wwid: 3, wcol: '#a8743c', windup: 22, rng: 28, dmg: 9 },
   b: { name: 'CINDER BRUTE', hp: 120, spd: 0.55, scale: 1.3, h: 58, skin: '#5a5660', hair: '#1f1c22', armor: '#5a2e2e', armor2: '#ff9a3a', cloth: '#2a1c1c', wlen: 26, wwid: 6, wcol: '#6b6f78', windup: 30, rng: 40, dmg: 18 },
@@ -509,6 +528,11 @@ const MAGIC_BASE = { weapon: ['Sword', 'Blade', 'Axe'], helm: ['Helm', 'Cap', 'H
 const MAGIC_PRE = ['Keen', "Warden's", 'Ember', 'Swift', 'Fierce', 'Gilded', 'Bladed'];
 const LEG_NAMES = { weapon: ['Dawnbreaker', "Warden's Oath"], helm: ['Crown of Embers', 'Sunwatch Helm'], armor: ['Phoenix Mail', 'Heart-Ward'], boots: ['Stormstep Greaves', 'Ashwalkers'], ring: ['Ring of Kindling', 'Vow-Band'], amulet: ['Heart-Ember Shard', 'Eye of Ashhold'] };
 const MYTH_NAMES = { weapon: ['Ruinblade, the Vow', "Nolan's Last Dawn"], helm: ['Helm of the Last Flame'], armor: ['Aegis of Emberfall'], boots: ['Boots of the Endless Road'], ring: ['Ring of the First Warden'], amulet: ['The Heart-Ember Reborn'] };
+const WNAMES = {
+  panni: { base: ['Ash Staff', 'Oak Wand', 'Ember Rod'], magic: ['Staff', 'Wand', 'Rod'], leg: ['Starfall Staff', 'Wand of Kindling'], myth: ["Panni's Last Spell", 'Staff of the First Flame'] },
+  luca: { base: ['Rusty Dagger', 'Iron Knife', 'Ash Dirk'], magic: ['Daggers', 'Knives', 'Dirks'], leg: ['Twin Fangs', 'Nightsting'], myth: ["Luca's Last Shadow", 'Whisper and Woe'] }
+};
+const statName = k => k === 'str' ? cls().stat : STATS[k].n;
 const pickOf = a => a[Math.random() * a.length | 0];
 let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA' };
 let PS = null, floats = [];
@@ -517,23 +541,38 @@ const XPN = [62, 31];
 const xpNeed = l => Math.round(XPN[0] + XPN[1] * l);
 function pstats() {
   if (PS) return PS;
-  const s = { str: 4 + rpg.lvl, crit: 5, cdmg: 150, hit: 90 };
+  const C = cls(), s = { str: 4 + rpg.lvl, crit: C.crit, cdmg: C.cdmg, hit: 90 };
   for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it) for (const q in it.st) s[q] += it.st[q]; }
-  s.crit = Math.min(80, s.crit); s.hit = Math.min(100, s.hit);
-  s.mult = 1 + s.str * 0.025; s.maxhp = 136 + rpg.lvl * 4 + (s.str >> 1);
+  if (CLS === 'luca') { s.crit += Math.floor(s.str * 0.08); s.hit += Math.floor(s.str * 0.05); }
+  // soft caps: stacked mythic gear makes you strong, not untouchable
+  s.crit = Math.min(CLS === 'luca' ? 70 : 60, s.crit); s.hit = Math.min(100, s.hit);
+  if (s.cdmg > 250) s.cdmg = Math.min(500, Math.round(250 + (s.cdmg - 250) * 0.35));
+  s.mult = 1 + Math.min(s.str, 120) * C.mul + Math.max(0, s.str - 120) * C.mul * 0.45;
+  s.maxhp = Math.round(C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2));
   return (PS = s);
 }
 const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
-function gearLook() { // equipped rarity tints the hero's armor, trim, cape and blade
-  const r = s => rpg.eq[s] ? rpg.eq[s].rar : 0, top = Math.max(r('helm'), r('armor'), r('boots'));
-  const o = Object.assign({}, KINDS.hero);
+function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape and weapon
+  const r = sl => eq[sl] ? eq[sl].rar : 0, top = Math.max(r('helm'), r('armor'), r('boots')), base = KINDS[CLASSES[c].kind];
+  const o = Object.assign({}, base);
   const A = GEAR_COL[r('armor')], T = GEAR_COL[top], C = GEAR_COL[Math.max(r('ring'), r('amulet'))], B = GEAR_COL[r('weapon')];
   if (A) o.armor = A.armor; if (T) o.armor2 = T.armor2; if (C) o.cloth = C.cloth; if (B) o.wcol = B.blade;
-  const tier = s => rpg.eq[s] ? rpg.eq[s].rar + 1 : 0; // 0 = nothing worn, 1 common ... 4 mythic
+  const tier = sl => eq[sl] ? eq[sl].rar + 1 : 0; // 0 = nothing worn, 1 common ... 4 mythic
   o.gt = { helm: tier('helm'), armor: tier('armor'), boots: tier('boots'), weapon: tier('weapon'), ring: tier('ring'), amulet: tier('amulet') };
-  if (!o.gt.armor) { o.armor = '#6a5238'; o.armor2 = '#a07a4a'; o.cloth = '#5a2a2a'; } // no armour: a plain leather tunic
-  if (o.gt.weapon >= 3) o.wlen = KINDS.hero.wlen + 3;
-  hero.k = o; hero.glow = Math.max(0, ...SLOTS.map(r)) >= 2 ? RARITY[Math.max(...SLOTS.map(r))].rgb : null;
+  if (!o.gt.armor) { // no armour: a plain tunic, robe or leathers
+    if (c === 'panni') { o.armor = '#3a2a6a'; o.armor2 = '#9a7ad8'; o.cloth = '#2a1a5a'; }
+    else if (c === 'luca') { o.armor = '#2e2e28'; o.armor2 = '#6a7a5a'; o.cloth = '#1a2a20'; }
+    else { o.armor = '#6a5238'; o.armor2 = '#a07a4a'; o.cloth = '#5a2a2a'; }
+  }
+  if (o.gt.weapon >= 3) o.wlen = base.wlen + 3;
+  o.glowRgb = Math.max(0, ...SLOTS.map(r)) >= 2 ? RARITY[Math.max(...SLOTS.map(r))].rgb : null;
+  return o;
+}
+function gearLook() {
+  for (const p of players()) {
+    const c = p.pn === 2 ? CLS2 : CLS; p.k = lookFor(c, rpg.eq); p.glow = p.k.glowRgb;
+    if (p.pn === 2 && c === CLS) p.k.hair = '#4a3ab0';
+  }
 }
 function heroStats(full) {
   PS = null; gearLook(); const s = pstats();
@@ -577,7 +616,8 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   const n = R.n[0] + (R.n[1] > R.n[0] ? (Math.random() * (R.n[1] - R.n[0] + 1) | 0) : 0);
   const st = {};
   for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * sc(k))); }
-  const name = rar === 0 ? pickOf(BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(MAGIC_BASE[slot]) : rar === 2 ? pickOf(LEG_NAMES[slot]) : pickOf(MYTH_NAMES[slot]);
+  const WN = slot === 'weapon' && WNAMES[CLS];
+  const name = WN ? (rar === 0 ? pickOf(WN.base) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(WN.magic) : rar === 2 ? pickOf(WN.leg) : pickOf(WN.myth)) : rar === 0 ? pickOf(BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(MAGIC_BASE[slot]) : rar === 2 ? pickOf(LEG_NAMES[slot]) : pickOf(MYTH_NAMES[slot]);
   return { slot, rar, name, st, lvl: il };
 }
 function dropGear(x, y, rar) {
@@ -620,10 +660,11 @@ function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (5
 
 /* ---- persistence: character + leaderboard live in localStorage ---- */
 const validItem = it => !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string');
-function saveGame() { try { localStorage.setItem(SAVE_KEY, JSON.stringify({ lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
+const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
+function saveGame() { try { localStorage.setItem(saveKey(), JSON.stringify({ lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini })); } catch (e) { } }
 function loadGame() {
   try {
-    const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    const o = JSON.parse(localStorage.getItem(saveKey()) || 'null'); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0);
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX);
@@ -635,6 +676,12 @@ function loadGame() {
 function loadBoard() { try { const a = JSON.parse(localStorage.getItem(BOARD_KEY) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
 function saveBoard(b) { try { localStorage.setItem(BOARD_KEY, JSON.stringify(b.slice(0, 10))); } catch (e) { } }
 loadGame();
+function peekSave(c) { try { const o = JSON.parse(localStorage.getItem(saveKey(c)) || 'null') || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
+function setClass(c) {
+  if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
+  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; PS = null; loadGame(); saveSettings();
+  if (hero) heroStats(true);
+}
 
 /* ---- end of run: name entry + leather leaderboard ---- */
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -644,7 +691,7 @@ function endRun(won) {
   if (won) score += rpg.coins * 1500 + rpg.gold * 2;
   saveGame();
   const b = loadBoard();
-  pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won };
+  pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won, h: CLS };
   if (score > 0 && (b.length < 10 || score > b[b.length - 1].s)) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
@@ -741,10 +788,10 @@ function drawTip(it, cmp, x, y) {
   text(R.name + ' ' + SLOT_NAME[it.slot], x + 8, y + 38, 8, '#9a90a8');
   text('REQUIRES LV ' + (it.lvl || 1), x + 8, y + 49, 8, canWear(it) ? '#9a90a8' : '#ff6a6a');
   let yy = y + 62;
-  for (const k of STAT_KEYS) if (it.st[k]) { text('+' + it.st[k] + STATS[k].sfx + ' ' + STATS[k].n, x + 8, yy, 8, '#8fb8ff'); yy += 12; }
+  for (const k of STAT_KEYS) if (it.st[k]) { text('+' + it.st[k] + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, '#8fb8ff'); yy += 12; }
   if (cmp !== undefined) {
     yy += 8; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += 12;
-    for (const k of STAT_KEYS) { const d = (it.st[k] || 0) - ((cmp && cmp.st[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + STATS[k].n, x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
+    for (const k of STAT_KEYS) { const d = (it.st[k] || 0) - ((cmp && cmp.st[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += 12; } }
   }
 }
 function openInv(from) { inv.from = from; inv.z = 'bag'; inv.i = 0; mode = 'inv'; SFX.pick(); }
@@ -785,7 +832,7 @@ function drawInv() {
   text('LV ' + rpg.lvl + (rpg.lvl >= MAX_LV ? '  MAX' : ''), 14, y0, 10, '#ffd24a');
   bar(14, y0 + 5, 154, 4, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : need, '#8a6aff', '#1c1430');
   text(rpg.lvl >= MAX_LV ? 'XP MAX' : 'XP ' + rpg.xp + '/' + need, 14, y0 + 22, 8, '#b8a8d8');
-  text('STR ' + s.str + '    DMG x' + s.mult.toFixed(2), 14, y0 + 36, 8, '#e8e0f0');
+  text(cls().stat + ' ' + s.str + '    DMG x' + s.mult.toFixed(2), 14, y0 + 36, 8, '#e8e0f0');
   text('CRIT ' + s.crit + '%   CRIT DMG ' + s.cdmg + '%', 14, y0 + 48, 8, '#e8e0f0');
   text('HIT ' + s.hit + '%    HP ' + s.maxhp, 14, y0 + 60, 8, '#e8e0f0');
   for (let i = 0; i < BAG_MAX; i++) { const [x, y] = bagPos(i); slotBox(x, y, rpg.bag[i], inv.z === 'bag' && inv.i === i); }
@@ -804,7 +851,7 @@ function drawCoin(x, y, on) {
 
 function newHero() {
   hero = hero1 = makeFighter('hero', 60, 205); hero.mana = 60; hero.pn = 1;
-  if (coop) { hero2 = makeFighter('hero', 44, 232); hero2.mana = 60; hero2.pn = 2; hero2.k = Object.assign({}, KINDS.hero, { name: 'LYRA', hair: '#4a3ab0', armor: '#2f7a4a', armor2: '#8affb0', cloth: '#1e5a3a', skin: '#d8a070' }); }
+  if (coop) { hero2 = makeFighter('hero', 44, 232); hero2.mana = 60; hero2.pn = 2; }
   else hero2 = null;
 }
 function resetGame() {
@@ -869,12 +916,12 @@ function hurt(e, dmg, kind, from) {
   SFX[kind === 'down' ? 'big' : 'hit']();
   freeze = Math.max(freeze, kind === 'down' ? 7 : 3);
   shake = Math.max(shake, kind === 'down' ? 6 : 2);
-  if (from.pn && !dragon) from.mana = Math.min(100, from.mana + dmg * 0.6);
+  if (from.pn && !dragon) from.mana = Math.min(100, from.mana + dmg * 0.6 * (from.k && from.k.cls === 'panni' ? 1.5 : 1));
   if (e.kind === 'imp' && e.vase) { // the pilferer drops its vase and bolts
     e.vase = false; e.fled = true; e.dir = sgn(e.x - from.x) || 1;
     items.push({ x: e.x, y: e.y, t: 0, kind: 'vase' });
   }
-  let knock = kind === 'down' || e.hp <= 0;
+  let knock = kind === 'down' || e.hp <= 0 || (e.z > 3 && !e.leap && !e.hov); // a blow in mid-air always knocks you out of the air
   if (e.mount && (kind === 'down' || e.hp <= 0 || e.hp <= e.maxhp * 0.55)) { // rider thrown from its wyrmling
     const m = e.mount; e.mount = null; e.h = e.k.h;
     m.x = e.x + dir * 6; m.y = e.y; m.z = 0.01; m.vz = 3; m.face = -dir; mounts.push(m);
@@ -894,7 +941,9 @@ function strike(att, box, dmg, kind, targets) {
     if (att.z + box.z1 < e.z || att.z + box.z0 > e.z + e.h) continue;
     att.hits.add(e);
     if (att.pn) {
-      const r = rollHit(dmg);
+      const back = att.k.cls === 'luca' && sgn(att.x - e.x) === -e.face && e.kind !== 'imp';
+      const r = rollHit(back ? dmg * 1.5 : dmg);
+      if (back && !r.miss && !(e.barrier > 0)) floatText(e.x, e.y - e.z - e.h - 12, 'BACKSTAB', '#9affb8', 7);
       if (r.miss) { floatText(e.x, e.y - e.z - e.h * 0.8, 'MISS', '#9aa0b0', 8); continue; }
       if (hurt(e, r.d, kind, att)) {
         if (e.blockT === tickN) continue;
@@ -906,10 +955,17 @@ function strike(att, box, dmg, kind, targets) {
 }
 function startAttack(f, n) { f.st = 'atk'; f.combo = n; f.t = 0; f.queued = false; f.hits.clear(); f.vx = f.face * 1.3; }
 const COMBO = [{ d: 15, a: 4, b: 8, dmg: 9, kind: 'hurt' }, { d: 15, a: 4, b: 8, dmg: 9, kind: 'hurt' }, { d: 25, a: 7, b: 12, dmg: 16, kind: 'down' }];
+const LCOMBO = [{ d: 10, a: 3, b: 6, dmg: 6, kind: 'hurt' }, { d: 10, a: 3, b: 6, dmg: 6, kind: 'hurt' }, { d: 11, a: 3, b: 6, dmg: 7, kind: 'hurt' }, { d: 19, a: 5, b: 9, dmg: 12, kind: 'down' }];
+const PCOMBO = [{ d: 16, a: 5, b: 8, dmg: 8, kind: 'hurt' }, { d: 16, a: 5, b: 8, dmg: 8, kind: 'hurt' }, { d: 28, a: 9, b: 12, dmg: 17, kind: 'down', big: true }];
+const comboOf = f => f.k.cls === 'luca' ? LCOMBO : f.k.cls === 'panni' ? PCOMBO : COMBO;
 
 /* ---------- physics shared by knocked fighters ---------- */
 function groundPhysics(f) {
-  if (f.st === 'hurt') { f.x += f.vx; f.vx *= 0.88; if (++f.t > 16) { f.st = 'idle'; f.t = 0; } return true; }
+  if (f.st === 'hurt') {
+    f.x += f.vx; f.vx *= 0.88;
+    if (f.z > 0) { f.z += f.vz || 0; f.vz = (f.vz || 0) - 0.3; if (f.z <= 0) { f.z = 0; f.vz = 0; } }
+    if (++f.t > 16 && f.z <= 0) { f.st = 'idle'; f.t = 0; } return true;
+  }
   if (f.st === 'down') {
     f.x += f.vx; f.z += f.vz; f.vz -= 0.3;
     if (!f.pn && !isBoss(f) && f.z <= 0 && f.kind !== 'imp') { const q = gapAt(f.x, -5); if (q && q.type === 'pit') { // knocked into the chasm
@@ -926,7 +982,7 @@ function groundPhysics(f) {
 
 /* ---------- hero ---------- */
 function reviveP(f, mate) {
-  f.dead = false; f.fade = 0; f.hp = Math.max(1, f.maxhp >> 1); f.x = mate.x - 22; f.y = mate.y; f.z = 0; f.vx = 0; f.vz = 0; f.st = 'idle'; f.t = 0; f.inv = 120; f.mount = null; f.hits.clear();
+  f.pitT = 0; f.dead = false; f.fade = 0; f.hp = Math.max(1, f.maxhp >> 1); f.x = mate.x - 22; f.y = mate.y; f.z = 0; f.vx = 0; f.vz = 0; f.st = 'idle'; f.t = 0; f.inv = 120; f.mount = null; f.hits.clear();
   msg = f.k.name + ' RETURNS  (-1 COIN)'; msgT = 100; SFX.magic(); spawn(f.x, f.y, 20, 26, { s0: 1, s1: 3, c: ['#fff1b0', '#8affb0'], l0: 14, l1: 30, add: true, size: 2, up: 3, g: 0.05 });
 }
 /* ---------- skills: a new special attack every 10 levels (U casts, Q swaps) ---------- */
@@ -1026,15 +1082,18 @@ function heroHazards(f, ox) { // barricades block anyone below their height; cha
 }
 function heroPitStep(f) {
   if (++f.pitT < 32) return;
+  if (f.dead) return;
+  const d = Math.max(1, Math.round(f.maxhp * 0.6)); f.hp -= d; msg = 'FELL INTO THE CHASM'; msgT = 110; flashA = Math.max(flashA, 0.2);
+  if (f.hp <= 0) { f.hp = 0; f.dead = true; f.fade = 0; f.mount = null; return; } // a fall costs most of your health, and kills you if you were already hurt
   const q = f.pitGap, L = q.x - 14, Rr = q.x + q.w + 14;
   let nx = (f.safeX != null ? f.safeX : L) <= q.x ? L : Rr; if (nx < cam + 14) nx = Rr; if (nx > cam + W - 14) nx = L;
-  f.pitT = 0; f.x = nx; f.y = f.pitY; f.z = 0; f.st = 'idle'; f.t = 0; f.inv = 100;
-  const d = Math.max(1, Math.round(f.maxhp * 0.12)); f.hp -= d; floatText(f.x, f.y - 56, '-' + d, '#ff6a6a', 9); msg = 'FELL INTO THE CHASM'; msgT = 90;
-  if (f.hp <= 0) { f.hp = 0; f.st = 'down'; f.t = 0; f.vz = 2; f.z = 0.01; }
+  f.pitT = 0; f.x = nx; f.y = f.pitY; f.z = 0; f.vz = 0; f.st = 'idle'; f.t = 0; f.inv = 100;
+  floatText(f.x, f.y - 56, '-' + d, '#ff6a6a', 10);
   spawn(f.x, f.y, 20, 16, { c: ['#fff1b0', '#ffd070'], add: true, l0: 12, l1: 24, up: 2 });
 }
 function updateHero(f) {
   if (f.pitT && !f.dead) { heroPitStep(f); return; }
+  if (f.pitT && f.dead) { f.pitT++; f.fade++; if (f.fade > 90 && mode === 'play' && players().every(p => p.dead && p.fade > 90)) { mode = 'gameover'; endTimer = 0; } return; }
   const ox = f.x; updateHeroCore(f); heroHazards(f, ox);
 }
 function updateHeroCore(f) {
@@ -1051,6 +1110,7 @@ function updateHeroCore(f) {
   const foes = enemies, spd = f.mount ? mtype(f.mount).spd : f.k.spd;
   switch (f.st) {
     case 'idle': case 'walk': {
+      if (f.z > 0) { f.z += f.vz || 0; f.vz = (f.vz || 0) - 0.33; if (f.z <= 0) { f.z = 0; f.vz = 0; } } // never hang in the air: anything that leaves you aloft falls back down
       if (inH(f, 'swap')) cycleSkill(f);
       f.vx = mx * spd; f.vy = my * spd * 0.65;
       if (mx) f.face = mx;
@@ -1062,7 +1122,7 @@ function updateHeroCore(f) {
         msg = mtype(wild).name + '!   J: ' + mtype(wild).info + (wild.falls ? '   (1 FALL LEFT)' : '   E: DISMOUNT'); msgT = 130;
       } else if (inH(f, 'dismount') && f.mount) {
         const m = f.mount; m.x = f.x - f.face * 12; m.y = f.y; m.face = f.face; m.z = 0.01; m.vz = 2; mounts.push(m); f.mount = null;
-      } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? mtype(f.mount).jump : 5.4; f.vx = mx * (f.mount ? mtype(f.mount).spd * 0.92 : 1.5); f.t = 0; f.hits.clear(); }
+      } else if (inH(f, 'jump')) { f.st = 'jump'; f.vz = f.mount ? mtype(f.mount).jump : (f.k.jump || 5.4); f.vx = mx * (f.mount ? mtype(f.mount).spd * 0.92 : 1.5); f.t = 0; f.hits.clear(); }
       else if (inH(f, 'skill') && castSkill(f)) { }
       else if (inH(f, 'atk')) { if (f.mount) { f.st = 'ratk'; f.t = 0; f.hits.clear(); SFX.swing(); } else startAttack(f, 0); }
       else if (inH(f, 'magic') && f.mana >= 60 && !dragon) castDragon();
@@ -1070,11 +1130,13 @@ function updateHeroCore(f) {
     }
     case 'atk': {
       if (f.sk) { stepSkill(f); break; }
-      const c = COMBO[f.combo];
-      if (f.t === c.a) SFX.swing();
-      if (f.t < 7) f.x += f.vx, f.vx *= 0.9;
-      if (f.t >= c.a && f.t <= c.b) strike(f, { x0: 0, x1: 40, dy: 11, z0: 4, z1: 40 }, c.dmg, c.kind, foes);
-      if (inH(f, 'atk') && f.combo < 2 && f.t >= 5) f.queued = true;
+      const CB = comboOf(f), c = CB[f.combo], mage = f.k.cls === 'panni';
+      if (f.t === c.a) { SFX.swing(); if (mage) { // Panni throws arcane bolts instead of swinging
+        shots.push({ type: 'mbolt', owner: f, x: f.x + f.face * 18, y: f.y, z: 30, vx: f.face * (c.big ? 3.4 : 4.6), t: 0, dmg: c.dmg, kind: c.kind, big: !!c.big, life: c.big ? 72 : 54, hit: new Set() });
+        spawn(f.x + f.face * 22, f.y, 32, 6, { c: ['#e0d0ff', '#b88aff'], l0: 6, l1: 14, add: true }); } }
+      if (f.t < 7) f.x += f.vx * (mage ? 0.3 : 1), f.vx *= 0.9;
+      if (!mage && f.t >= c.a && f.t <= c.b) strike(f, { x0: 0, x1: f.k.cls === 'luca' ? 32 : 40, dy: 11, z0: 4, z1: 40 }, c.dmg, c.kind, foes);
+      if (inH(f, 'atk') && f.combo < CB.length - 1 && f.t >= (f.k.cls === 'luca' ? 3 : 5)) f.queued = true;
       if (f.t >= c.d) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
       break;
     }
@@ -1385,7 +1447,7 @@ function wrapText(s, n) {
 }
 function openStory(title, sub, paras, next, themeIdx, act) {
   if (!paras.length) { next(); return; }
-  paras = paras.map(tr); story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx, act: act || 0 }; mode = 'story';
+  paras = paras.map(p => heroize(tr(p))); story = { title, sub, paras, pi: 0, ci: 0, next, theme: themeIdx, act: act || 0 }; mode = 'story';
 }
 function updateStory() {
   const s = story; if (!s) { mode = 'play'; return; }
@@ -1478,7 +1540,7 @@ function drawStory() {
     }
     y += 8;
   }
-  if (s.theme >= 0 && s.theme < 5) { drawPortrait('hero', 46, 150, 'NOLAN', '90,60,40'); drawPortrait(PORT[s.theme], W - 46, 150, PORT_NAME[s.theme], THEMES[s.theme].glow); }
+  if (s.theme >= 0 && s.theme < 5) { drawPortrait('hero', 46, 150, cls().name, CLS === 'panni' ? '80,50,120' : CLS === 'luca' ? '40,80,60' : '90,60,40'); drawPortrait(PORT[s.theme], W - 46, 150, PORT_NAME[s.theme], THEMES[s.theme].glow); }
   const done = s.pi === s.paras.length - 1 && s.ci >= s.paras[s.pi].length;
   if ((tickN >> 5) & 1) text(done ? 'PRESS ENTER' : '...', W / 2, 252, 9, '#ffffff', 'center');
 }
@@ -1494,7 +1556,7 @@ function beginStage(i) {
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
-    p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
+    p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
     if (!p.dead && i > 0) p.hp = Math.min(p.maxhp, p.hp + 70);
   }
   mode = 'play';
@@ -1771,6 +1833,17 @@ function updateShots() {
         if (hurt(e, r.d, 'hurt', s.owner)) floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
       }
       if (s.t > s.life || s.x < cam - 40 || s.x > cam + W + 40) s.dead = true;
+    } else if (s.type === 'mbolt') { // Panni's arcane bolts: small ones stop at the first foe, the big one pierces
+      s.x += s.vx;
+      if (s.t % 2 === 0) spawn(s.x - sgn(s.vx) * 4, s.y, s.z, 1, { c: s.big ? ['#ffffff', '#c9a8ff'] : ['#e0d0ff', '#9a7aff'], s0: 0.05, s1: 0.3, l0: 6, l1: 12, add: true, g: 0 });
+      for (const e of enemies) {
+        if (e.dead || s.hit.has(e) || Math.abs(e.x - s.x) > (s.big ? 16 : 11) || Math.abs(e.y - s.y) > (s.big ? 16 : 12) || e.z > s.z + 6 || e.z + e.h < s.z - 14) continue;
+        s.hit.add(e); const o = s.owner, r = rollHit(s.dmg);
+        if (r.miss) { floatText(e.x, e.y - e.h * 0.8, 'MISS', '#9aa0b0', 8); } else if (hurt(e, r.d, s.kind, { x: s.x - sgn(s.vx) * 20, face: sgn(s.vx), pn: o.pn, k: o.k, get mana() { return o.mana; }, set mana(v) { o.mana = v; } }) && e.blockT !== tickN) floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
+        spawn(s.x, s.y, s.z, s.big ? 14 : 6, { c: ['#ffffff', '#c9a8ff', '#8a6aff'], l0: 8, l1: 18, add: true });
+        if (!s.big) { s.dead = true; break; }
+      }
+      if (s.t > s.life || s.x < cam - 40 || s.x > cam + W + 40) s.dead = true;
     } else if (s.type === 'rune') { // telegraphed blast, then a burning pool that hurts anyone standing in it
       if (s.t === s.delay) {
         shake = Math.max(shake, 6); spawn(s.x, s.y, 4, 24, { s0: 1, s1: 3.4, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 10, l1: 26, add: true, size: 2, up: 3.2 }); SFX.hit();
@@ -1819,6 +1892,13 @@ function drawShots() {
         g.globalAlpha = fade; for (let i = 0; i < 5; i++) { const fx = x - s.r * 0.6 + i * s.r * 0.3, fh = 4 + Math.abs(Math.sin(tickN * 0.4 + i * 1.7)) * 7; g.fillStyle = i % 2 ? '#ffb43a' : '#ff5a1f'; g.fillRect(Math.round(fx), Math.round(y - fh + (i % 2) * 2), 3, Math.round(fh)); }
       }
       g.restore(); continue;
+    }
+    if (s.type === 'mbolt') {
+      const zz = y - s.z, r = s.big ? 7 : 4;
+      g.fillStyle = 'rgba(0,0,0,0.3)'; g.beginPath(); g.ellipse(x, y, r + 2, 2, 0, 0, 7); g.fill();
+      g.globalCompositeOperation = 'lighter'; glowDot(g, x, zz, r * 3.2, '190,150,255', 0.75); g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#e8dcff'; g.fillRect(x - r / 2, zz - r / 2, r, r); g.fillStyle = '#ffffff'; g.fillRect(x - 1, zz - 1, 2, 2);
+      continue;
     }
     if (s.type === 'bolt') {
       const zz = y - s.z;
@@ -2026,10 +2106,11 @@ function step() {
     if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
-    else if (pressed.Digit2 || pressed.Numpad2) { startCampaign(true); return; }
-    else if (isHit('start') || isHit('atk')) { startCampaign(); return; }
+    else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
+    else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
+  if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
   if (mode === 'story') { updateStory(); return; }
   if (mode === 'inv') { updateInv(); return; }
   if (mode === 'shop') { updateShop(); return; }
@@ -2156,6 +2237,18 @@ function drawWeapon(g, C, kind, len, gt) {
     R(-1.2, -len + 2, 1.6, len - 8, b2); R(1, -len + 2, 1.3, len - 8, b3);
     if (wt >= 2) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 2 ? 'rgba(120,190,255,0.22)' : wt === 3 ? 'rgba(255,220,120,0.26)' : 'rgba(255,120,50,0.3)'; g.fillRect(-4, -len - 4, 8, len); g.globalCompositeOperation = 'source-over'; }
     if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; for (let i = 0; i < 4; i++) { const fy = -len + 4 + i * ((len - 12) / 3); P([2.4, fy, 5 + f2 * 2.5, fy - 4 - f2 * 2, 2.4, fy - 7], i % 2 ? '#ff8a2a' : '#ffd070'); } }
+  } else if (kind === 'pstaff') { // Panni's staff: the crystal glows brighter with rarer weapons
+    const wt = gt | 0, gc = ['#b88aff', '#d8d0e8', '#7ab0ff', '#ffd870', '#ff6aa8'][wt], gl = 0.6 + Math.sin(tickN * 0.2) * 0.4;
+    R(-1.2, -len + 2, 2.4, len + 12, '#4a3020'); R(-1.2, -len + 2, 0.8, len + 12, '#6a4a30');
+    P([-4, -len + 2, 0, -len - 3, 4, -len + 2, 0, -len + 5], '#c9962e');
+    g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(200,170,255,${0.25 + gl * 0.25})`; g.fillRect(-5, -len - 12, 10, 10); g.globalCompositeOperation = 'source-over';
+    P([0, -len - 12, 3.5, -len - 6, 0, -len - 1, -3.5, -len - 6], gc); R(-1, -len - 9, 1.5, 3, '#ffffff');
+    if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; P([-3, -len - 10, 0, -len - 17 - f2 * 3, 3, -len - 10], '#ffd070'); }
+  } else if (kind === 'dagger') {
+    const wt = gt | 0, bc = ['#8a8f99', '#a9bdd6', '#8cc4ff', '#ffd870', '#ff7a3a'][wt];
+    R(-1.2, -2, 2.4, 6, '#2a1a12'); R(-3.5, -3, 7, 1.8, '#8a7a5a');
+    P([-1.8, -3, 1.8, -3, 1.2, -len, 0, -len - 3, -1.2, -len], bc); R(-0.4, -len + 1, 0.9, len - 4, '#f4fbff');
+    if (wt >= 3) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 3 ? 'rgba(255,220,120,0.3)' : 'rgba(255,120,50,0.35)'; g.fillRect(-3, -len - 3, 6, len); g.globalCompositeOperation = 'source-over'; }
   } else if (kind === 'h') {
     R(-1.5, -len + 4, 3, len + 6, '#6b4a2a'); R(-1.5, -len + 4, 1, len + 6, '#8a6238');
     P([1.5, -len, 10, -len - 5, 11, -len + 9, 1.5, -len + 6], '#8a8f99'); P([1.5, -len + 1, 7, -len - 2, 7, -len + 6, 1.5, -len + 5], '#b9bec8'); R(10, -len - 4, 1.4, 12, '#e8edf5');
@@ -2265,6 +2358,7 @@ function drawHuman(f, sx, sy) {
   // back arm
   const bax = -6 + lean, bay = -31 - bob, bhx = -7 + Math.sin(ph + 3) * (walking ? 4 : 1), bhy = -17 - bob;
   if (kind !== 'boss') { limb(bax, bay, bhx, bhy, 4, dk(k.skin), -1, 0); limb(bax, bay, (bax + bhx) / 2, (bay + bhy) / 2, 5, dk(k.armor), -1, 0); }
+  if (k.cls === 'luca') { g.save(); g.translate(bhx, bhy); g.rotate(f.st === 'atk' && f.combo % 2 ? -1.4 : 0.7); drawWeapon(g, C, 'dagger', 11, (k.gt && k.gt.weapon) | 0); g.restore(); }
   if (BOSSES[kind] && !f.dead) { // articulated boss limbs: two-bone arms with follow-through, tendrils and tongs
     const wt = winding ? clamp(f.t / (k.windup || 30), 0, 1) : 0, at = bAct ? clamp(f.t / 9, 0, 1) : 0, wk = walking ? Math.sin(ph) : 0, lp = (a, b, t) => a + (b - a) * t;
     if (kind === 'boss') { // Colossus: a stone back-arm that rises with the swing and crashes down after it
@@ -2325,13 +2419,31 @@ function drawHuman(f, sx, sy) {
   const hx = lean, hy = -bob;
   if (kind === 'hero') {
     R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -42 + hy, 10, 4, dk(k.skin)); R(2 + hx, -48 + hy, 3, 10, lt(k.skin) === k.skin ? k.skin : shade(k.skin, 0.12));
+    const tail = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0), hc0 = k.cls || 'nolan';
+    if (hc0 === 'panni') { // long golden hair under a pointed hat; her helm tier colours the hat
+      P([-6 + hx, -49 + hy, -12 + hx + tail, -40 + hy, -13 + hx + tail * 1.4, -27 + hy, -8 + hx + tail, -29 + hy, -5 + hx, -38 + hy], k.hair);
+      R(-6 + hx, -49 + hy, 3, 12, k.hair); P([-6 + hx, -48 + hy, 5 + hx, -49 + hy, 6 + hx, -45 + hy, 1 + hx, -47 + hy, -3 + hx, -44 + hy], k.hair);
+      R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#3a2a6a'); R(2 + hx, -45 + hy, 4, 1, '#1b1b2a'); R(3 + hx, -41 + hy, 2, 1, '#c86a6a');
+      const hatc = [k.cloth, '#5a4a6a', '#2a4aa8', '#b8862a', '#2a1020'][hT], hatl = ['#ffd24a', '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a'][hT];
+      P([-10 + hx, -48 + hy, 10 + hx, -48 + hy, 8 + hx, -51 + hy, -8 + hx, -51 + hy], hatc);
+      P([-6 + hx, -50 + hy, 6 + hx, -50 + hy, 1 + hx - tail * 0.3, -60 + hy, -6 + hx + tail * 0.8, -65 + hy, -3 + hx, -58 + hy], hatc);
+      R(-6 + hx, -52 + hy, 12, 1.5, hatl); R(-6 + hx + tail * 0.8, -66 + hy, 2, 2, hatl);
+      if (hT >= 4) for (let i = -1; i <= 1; i++) { const fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([i * 3 + hx - 1, -52 + hy, i * 3 + hx + 1, -52 + hy, i * 3 + hx, -52 - fh + hy], i ? '#ff8a2a' : '#ffd070'); }
+    } else if (hc0 === 'luca') { // hooded rogue with a face scarf; the helm tier colours the hood
+      const hd = [k.cloth, '#3a3a40', '#22407a', '#7a5a1a', '#3a0e1e'][hT], hl2 = ['#4a6a52', '#8a8f99', '#5a9cff', '#ffd870', '#ff4a6a'][hT];
+      P([-7 + hx, -48 + hy, -13 + hx + tail, -45 + hy, -12 + hx + tail * 1.3, -39 + hy, -6 + hx, -42 + hy], hd);
+      P([-7 + hx, -40 + hy, -7 + hx, -51 + hy, -3 + hx, -55 + hy, 4 + hx, -55 + hy, 7 + hx, -50 + hy, 6 + hx, -46 + hy, 1 + hx, -48 + hy, -3 + hx, -46 + hy, -3 + hx, -40 + hy], hd);
+      R(-3 + hx, -54 + hy, 6, 1, hl2); R(1 + hx, -42 + hy, 6, 3, dk(hd)); R(1 + hx, -42 + hy, 6, 1, hl2);
+      R(2 + hx, -45 + hy, 3, 2, '#fff'); R(3 + hx, -45 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, '#1b1b2a');
+      if (hT >= 4) { const fl = 0.5 + Math.sin(tickN * 0.3) * 0.5; R(3 + hx, -45 + hy, 2, 1, `rgb(255,${120 + fl * 100 | 0},40)`); }
+    } else {
     P([-6 + hx, -47 + hy, 6 + hx, -47 + hy, 7 + hx, -52 + hy, 3 + hx, -55 + hy, 0 + hx, -52 + hy, -4 + hx, -56 + hy, -7 + hx, -51 + hy], k.hair);
     P([-6 + hx, -47 + hy, -7 + hx, -42 + hy, -4 + hx, -42 + hy, -4 + hx, -47 + hy], dk(k.hair));
-    const tail = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0);
     P([-6 + hx, -48 + hy, -13 + hx + tail, -46 + hy, -17 + hx + tail * 1.5, -40 + hy, -9 + hx + tail, -44 + hy], k.hair);
     R(-5 + hx, -48 + hy, 10, 2, '#c9962e'); // headband
     R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, dk(k.hair)); R(4 + hx, -42 + hy, 2, 1, dk(k.skin));
-    if (hT) { // helm by rarity: iron cap, visored helm, crested gold helm, crown of living flame
+    }
+    if (hT && hc0 === 'nolan') { // helm by rarity: iron cap, visored helm, crested gold helm, crown of living flame
       const hc = [null, '#8a8f99', '#4a7ac8', '#d4a62e', '#2a1620'][hT], hl = [null, '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a'][hT];
       P([-6 + hx, -45 + hy, -6 + hx, -51 + hy, -3 + hx, -55 + hy, 3 + hx, -55 + hy, 6 + hx, -51 + hy, 6 + hx, -45 + hy, 4 + hx, -47 + hy, -4 + hx, -47 + hy], hc);
       R(-5 + hx, -53 + hy, 9, 1.5, hl); R(-6 + hx, -48 + hy, 12, 1.5, dk(hc));
@@ -2387,7 +2499,7 @@ function drawHuman(f, sx, sy) {
   let ang = 0.5;
   if (winding) ang = -2.1 - Math.min(0.4, f.t / (k.windup || 20) * 0.4);
   else if (f.st === 'eatk') ang = lerp(-2.0, 1.4, clamp(f.t / 5, 0, 1));
-  else if (f.st === 'atk') { const c = COMBO[f.combo]; const p = clamp((f.t - 1) / (c.b - 1), 0, 1); ang = f.combo === 1 ? lerp(1.6, -1.8, p) : lerp(-2.2, 1.5, p); }
+  else if (f.st === 'atk') { const c = comboOf(f)[f.combo] || COMBO[0]; const p = clamp((f.t - 1) / (c.b - 1), 0, 1); ang = f.k.cls === 'panni' ? lerp(-1.2, 1.2, p) : f.combo % 2 === 1 ? lerp(1.6, -1.8, p) : lerp(-2.2, 1.5, p); }
   else if (f.st === 'jatk') ang = 2.3;
   else if (f.st === 'ratk') ang = 1.3;
   else if (f.st === 'magic') ang = -2.6;
@@ -2418,7 +2530,7 @@ function drawHuman(f, sx, sy) {
     if (kind === 'boss' && f.st === 'walk' && Math.abs(Math.sin(f.anim)) < 0.08 && tickN % 10 < 2) { dust(f.x, f.y, 5); shake = Math.max(shake, 1.2); }
   }
   // swing trail on the main canvas
-  const swinging = (f.st === 'atk' && f.t >= COMBO[f.combo].a && f.t <= COMBO[f.combo].b + 4) || (f.st === 'eatk' && f.t < 9) || f.st === 'jatk';
+  const swinging = (f.st === 'atk' && f.k.cls !== 'panni' && f.t >= (comboOf(f)[f.combo] || COMBO[0]).a && f.t <= (comboOf(f)[f.combo] || COMBO[0]).b + 4) || (f.st === 'eatk' && f.t < 9) || f.st === 'jatk';
   if (swinging) {
     MAIN.save(); MAIN.translate(Math.round(sx), Math.round(sy - f.z)); MAIN.scale(f.face * sc, sc); MAIN.globalCompositeOperation = 'lighter';
     const a0 = f.st === 'atk' && f.combo === 1 ? 1.6 : -2.0;
@@ -2696,7 +2808,7 @@ function drawWyrm(f, sx, sy) {
 function drawHUD() {
   if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
-  text('NOLAN  LV ' + rpg.lvl, 12, 18, 11, '#9fd0ff');
+  text(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 32, 80, 4, hero.mana, 100, hero.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
@@ -2705,7 +2817,7 @@ function drawHUD() {
   for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
   text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
   if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
-  if (coop && hero2) { const p = hero2; text('LYRA', 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
+  if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); bar(12, 126, 80, 4, p.mana, 100, p.mana >= 60 ? '#ffd24a' : '#c08a2a', '#2e2010'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
   if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); for (let i = 0; i < 3; i++) drawCoin(W - 46 + i * 14, 46, i < rpg.coins);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
@@ -2729,6 +2841,7 @@ function drawDonate(y) {
 }
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
+  if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (!donateBox && !langBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
@@ -2741,6 +2854,43 @@ screen.addEventListener('pointermove', e => {
 });
 addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 'title') setLang(LANG === 'hu' ? 'en' : 'hu'); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
+/* ---------- hero select ---------- */
+let selBoxes = [];
+function openSelect(two) { coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
+function confirmSelect() { setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings(); startCampaign(sel.coop); }
+function updateSelect() {
+  const mv = (pn) => (inH({ pn }, 'right') ? 1 : 0) - (inH({ pn }, 'left') ? 1 : 0);
+  const d1 = mv(1); if (d1) { sel.a = (sel.a + d1 + 3) % 3; SFX.pick(); }
+  if (sel.coop) { const d2 = mv(2); if (d2) { sel.b = (sel.b + d2 + 3) % 3; SFX.pick(); } }
+  if (isHit('back')) { coop = false; mode = 'title'; return; }
+  if (isHit('start') || isHit('atk') || (sel.coop && inH({ pn: 2 }, 'atk'))) confirmSelect();
+}
+function selClick(x, y) {
+  for (const b of selBoxes) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { if (sel.a === b.i) confirmSelect(); else { sel.a = b.i; SFX.pick(); } return true; }
+  return false;
+}
+function drawSelect() {
+  g.fillStyle = 'rgba(4,2,10,0.62)'; g.fillRect(0, 0, W, H);
+  text('CHOOSE YOUR HERO', W / 2, 26, 16, '#ffb43a', 'center');
+  selBoxes = [];
+  CLS_ORDER.forEach((c, i) => {
+    const C = CLASSES[c], cx = W / 2 + (i - 1) * 154, x0 = cx - 70, y0 = 38, on1 = sel.a === i, on2 = sel.coop && sel.b === i, sv = peekSave(c);
+    selBoxes.push({ x: x0, y: y0, w: 140, h: 196, i });
+    g.fillStyle = on1 || on2 ? 'rgba(40,24,60,0.85)' : 'rgba(16,10,26,0.75)'; g.fillRect(x0, y0, 140, 196);
+    g.strokeStyle = on1 ? C.col : on2 ? '#8affb0' : '#3a2a4a'; g.lineWidth = on1 || on2 ? 2 : 1; g.strokeRect(x0 + 0.5, y0 + 0.5, 139, 195);
+    if (on1 || on2) { g.globalCompositeOperation = 'lighter'; glowDot(g, cx, y0 + 96, 46, '180,140,255', 0.25); g.globalCompositeOperation = 'source-over'; }
+    const f = makeFighter('hero', 0, 0); f.k = lookFor(c, sv.eq); f.face = 1; f.st = on1 || on2 ? 'walk' : 'idle'; f.anim = tickN * 0.12; f.pn = 1; f.glow = null;
+    g.save(); g.translate(0, 0); drawHuman(f, cx, y0 + 112); g.restore();
+    text(C.name, cx, y0 + 132, 14, C.col, 'center');
+    text(C.role + '  -  ' + C.stat, cx, y0 + 144, 8, '#e8e0f0', 'center');
+    text('LV ' + sv.lvl, cx, y0 + 156, 8, '#ffd24a', 'center');
+    text(C.desc[0], cx, y0 + 172, 6, '#b8a8c8', 'center'); text(C.desc[1], cx, y0 + 182, 6, '#b8a8c8', 'center');
+    if (on1) text(sel.coop ? 'P1' : '>', x0 + 10, y0 + 14, 9, C.col, 'center');
+    if (on2) text('P2', x0 + 130, y0 + 14, 9, '#8affb0', 'center');
+  });
+  text(sel.coop ? 'P1: A/D    P2: ARROWS    ENTER: START    ESC: BACK' : 'A/D OR ARROWS: CHOOSE    ENTER: START    ESC: BACK', W / 2, 252, 8, '#c9a8ff', 'center');
+  text('EACH HERO KEEPS HIS OR HER OWN LEVEL AND GEAR', W / 2, 264, 7, '#8a7a9a', 'center');
+}
 function drawTitleOverlay() {
   g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
   const y = 96 + Math.sin(tickN * 0.04) * 3;
@@ -2755,7 +2905,7 @@ function drawTitleOverlay() {
   drawDonate(H - 12);
   { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10; langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12); text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
-  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : 'HERO LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
+  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
@@ -2785,6 +2935,7 @@ function render() {
   if (dragon) drawDragonCast();
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
+  else if (mode === 'select') drawSelect();
   else drawHUD();
   if (intro) drawIntro();
   if (mode === 'shop') drawShop();
@@ -2797,7 +2948,7 @@ function render() {
     if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); drawDonate(226); }
   }
   if (mode === 'victory') {
-    g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text('NOLAN KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
+    g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
     text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W / 2, 158, 8, '#d9b98a', 'center');
     if (endTimer > 30) { text('ENTER: BEGIN CYCLE ' + (cycle + 2) + '  (+1 COIN, TOUGHER FOES)', W / 2, 184, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W / 2, 198, 8, '#b8a8c8', 'center'); }
     drawDonate(222);

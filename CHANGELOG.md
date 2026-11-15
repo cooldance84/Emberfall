@@ -2,10 +2,17 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.12.0] - 2026-11-15
+- Three playable heroes with their own saves: Nolan (STR warrior), Panni (INT sorceress with ranged arcane bolts and faster Dragon's Wrath) and Luca (DEX rogue with fast twin-dagger combos, higher crit and +50% backstabs). Pick on the new hero select screen; in co-op the second player picks too.
+- Each hero has their own look: Panni wears a pointed hat and Luca a hood and scarf, and both change with gear rarity like Nolan's helm. Weapons have their own names (staves and daggers), and the story uses the chosen hero's name.
+- Fixed a bug where a hero hit in mid-air (or during a jumping skill) stayed floating above their shadow. A blow in the air now knocks you down, and anyone left aloft falls back to the ground.
+- Falling into a chasm now costs 60% of your maximum health, and kills you if you have less than that.
+- Level 70 is no longer near-invincible: crit chance, crit damage and the main stat have soft caps, and monsters ramp up faster in the second half of the campaign and in the Ashen Cycles.
+
 ## [1.11.0] - 2026-11-15
 - New monster: Ash Warder (from stage 2). It is invulnerable inside an arcane barrier until you break it; heavy blows crack the barrier fastest, and the warder also shields nearby allies. The barrier slowly returns if you leave it alone.
 - New monster: Flame Caller (from stage 3). It marks the ground under you with runes that explode and leave burning pools.
-- Chasms to jump over and barricades to vault on every stage. Falling costs 12% health; monsters knocked into a chasm die.
+- Chasms to jump over and barricades to vault on every stage. Falling cost 12% health (60% from 1.12.0); monsters knocked into a chasm die.
 - Elite monsters (from stage 3), and ambushes that send in reinforcements near the end of a wave.
 - Monsters move about 30% faster and attack more often.
 - Bosses have 35% more health and 30% more poise, hit 15% harder, attack more often and summon escorts when they enrage.

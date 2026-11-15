@@ -1,12 +1,25 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.11.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.12.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
 **Play it:** https://cooldance84.github.io/Emberfall/
 
 ![Title screen](docs/screenshots/title.jpg)
+
+## Three heroes
+Press Enter (or 2 for co-op) and pick your hero. Each one keeps their own level and gear.
+
+| Hero | Main stat | Style |
+|---|---|---|
+| **Nolan**, warrior | STR | Sword, 3-hit combo that ends in a knockdown, the most health |
+| **Panni**, sorceress | INT | Fires arcane bolts from range; the third cast is a big piercing blast. Fills Dragon's Wrath 50% faster, but has less health |
+| **Luca**, rogue | DEX | Twin daggers, fast 4-hit combo, higher crit and speed, jumps higher. Hits from behind are backstabs for +50% damage |
+
+In co-op the second player picks a hero too and shares the first player's level and gear.
+
+![Hero select](docs/screenshots/heroes.jpg)
 
 ## The story
 
@@ -40,7 +53,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **New monsters in later acts:** frost archers (act II) shoot arrows you can jump over, blaze bombers (act III) run up and explode in a shockwave, and hollow knights (act IV) leap across the screen and crash down with a shockwave.
 - **Articulated bosses:** the Colossus swings a stone back-arm, the Matron reaches with ghostly arms and living hair, the Forgemaster works a tongs arm, and the Cinder King's wings flap on shoulder, elbow, wrist and finger bones.
 - **Casters that make you think:** the **Ash Warder** (from stage 2) hides inside an arcane barrier and is untouchable until you shatter it. Light hits barely crack it, heavy blows (third combo hit, jump attack, skills) break it fast, and a broken barrier knocks the warder down. Warders also wrap nearby allies in barriers, so take them out first. The **Flame Caller** (from stage 3) marks the ground under you with runes that explode and leave burning pools, so keep moving.
-- **Chasms and barricades:** from stage 1 the road is cut by chasms you must jump over and rubble barricades you have to vault. Falling in costs health; knocking a monster into a chasm finishes it off.
+- **Chasms and barricades:** from stage 1 the road is cut by chasms you must jump over and rubble barricades you have to vault. Falling in costs 60% of your health (and kills you if you are already hurt); knocking a monster into a chasm finishes it off.
 - **Sharper fights:** monsters move faster and attack more often, **elite** monsters (gold glow, more health and damage, extra loot) turn up from stage 3, and **ambushes** send fresh foes in from both sides when a wave is nearly beaten.
 - **Tougher bosses:** more health and poise, quicker attacks, and they call in escorts when they enrage.
 - **Wyrmling mounts:** a rare enemy (at most one per wave) arrives on a small dragon. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
