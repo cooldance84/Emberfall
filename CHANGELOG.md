@@ -2,6 +2,16 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.11.0] - 2026-11-15
+- New monster: Ash Warder (from stage 2). It is invulnerable inside an arcane barrier until you break it; heavy blows crack the barrier fastest, and the warder also shields nearby allies. The barrier slowly returns if you leave it alone.
+- New monster: Flame Caller (from stage 3). It marks the ground under you with runes that explode and leave burning pools.
+- Chasms to jump over and barricades to vault on every stage. Falling costs 12% health; monsters knocked into a chasm die.
+- Elite monsters (from stage 3), and ambushes that send in reinforcements near the end of a wave.
+- Monsters move about 30% faster and attack more often.
+- Bosses have 35% more health and 30% more poise, hit 15% harder, attack more often and summon escorts when they enrage.
+- Wyrmling riders are much rarer: at most one per wave.
+- Hungarian text for all new names and messages.
+
 ## [1.10.0] - 2026-11-15
 - Nolan's look now follows his gear: leather tunic with no armour, and rarity tiers for helm, armour, boots, amulet gem and blade (up to a flaming sword and crown of flame at mythic).
 - Three new monsters: Frost Archer (act II), Blaze Bomber (act III) and Hollow Knight (act IV). Later acts mix them into the waves; boss waves are unchanged.

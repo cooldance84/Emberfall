@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.10.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.11.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -39,7 +39,11 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Your gear shows on Nolan:** no armour means a leather tunic; each rarity changes the look of the helm (iron cap, visored helm, plumed gold helm, crown of flame), armour (steel, blue, gold with spikes, obsidian with ember cracks), boots, amulet gem and blade (rusty, steel, glowing blue, golden, flaming).
 - **New monsters in later acts:** frost archers (act II) shoot arrows you can jump over, blaze bombers (act III) run up and explode in a shockwave, and hollow knights (act IV) leap across the screen and crash down with a shockwave.
 - **Articulated bosses:** the Colossus swings a stone back-arm, the Matron reaches with ghostly arms and living hair, the Forgemaster works a tongs arm, and the Cinder King's wings flap on shoulder, elbow, wrist and finger bones.
-- **Wyrmling mounts:** some enemies arrive on small dragons. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
+- **Casters that make you think:** the **Ash Warder** (from stage 2) hides inside an arcane barrier and is untouchable until you shatter it. Light hits barely crack it, heavy blows (third combo hit, jump attack, skills) break it fast, and a broken barrier knocks the warder down. Warders also wrap nearby allies in barriers, so take them out first. The **Flame Caller** (from stage 3) marks the ground under you with runes that explode and leave burning pools, so keep moving.
+- **Chasms and barricades:** from stage 1 the road is cut by chasms you must jump over and rubble barricades you have to vault. Falling in costs health; knocking a monster into a chasm finishes it off.
+- **Sharper fights:** monsters move faster and attack more often, **elite** monsters (gold glow, more health and damage, extra loot) turn up from stage 3, and **ambushes** send fresh foes in from both sides when a wave is nearly beaten.
+- **Tougher bosses:** more health and poise, quicker attacks, and they call in escorts when they enrage.
+- **Wyrmling mounts:** a rare enemy (at most one per wave) arrives on a small dragon. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
 - **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen. Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
 - **RPG layer:** levels up to **70**. Items roll **STR, crit chance, crit damage and hit chance**. Gear has six slots (helm, armor, boots, weapon, ring, amulet), and what you wear shows on the hero.
 - **Loot by stage:** stage 1 drops only white items. Stage 2 adds magic (blue). Stage 3 adds legendary at 10%. Stage 4 and 5 add mythic at 3%.
@@ -56,7 +60,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Co-op](docs/screenshots/coop.jpg) | ![Shield guards](docs/screenshots/minions-guards.jpg) |
 | ![Pause menu](docs/screenshots/pause.jpg) | ![Touch controls](docs/screenshots/touch.jpg) |
 | ![Gear tiers](docs/screenshots/gear-tiers.jpg) | ![New monsters](docs/screenshots/new-enemies.jpg) |
-| ![Boss limbs](docs/screenshots/boss-limbs.jpg) | |
+| ![Boss limbs](docs/screenshots/boss-limbs.jpg) | ![Casters and a chasm](docs/screenshots/casters-chasm.jpg) |
 
 ## The campaign: four acts, twenty stages
 The story now runs through **20 stages in four acts**. Each act ends with an Ember Wyrm and a new Heart-Ember; the old bosses return stronger (Colossus II, Matron III and so on) in new places such as the Drowned Cathedral and the World-Forge. Clearing every stage gives enough XP to reach **level 70 in a single run** (around stage 18 if you clear everything, around stage 20 if you skip some fights). After the last stage the Ashen Cycles keep going for as long as you like.
