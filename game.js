@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.18.1';
+const VERSION = '1.18.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2120,6 +2120,10 @@ function updateShots() {
       s.r += 3.2;
       if (!s.hit && !hero.dead && Math.abs(Math.hypot(dx, dy * 3) - s.r) < 10 && hero.z < 14) { s.hit = true; hurt(hero, s.dmg, 'down', { x: s.x, face: sgn(hero.x - s.x) || 1 }); }
       if (s.r > (s.max || 130)) s.dead = true;
+    }
+    if ((s.type === 'mbolt' || s.type === 'pwave') && !s.dead && s.hit) for (const c of chests) { // Panni's bolts and the shockwaves open chests too, whatever height they fly at
+      if (c.open || s.hit.has(c) || Math.abs(c.x - s.x) > 14 || Math.abs(c.y - s.y) > 14) continue;
+      s.hit.add(c); openChest(c); if (s.type === 'mbolt' && !s.big) s.dead = true;
     }
   }
   hero = realHero;

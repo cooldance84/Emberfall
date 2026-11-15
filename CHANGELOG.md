@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.18.2] - 2026-11-15
+- Fix: Panni's arcane bolts and the Dragon shockwaves now open treasure chests too (before, her bolts flew over them).
+
 ## [1.18.1] - 2026-11-15
 - Treasure chests along the road: 2 to 4 per stage, hidden before the boss arena. Hit one twice to open it for gold (more in later stages), with a small chance of a meat drop.
 
