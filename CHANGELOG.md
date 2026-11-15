@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.10.0] - 2026-11-15
+- Nolan's look now follows his gear: leather tunic with no armour, and rarity tiers for helm, armour, boots, amulet gem and blade (up to a flaming sword and crown of flame at mythic).
+- Three new monsters: Frost Archer (act II), Blaze Bomber (act III) and Hollow Knight (act IV). Later acts mix them into the waves; boss waves are unchanged.
+- Bosses now have articulated limbs: Colossus back-arm, Matron ghost arms and hair tendrils, Forgemaster tongs arm, and bone-jointed flame wings on the Cinder King.
+- Hungarian names for the new monsters.
+
 ## [1.9.2] - 2026-11-14
 - Fixed the RIDE touch button: it now mounts a nearby wyrmling as well as dismounting (E on keyboard does the same).
 
