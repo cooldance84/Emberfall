@@ -269,7 +269,7 @@ const HU_RULES = [
   [/^3: DAILY CHALLENGE  -  (.+)$/, m => "3: NAPI KIHÍVÁS  -  " + tr(m[1])],
   [/^DAILY: ([A-Z ]+)  -  (.+)$/, m => "NAPI: " + tr(m[1]) + "  -  " + tr(m[2])],
   [/^(\d{4}-\d\d-\d\d)   ([A-Z ]+)$/, m => m[1] + "   " + tr(m[2])],
-  [/^\+(\d+)% (FIRE|FROST|LIGHTNING) (POWER|RESIST)$/, m => "+" + m[1] + "% " + tr(m[2]) + (m[3] === "POWER" ? " ERŐ" : " ELLENÁLLÁS")],
+  [/^([+-])(\d+)% (FIRE|FROST|LIGHTNING) (POWER|RESIST)$/, m => m[1] + m[2] + "% " + tr(m[3]) + (m[4] === "POWER" ? " ERŐ" : " ELLENÁLLÁS")],
   [/^ROLL (\d+)%$/, m => "MINŐSÉG " + m[1] + "%"],
   [/^PERFECT ROLL!$/, () => "TÖKÉLETES DOBÁS!"],
   [/^(FIRE|FROST|LIGHTNING) TIER ([IVX]+): (.+)$/, m => tr(m[1]) + " " + m[2] + ". FOKOZAT: " + tr(m[3])],

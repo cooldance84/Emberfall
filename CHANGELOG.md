@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.22.1] - 2026-11-15
+- The VS EQUIPPED comparison now also shows element power and resist differences (green gain, red loss), so you see what you lose when you swap an item.
+
 ## [1.22.0] - 2026-11-15
 - Elements now play rock-paper-scissors: frost beats fire, lightning beats frost, fire beats lightning. Every elemental monster resists its own element (x0.6) and is weak to the one that beats it (x1.25); the third element is neutral. Nothing is ever immune.
 - The old table was uneven (the fire-themed Cinder King was weak to lightning). Now: Cinder King, Cinder Colossus and Forgemaster are fire (frost is best); Mire Matron is lightning (fire is best); the Wyrm is frost (lightning is best). Regular monsters follow the same rule, for example bombers are fire, archers and wraiths frost, wisps and warders lightning.
