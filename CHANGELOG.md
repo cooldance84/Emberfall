@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.28.1] - 2026-11-16
+- Elemental procs reworked: a hero who has chosen an element only ever procs that element (no mixing). Heroes without an element still get a random element on skill hits.
+- Skill hits: 30% chance (10% per tick for the ultimate) of the element's status plus bonus elemental damage worth half a hit at your tier.
+- Normal hits can proc too: 3.9% (tier 1) to 6.3% (tier 7), bosses 30% less, with bonus elemental damage worth one more hit (0.9x to 1.4x) and the status. Measured on a brute over 25 seconds this adds roughly +2% at tier 1, +4% at tier 3, +6% at tier 5 and +8% at tier 7.
+
 ## [1.28.0] - 2026-11-16
 - Skills carry a chance of elemental damage: every skill hit has a 30% chance (10% per hit for the ultimate, which hits every foe 18 times) to proc an element on the foe. Your own element comes up half the time, the other two share the rest. It works even before you have chosen an element (tier 1 effects), and with a chosen element the effect uses your element tier, so a high tier makes the skill's frost freeze and its lightning chain. Normal attacks are unchanged: only your own element builds up.
 

@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.28.0';
+const VERSION = '1.28.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1163,14 +1163,20 @@ function elemHit(e, att, kind, crit) { // called after one of the hero's hits la
   let amt = (kind === 'down' ? 38 : 24) * (cls === 'panni' ? 1.2 : 1) * (crit ? (cls === 'luca' ? 1.5 : 1.25) : 1) * (el === 'frost' && T >= 2 ? 1.25 : 1);
   elemBuild(e, el, amt * (1 + elemPower() / 100), T);
 }
-// skills carry a chance of elemental damage: each skill hit may set the foe alight, chill or shock it, with your own element most often and the other two now and then.
-// It works even before you have chosen an element (tier 1 effects), and the effect uses your element tier, so a high tier makes the skill's frost freeze and its lightning chain.
-function skillElemProc(e, att, kind) {
-  if (!att.pn || !att.sk || e.dead || e.pn || e.barrier > 0) return;
-  const ult = att.sk.id === 6; if (Math.random() >= (ult ? 0.1 : 0.3)) return; // the ultimate hits every foe 18 times, so its chance per hit is lower
-  const own = rpg.elem, el = own && Math.random() < 0.5 ? own : pickOf(own ? ELEMS.filter(x => x !== own) : ELEMS);
-  const S = elOf(e), rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1);
-  elemBuild(e, el, Math.max(0, (100 - S[el]) / rs) + 1, Math.max(1, elemTier())); // topped up so the proc always lands
+// elemental procs: a hit may carry extra elemental damage plus the status of the element at your tier.
+// A hero who has chosen an element only ever procs that element; one who has not gets a random element on skill hits (tier 1 effects).
+// Normal hits: 3.9% (tier 1) to 6.3% (tier 7), extra damage worth about one more hit (0.9x to 1.4x). Skill hits: 30% (10% per tick for the ultimate), extra damage worth half of that.
+function elemProc(e, att, dealt, isSkill) {
+  if (!att.pn || e.dead || e.pn || e.barrier > 0) return;
+  const own = rpg.elem, tier = elemTier();
+  let ch, el;
+  if (isSkill) { ch = att.sk.id === 6 ? 0.1 : 0.3; el = own || pickOf(ELEMS); }
+  else { if (!own || !tier) return; ch = (0.035 + 0.004 * tier) * (isBoss(e) ? 0.7 : 1); el = own; }
+  if (Math.random() >= ch) return;
+  const T = Math.max(1, tier), S = elOf(e), rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1);
+  elemBuild(e, el, Math.max(0, (100 - S[el]) / rs) + 1, T); // topped up so the status always lands
+  elDmg(e, dealt * (isSkill ? 0.5 : 1) * (0.8 + 0.08 * T) * rs, ELEM[el].col);
+  spawn(e.x, e.y, e.z + e.h * 0.6, 8, { s0: 1, s1: 3, c: [ELEM[el].col, '#ffffff'], l0: 8, l1: 16, add: true, size: 2 });
 }
 function elemTick(e) { // once per frame per afflicted monster; true when it loses this frame (frozen, stunned, slowed)
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
@@ -1237,7 +1243,7 @@ function strike(att, box, dmg, kind, targets) {
       const shielded = e.barrier > 0;
       if (hurt(e, r.d, kind, att)) {
         if (e.blockT === tickN) continue;
-        if (!shielded && !e.dead) { elemHit(e, att, kind, r.crit); skillElemProc(e, att, kind); }
+        if (!shielded && !e.dead) { elemHit(e, att, kind, r.crit); elemProc(e, att, r.d, !!att.sk); }
         floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
         if (r.crit) { shake = Math.max(shake, 5); freeze = Math.max(freeze, 4); sparks(e.x, e.y, e.z + e.h * 0.6, true); }
       }
