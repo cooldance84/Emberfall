@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.7';
+const VERSION = '1.36.8';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1198,7 +1198,9 @@ function elDmg(e, d, col) { // status damage: no knock-back, no invulnerability 
   if (e.hp <= 0 && e.st !== 'down' && e.st !== 'getup') { e.st = 'down'; e.t = 0; e.vz = 2; e.vx = 0; e.z = Math.max(e.z, 0.01); }
 }
 function elArc(a, b, col) { for (let i = 0; i <= 5; i++) { const t = i / 5; spawn(a.x + (b.x - a.x) * t + rnd(-3, 3), a.y + (b.y - a.y) * t, a.h * 0.55 + rnd(-6, 6), 1, { c: col, l0: 6, l1: 12, add: true, size: 2, g: 0 }); } }
-function elemBuild(e, el, amt, T, noSpread) {
+let elDepth = 0; // chains can never run away: a hit cascading through foes is cut off after a few hops
+function elemBuild(e, el, amt, T, noSpread) { if (elDepth > 5) return; elDepth++; try { elemBuild0(e, el, amt, T, noSpread); } finally { elDepth--; } }
+function elemBuild0(e, el, amt, T, noSpread) {
   const S = elOf(e), R = ePar(); if (e.dead || e.barrier > 0) return;
   const rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1); amt *= rs;
   S[el] += amt;
@@ -1225,7 +1227,7 @@ function elemBuild(e, el, amt, T, noSpread) {
   } else {
     S.sst = T >= 5 ? Math.min(layerCap(), (S.sst | 0) + 1) : 1; // ...and so do the shocks
     const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0) + R, r = 70 + (T >= 2 ? 25 : 0) + 10 * R, dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1) * (1 + 0.1 * (S.sst - 1));
-    elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#6ab8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
+    elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#6ab8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', Math.min(30, Math.floor(90 / n)), T, true); }); // a fired chain hands out less than the 100 a foe needs to fire again, so it dies out by itself
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
     if (T >= 3 && S.cd <= 0) { S.stun = Math.round(((T >= 5 ? 34 : 20) + 6 * R) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
     S.shk = 120 + 15 * T; S.sdbl = S.bx ? 1 : S.sdbl; // electrified: shock damage over time, doubled after an overcharge

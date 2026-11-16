@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.8] - 2026-11-17
+- Fix: the game could freeze during an ultimate (or any skill) in a big crowd with the Lightning element. An overcharged or higher-tier chain handed out more shock than a foe needs to fire again, so the arcs bounced between foes forever. A fired chain now hands out less than that and all element chains are cut off after a few hops.
+
 ## [1.36.7] - 2026-11-17
 - Set gear now tints the hero green like the item text: armor, trim, cape, boots, helm, amulet and weapon (blade, staff crystal, dagger) all turn set green, and the mythic flames burn green. A faint green glow surrounds a hero wearing set gear, and set pieces pulse softly in the inventory.
 
