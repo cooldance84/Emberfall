@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.34.0';
+const VERSION = '1.34.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1702,11 +1702,7 @@ function updateMinion(e) {
       if (e.t % 3 === 0) spawn(e.x + e.face * 8, e.y, 52, 1, { c: ai === 'warder' ? ['#9ae8ff', '#b88aff'] : ['#ffb43a', '#ff5a1f'], s0: 0.2, s1: 0.6, l0: 8, l1: 16, add: true, up: 1, g: 0 });
       if (e.t >= k.windup) {
         if (ai === 'warder') {
-          const allies = enemies.filter(o => o !== e && !o.dead && !isBoss(o) && o.kind !== 'imp' && !(o.barrier > 0) && !o.warded && Math.abs(o.x - e.x) < 170);
-          if (e.barrier > 0 && allies.length && enemies.filter(o => o.ward === e && o.barrier > 0).length < 2 && Math.random() < 0.6) {
-            const o = allies[Math.random() * allies.length | 0]; o.ward = e; o.warded = true; o.barrier = o.bmax = Math.round(o.maxhp * 0.6);
-            zap(e.x + e.face * 8, e.y, 50, o.x, o.y, o.h * 0.6); spawn(o.x, o.y, o.h * 0.5, 14, { c: ['#9ae8ff', '#b88aff'], add: true, l0: 10, l1: 22 }); SFX.magic();
-          } else { shots.push({ type: 'bolt', x: e.x + e.face * 16, y: e.y, z: 30, vx: e.face * 2.6, t: 0, dmg: k.dmg, life: 200 }); SFX.swing(); }
+          shots.push({ type: 'bolt', x: e.x + e.face * 16, y: e.y, z: 30, vx: e.face * 2.6, t: 0, dmg: k.dmg, life: 200 }); SFX.swing(); // barriers are only ever worn from the spawn, never cast mid-fight
         } else {
           for (const p of players()) if (!p.dead && Math.abs(p.x - e.x) < 320) shots.push({ type: 'rune', x: p.x + p.vx * 18, y: clamp(p.y + (p.vy || 0) * 18, Y_MIN, Y_MAX), t: 0, delay: 54, r: 24, dmg: k.dmg, pool: stageIdx >= 5 ? 200 : 150 });
           if (stageIdx >= 15 || cycle) shots.push({ type: 'rune', x: clamp(hero.x + rnd(-70, 70), cam + 20, cam + W - 20), y: rnd(Y_MIN, Y_MAX), t: 0, delay: 66, r: 24, dmg: k.dmg, pool: 150 });
@@ -2596,6 +2592,9 @@ function spawnFoe(t, x, hasBoss) {
   if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && Math.random() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
     f.elite = true; f.glow = '255,200,80'; f.hp = f.maxhp = Math.round(f.maxhp * 1.8); f.h = Math.round(f.h * 1.12);
     f.k = Object.assign({}, f.k, { name: 'ELITE ' + f.k.name, scale: f.k.scale * 1.12, spd: f.k.spd * 1.15, armor2: '#ffd24a' });
+  }
+  if (!BOSSES[t] && !hasBoss && !f.barrier && t !== 'imp' && t !== 'gob' && (stageIdx >= 1 || cycle) && Math.random() < 0.06 + 0.012 * Math.min(stageIdx + cycle * 10, 15)) { // some foes simply arrive with an arcane barrier (6% to 24%)
+    f.barrier = f.bmax = Math.round(f.maxhp * 0.6); f.warded = true;
   }
   enemies.push(f); return f;
 }

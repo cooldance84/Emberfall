@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.34.1] - 2026-11-16
+- Arcane barriers are now worn from the spawn and never cast mid-fight: some foes simply arrive with a barrier (random, 6% of foes in stage 2 rising to 24% from the late stages and in the Trials; none in stage 1, none during boss fights). Ash Warders keep their own barrier but no longer shield their allies; they fire bolts instead.
+
 ## [1.34.0] - 2026-11-16
 - Kill combo: foes killed within three seconds of each other build a combo, and every kill adds 3% experience to the next ones, up to +75% at 25 kills. Any hit on a hero resets it, and so does three seconds without a kill. The combo and its bonus show on the right of the HUD with a small timer bar, and a blue "COMBO x10 XP +30%" pops up every ten kills. It also speeds up paragon points. The bonus stage keeps its own gold combo.
 
