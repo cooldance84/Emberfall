@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.6] - 2026-11-16
+- The bonus stage summary now also shows the experience earned (XP EARNED), under the gold.
+
 ## [1.35.5] - 2026-11-16
 - Bonus stage goblins now give experience like any other foe (no extra multiplier) and count toward the kill combo, so a fast run also earns the combo's XP bonus; it shows as XP +N% under the gold counter.
 

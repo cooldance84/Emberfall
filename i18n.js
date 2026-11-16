@@ -276,6 +276,7 @@ const HU_RULES = [
   [/^CHESTS OPENED  (\d+)$/, m => "KINYITOTT LÁDA  " + m[1]],
   [/^BEST COMBO  x(\d+)$/, m => "LEGJOBB KOMBÓ  x" + m[1]],
   [/^GOLD EARNED  \+(\d+)$/, m => "SZERZETT ARANY  +" + m[1]],
+  [/^XP EARNED  \+(\d+)$/, m => "SZERZETT XP  +" + m[1]],
   [/^GOLD \+(\d+)$/, m => "ARANY +" + m[1]],
   [/^COMBO x(\d+)   GOLD x([0-9.]+)$/, m => "KOMBÓ x" + m[1] + "   ARANY x" + m[2]],
   [/^([0-9.]+)S$/, m => m[1] + "MP"],
