@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.34.1';
+const VERSION = '1.35.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -47,6 +47,8 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
 let chests = [], vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
+let shrines = [], buff = null; // a shrine's blessing is shared by the whole party
+const buffIs = id => !!buff && buff.id === id && buff.t > 0;
 const LOOT_T = 1500;
 let coop = false, hero1 = null, hero2 = null, intro = null, cycle = 0;
 const TRIAL_MAX = 10, ROMAN_T = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
@@ -602,7 +604,7 @@ const ENEMY_EL = MON_EL; // the element a monster's own attacks carry (for your 
 const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
 let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
 const gearSum = (key, el) => { let n = 0; for (const sl of SLOTS) { const it = rpg.eq[sl]; if (it && it[key] && it[key].k === el) n += it[key].v; } return n; };
-const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem) + setBonus('ep')) : 0;   // % bonus to your element's buildup and damage
+const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem) + setBonus('ep')) + (buffIs('surge') ? 40 : 0) : 0;   // % bonus to your element's buildup and damage
 const elemResist = el => el ? Math.min(60, gearSum('er', el) + setBonus('res')) / 100 : 0;        // share of that element's damage you ignore
 const elemTierCost = t => t <= 1 ? 0 : Math.round(120 * Math.pow(t, 1.6)); // tier I is free, the rest cost gold
 const elemRefund = () => Math.floor((rpg.eg | 0) * 0.75);                  // dismissing your element returns 75% of the gold you put into it
@@ -660,7 +662,7 @@ function rollHit(dmg) { // hit chance, crit chance, crit damage, STR
   const s = pstats();
   if (Math.random() * 100 >= s.hit) return { miss: true };
   const crit = Math.random() * 100 < s.crit;
-  return { crit, d: Math.max(1, Math.round(dmg * s.mult * (crit ? s.cdmg / 100 : 1) * rnd(0.93, 1.07))) };
+  return { crit, d: Math.max(1, Math.round(dmg * s.mult * (buffIs('fury') ? 1.3 : 1) * (crit ? s.cdmg / 100 : 1) * rnd(0.93, 1.07))) };
 }
 /* ---------- paragon: after level 70 the experience goes on, and every paragon point adds a little of everything ---------- */
 const PG_MAX = 100, pgNeed = n => 6000 + 120 * n;
@@ -750,9 +752,9 @@ function onKill(e) {
   }
   killCombo = (tickN - killComboT <= KC_WINDOW ? killCombo : 0) + 1; killComboT = tickN;
   if (killCombo % 10 === 0) floatText(e.x, e.y - e.h - 16, 'COMBO x' + killCombo + '  XP +' + Math.round(kcBonus() * 100) + '%', '#8fc8ff', 8);
-  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1) * (1 + kcBonus()))); // paced so level 70 arrives near the end of act VII
-  { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
-  const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
+  gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1) * (1 + kcBonus() + (buffIs('wisdom') ? 0.5 : 0)))); // paced so level 70 arrives near the end of act VII
+  { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1) * (buffIs('fortune') ? 1.6 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
+  const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) * (buffIs('fortune') ? 1.5 : 1) ? 1 : 0;
   const bigBoss = boss && rpg.lvl >= MAX_LV; // at max level a boss always drops at least a legendary first and raises the set chance of all its drops by half
   setBoost = bigBoss ? 1.5 : 1;
   for (let i = 0; i < n; i++) {
@@ -1079,7 +1081,7 @@ function newHero() {
 function resetGame() {
   newHero(); heroStats(true); floats = []; intro = null;
   enemies = []; items = []; parts = []; decals = []; cam = 0; lockX = Infinity; score = 0; waveIdx = 0; shake = 0; freeze = 0; endTimer = 0;
-  lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0; shots = []; story = null; bossRef = null; stageCard = 0; clearT = 0;
+  lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0; shots = []; story = null; bossRef = null; stageCard = 0; clearT = 0; shrines = []; buff = null;
 }
 resetGame();
 
@@ -1111,8 +1113,16 @@ function hurt(e, dmg, kind, from) {
   const dir = sgn(e.x - from.x) || -from.face;
   if (!e.pn && e.el && e.el.frz > 0 && elemTier() >= 4) dmg = Math.round(dmg * 1.2); // frozen foes are brittle
   if (!e.pn && from.pn && e.el && (e.el.burn > 0 || e.el.frz > 0 || e.el.stun > 0 || e.el.chill > 0)) { const af = setBonus('afl'); if (af) dmg = Math.round(dmg * (1 + af / 100)); } // Emberheart 4: more damage to burning, frozen, stunned or chilled foes
-  if (e.pn && !from.pn) killCombo = 0; // a hit on a hero breaks the kill combo
   if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (dailyIs('GLASS CANNON') ? 1.5 : 1) * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1) * (1 - elemResist(hitEl || from.el || ENEMY_EL[from.kind])) * (1 - pgRes())));
+  if (e.pn && !from.pn) { // a hit on a hero: the shrine ward soaks it first; only a blow that gets through breaks the kill combo
+    if (buff && buff.id === 'ward' && buff.ward > 0) {
+      const ab = Math.min(buff.ward, dmg); buff.ward -= ab; dmg -= ab; e.flash = 3;
+      spawn(e.x, e.y, e.z + 24, 6, { c: ['#9ae8ff', '#ffffff'], l0: 8, l1: 16, add: true });
+      floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, '-' + ab, '#6ab8ff', 8);
+      if (dmg <= 0) { e.inv = Math.max(e.inv, 8); SFX.land(); return true; }
+    }
+    killCombo = 0;
+  }
   if (!e.pn && e.barrier > 0 && e.kind !== 'imp') { // arcane barrier: no damage gets through until it shatters; heavy blows crack it fastest
     const d = kind === 'down' ? dmg : Math.max(1, Math.round(dmg * 0.35));
     e.barrier -= d; e.bflash = 6; e.blockT = tickN; lastEnemy = e; freeze = Math.max(freeze, 2);
@@ -1164,7 +1174,7 @@ function hurt(e, dmg, kind, from) {
   else if (!isBoss(e)) { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
   return true;
 }
-const elBase = () => 9 * pstats().mult * (1 + elemPower() / 100);
+const elBase = () => 9 * pstats().mult * (buffIs('fury') ? 1.3 : 1) * (1 + elemPower() / 100);
 function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0, shk: 0 }); }
 function elNear(e, r) { return enemies.filter(o => o !== e && !o.dead && o.kind !== 'imp' && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.6); }
 const DMG_COL = { '#7ad8ff': '#ffffff', '#c8a8ff': '#4aa8ff' }; // frost damage shows white, lightning damage blue
@@ -1273,10 +1283,70 @@ function elemAura() { // tier VI fire: a ring of fire pulses around each hero
   for (const p of players()) { if (p.dead) continue; for (const o of enemies) if (!o.dead && Math.abs(o.x - p.x) < 52 && Math.abs(o.y - p.y) < 32) elemBuild(o, 'fire', 34, elemTier(), true);
     for (let i = 0; i < 16; i++) { const a = i / 16 * 6.283; spawn(p.x + Math.cos(a) * 44, p.y + Math.sin(a) * 14, 6, 1, { c: ['#ffd070', '#ff7a2a'], l0: 12, l1: 22, add: true, size: 2, up: 0.6 }); } }
 }
+/* ---------- shrines: now and then one stands by the road; strike it for a blessing the whole party shares ---------- */
+const BUFFS = {
+  haste: { name: 'SHRINE OF HASTE', short: 'HASTE', col: '#9affb8', t: 1500, w: 20, info: 'FASTER MOVES AND ATTACKS' },
+  fury: { name: 'SHRINE OF FURY', short: 'FURY', col: '#ff7a4a', t: 1500, w: 20, info: '+30% DAMAGE' },
+  ward: { name: 'SHRINE OF WARDING', short: 'WARD', col: '#6ab8ff', t: 2400, w: 20, info: 'A BARRIER SOAKS THE BLOWS' },
+  wisdom: { name: 'SHRINE OF WISDOM', short: 'WISDOM', col: '#c8a8ff', t: 1800, w: 15, info: '+50% KILL XP' },
+  fortune: { name: 'SHRINE OF FORTUNE', short: 'FORTUNE', col: '#ffd24a', t: 1800, w: 15, info: 'MORE GOLD AND LOOT' },
+  surge: { name: 'SHRINE OF SURGE', short: 'SURGE', col: '#ff8ad8', t: 1500, w: 15, info: '+40% ELEMENT POWER' }
+};
+const SACRED = { name: 'SACRED SHRINE', short: 'SACRED', col: '#ffe27a', info: 'INVULNERABLE FOR 4 SECONDS' };
+function rollBuff() {
+  const ids = Object.keys(BUFFS).filter(k => k !== 'surge' || elemTier() > 0); // a surge is wasted without an element
+  let r = Math.random() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
+  for (const k of ids) { r -= BUFFS[k].w; if (r <= 0) return k; }
+  return ids[0];
+}
+function useShrine(sh) {
+  if (sh.used || (bossRef && !bossRef.dead)) return; // the shrines fall silent once a boss is on the field
+  sh.used = 1; sh.t = 0; sh.shake = 8; SFX.magic(); flashA = Math.max(flashA, 0.18); shake = Math.max(shake, 4);
+  let B;
+  if (sh.sacred) { B = SACRED; for (const p of players()) if (!p.dead) p.inv = Math.max(p.inv, 240); }
+  else { const id = rollBuff(), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id]; buff = { id, t: B.t, max: B.t, ward: id === 'ward' ? hp : 0, wmax: id === 'ward' ? hp : 0 }; }
+  msg = B.name + '!'; msgT = 110; floatText(sh.x, sh.y - 58, B.info, B.col, 8);
+  spawn(sh.x, sh.y, 26, 24, { c: [B.col, '#ffffff'], s0: 1, s1: 3.2, l0: 14, l1: 30, add: true, size: 2, up: 2.4, g: 0.05 });
+}
+function updateShrines() {
+  for (const sh of shrines) { sh.t++; if (sh.shake > 0) sh.shake--; }
+  if (!buff) return;
+  buff.t--;
+  const broke = buff.id === 'ward' && buff.ward <= 0;
+  if (buff.t <= 0 || broke) { floatText(hero.x, hero.y - 64, broke ? 'WARD SHATTERED' : 'BLESSING ENDS', broke ? '#6ab8ff' : '#9a9aaa', 8); if (broke) SFX.shatter(); buff = null; }
+}
+function buffFx() { // a few motes in the blessing's colour drift up around each hero
+  if (!buff || tickN % 5) return; const B = BUFFS[buff.id];
+  for (const p of players()) { if (p.dead) continue;
+    spawn(p.x + rnd(-10, 10), p.y, rnd(4, 40), buff.id === 'ward' ? 2 : 1, { c: [B.col, '#ffffff'], l0: 12, l1: 22, add: true, size: 1, up: 0.8, g: -0.01 }); }
+}
+function drawBuffHud() {
+  if (!buff || bonus) return; const B = BUFFS[buff.id], wd = buff.id === 'ward';
+  text(B.short, W / 2 - 3, 52, 8, B.col, 'right'); text(wd ? String(buff.ward) : Math.ceil(buff.t / 60) + 'S', W / 2 + 3, 52, 8, '#ffffff', 'left');
+  bar(W / 2 - 40, 55, 80, 3, wd ? buff.ward : buff.t, wd ? buff.wmax : buff.max, B.col, '#1c1c24');
+}
+function drawShrines() {
+  for (const sh of shrines) {
+    const x = Math.round(sh.x - cam + (sh.shake > 0 ? (sh.shake % 2 ? 1 : -1) : 0)), y = Math.round(sh.y); if (x < -30 || x > W + 30) continue;
+    const on = !sh.used, rgb = sh.sacred ? '255,226,122' : '154,220,255', cc = sh.sacred ? '#ffe27a' : '#9adcff';
+    g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(x, y, 13, 4, 0, 0, 7); g.fill();
+    if (on) { g.globalCompositeOperation = 'lighter'; glowDot(g, x, y - 28, 26 + Math.sin(sh.t * 0.08) * 3, rgb, 0.38); g.globalCompositeOperation = 'source-over'; }
+    g.fillStyle = '#0a0610'; g.fillRect(x - 12, y - 7, 24, 7); g.fillRect(x - 6, y - 24, 12, 18); g.fillRect(x - 9, y - 28, 18, 5);
+    g.fillStyle = '#5a5468'; g.fillRect(x - 11, y - 6, 22, 5); g.fillStyle = '#7a748a'; g.fillRect(x - 11, y - 6, 22, 1);
+    g.fillStyle = '#48425a'; g.fillRect(x - 5, y - 23, 10, 17); g.fillStyle = '#6a647a'; g.fillRect(x - 5, y - 23, 2, 17);
+    g.fillStyle = '#5a5468'; g.fillRect(x - 8, y - 27, 16, 4); g.fillStyle = '#7a748a'; g.fillRect(x - 8, y - 27, 16, 1);
+    if (on) { // a pale flame hovers over the bowl, runes circling it
+      const b = Math.sin(sh.t * 0.1) * 1.5;
+      g.fillStyle = cc; g.fillRect(x - 2, Math.round(y - 37 + b), 4, 8); g.fillStyle = '#ffffff'; g.fillRect(x - 1, Math.round(y - 35 + b), 2, 4);
+      for (let k = 0; k < 3; k++) { const a = sh.t * 0.05 + k * 2.09; g.fillStyle = cc; g.fillRect(Math.round(x + Math.cos(a) * 10), Math.round(y - 31 + Math.sin(a) * 3), 1, 1); }
+      if (!(bossRef && !bossRef.dead) && players().some(p => !p.dead && Math.abs(p.x - sh.x) < 70 && Math.abs(p.y - sh.y) < 34)) text('STRIKE THE SHRINE', x, y - 50, 7, cc, 'center');
+    } else { g.fillStyle = '#3a3646'; g.fillRect(x - 2, y - 31, 4, 3); }
+  }
+}
 function openChest(c, att) {
   c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
   if (c.hp > 0) return;
-  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1)); rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
+  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1) * (buffIs('fortune') ? 1.6 : 1)); rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
   floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
   if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
   if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
@@ -1287,6 +1357,11 @@ function openChest(c, att) {
   if (Math.random() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
 }
 function strike(att, box, dmg, kind, targets) {
+  if (att.pn) for (const sh of shrines) {
+    if (sh.used || att.hits.has(sh)) continue; const dx = (sh.x - att.x) * att.face;
+    if (dx < box.x0 - 6 || dx > box.x1 + 6 || Math.abs(sh.y - att.y) > box.dy + 6 || att.z + box.z0 > 16) continue;
+    att.hits.add(sh); useShrine(sh);
+  }
   if (att.pn) for (const c of chests) {
     if (c.open || att.hits.has(c)) continue; const dx = (c.x - att.x) * att.face;
     if (dx < box.x0 - 6 || dx > box.x1 + 6 || Math.abs(c.y - att.y) > box.dy + 6 || att.z + box.z0 > 16) continue;
@@ -1485,7 +1560,7 @@ function updateHero(f) {
   const ox = f.x; updateHeroCore(f); heroHazards(f, ox);
 }
 function updateHeroCore(f) {
-  f.t++; if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--; if (f.skcd > 0) f.skcd--;
+  f.t++; if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--; if (f.skcd > 0) { f.skcd--; if (f.skcd > 0 && tickN % 4 === 0 && buffIs('haste')) f.skcd--; }
   if (f.sk && f.st !== 'atk') f.sk = null;
   if (f.dead) {
     f.fade++;
@@ -1495,7 +1570,7 @@ function updateHeroCore(f) {
   }
   if (groundPhysics(f)) return;
   const mx = (inD(f, 'right') ? 1 : 0) - (inD(f, 'left') ? 1 : 0), my = (inD(f, 'down') ? 1 : 0) - (inD(f, 'up') ? 1 : 0);
-  const foes = enemies, spd = f.mount ? mtype(f.mount).spd : f.k.spd;
+  const foes = enemies, spd = (f.mount ? mtype(f.mount).spd : f.k.spd) * (buffIs('haste') ? 1.25 : 1);
   switch (f.st) {
     case 'idle': case 'walk': {
       if (f.z > 0) { f.z += f.vz || 0; f.vz = (f.vz || 0) - 0.33; if (f.z <= 0) { f.z = 0; f.vz = 0; } } // never hang in the air: anything that leaves you aloft falls back down
@@ -1525,7 +1600,7 @@ function updateHeroCore(f) {
       if (f.t < 7) f.x += f.vx * (mage ? 0.3 : 1), f.vx *= 0.9;
       if (!mage && f.t >= c.a && f.t <= c.b) strike(f, { x0: 0, x1: f.k.cls === 'luca' ? 38 : 40, dy: 11, z0: 4, z1: 40 }, c.dmg, c.kind, foes);
       if (inH(f, 'atk') && f.combo < CB.length - 1 && f.t >= (f.k.cls === 'luca' ? 3 : 5)) f.queued = true;
-      if (f.t >= c.d) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
+      if (f.t >= (buffIs('haste') ? Math.max(c.b + 1, Math.round(c.d * 0.8)) : c.d)) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
       break;
     }
     case 'ratk': { // wyrmling attack, by type
@@ -1979,6 +2054,15 @@ function beginStage(i) {
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
     const td = dailyIs('TREASURE DAY'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1), k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(), type = r < (dailyIs('TREASURE DAY') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
+  shrines = []; buff = null; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
+  if ((i >= 1 || cycle) && Math.random() < 0.35) {
+    const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
+    for (let tries = 0; tries < 12; tries++) {
+      const x = Math.round(420 + Math.random() * Math.max(60, stop - 420));
+      if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40)) continue;
+      shrines.push({ x, y: Math.round(Y_MIN + 14 + Math.random() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: Math.random() < 0.08 }); break;
+    }
+  }
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
@@ -2179,7 +2263,7 @@ function beginBonus(next) {
   const S = STAGES[stageIdx]; TH = themeFor(S.theme, actOf(stageIdx)); weather = null; WAVES = []; STAGE_END = W;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   decals = []; impT = 1e9; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 0; flashA = 0; shake = 0; freeze = 0;
-  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1;
+  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1; shrines = []; buff = null;
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 150 : 120; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 60; p.hits.clear();
@@ -2479,6 +2563,10 @@ function updateShots() {
       if (c.open || s.hit.has(c) || Math.abs(c.x - s.x) > 14 || Math.abs(c.y - s.y) > 14) continue;
       s.hit.add(c); openChest(c); if (s.type === 'mbolt' && !s.big) s.dead = true;
     }
+    if (s.type === 'mbolt' && !s.dead && s.hit) for (const sh of shrines) { // ...and so do Panni's bolts
+      if (sh.used || s.hit.has(sh) || Math.abs(sh.x - s.x) > 14 || Math.abs(sh.y - s.y) > 14) continue;
+      s.hit.add(sh); useShrine(sh); s.dead = true;
+    }
   }
   hitEl = null; hero = realHero;
   shots = shots.filter(s => !s.dead);
@@ -2763,7 +2851,7 @@ function step() {
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
   for (const p of players()) withHero(p, () => updateHero(p));
-  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks();
+  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
@@ -3521,6 +3609,7 @@ function drawHUD() {
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
   if (!bonus && killCombo >= 2 && tickN - killComboT <= KC_WINDOW) { const a = 1 - (tickN - killComboT) / KC_WINDOW; text('KILL COMBO x' + killCombo, W - 8, 70, 9, '#ffb43a', 'right'); text('XP +' + Math.round(kcBonus() * 100) + '%', W - 8, 81, 8, '#8fc8ff', 'right'); g.fillStyle = '#3a5a8a'; g.fillRect(W - 8 - 60 * a, 86, 60 * a, 2); }
+  drawBuffHud();
   if (bonus) drawBonusHud();
   else if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
   else text((cycle ? trialName(cycle) + '  ' : '') + 'STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, cycle ? '#e0a8ff' : '#b8a8c8', 'center');
@@ -3626,7 +3715,7 @@ function render() {
   g.save(); g.translate(Math.round(sx), Math.round(sy));
   drawWorld(); drawDecals(); drawFog();
   for (const tx of torchPositions()) flame(Math.round(tx - cam), GROUND_TOP - 44, 1);
-  drawChests(); drawItems(); drawVentsAndSlashes(false);
+  drawChests(); drawShrines(); drawItems(); drawVentsAndSlashes(false);
   const list = [...enemies, ...mounts, ...players()].sort((a, b) => a.y - b.y);
   for (const f of list) drawFighter(f);
   drawShots(); drawVentsAndSlashes(true);
