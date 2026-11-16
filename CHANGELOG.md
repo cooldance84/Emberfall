@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.30.1] - 2026-11-16
+- Discarding a backpack item now scraps it for gold: 40% of its worth, so deeper and rarer gear pays more (a white starter ring about 6G, a legendary around 330G, a mythic near 1000G). Works with the X key and the phone JUMP button; the amount shows in the item panel.
+
 ## [1.30.0] - 2026-11-16
 - Frost and lightning now deal damage over time like fire: frostbite ticks every half second while a foe is chilled (more while frozen) with white numbers, and an electrified foe takes shock damage with blue numbers. All lightning damage and arcs are blue now (the element ring too).
 - Fixed: burning (and the new ticks) no longer stall while you keep hitting. The burn timer reset on every hit, so a foe you attacked constantly almost never took burn damage. Ticks now follow the clock.

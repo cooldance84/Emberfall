@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.30.0';
+const VERSION = '1.30.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -984,6 +984,11 @@ function drawTip(it, cmp, x, y, slim) { // slim: set bonus lines are left out (t
 }
 function openInv(from) { inv.from = from; inv.z = 'bag'; inv.i = 0; mode = 'inv'; SFX.pick(); }
 function invItem() { return inv.z === 'bag' ? rpg.bag[inv.i] : rpg.eq[EQ_ORDER[inv.i]]; }
+const discardGold = it => Math.max(1, Math.round(itemValue(it) * 0.4)); // a discarded piece is scrapped for 40% of its worth, so deeper and rarer gear pays more
+function discardBag(i) {
+  const it = rpg.bag[i]; if (!it) return; const gd = discardGold(it);
+  rpg.bag.splice(i, 1); rpg.gold += gd; invNote = 'SCRAPPED  +' + gd + 'G'; invNoteT = 70; saveGame(); SFX.pick();
+}
 function updateInv() {
   if (invNoteT > 0) invNoteT--;
   if (isHit('inv') || isHit('back')) { mode = inv.from; return; }
@@ -1009,10 +1014,10 @@ function updateInv() {
       if (it && rpg.bag.length < BAG_MAX) { rpg.bag.push(it); sortBag(); delete rpg.eq[s]; PS = null; heroStats(false); saveGame(); SFX.pick(); }
     }
   }
-  if ((pressed.KeyX || pressed.Delete) && inv.z === 'bag' && rpg.bag[inv.i]) { rpg.bag.splice(inv.i, 1); saveGame(); SFX.hit(); }
+  if ((pressed.KeyX || pressed.Delete) && inv.z === 'bag' && rpg.bag[inv.i]) discardBag(inv.i);
   else if (pressed.TJump && inv.z === 'bag' && rpg.bag[inv.i]) { // on a phone the JUMP button discards; legendary and mythic items ask first (a second tap), the rest go at once
     const it = rpg.bag[inv.i];
-    if (it.rar < 3 || (inv.dc === it && invNoteT > 0)) { rpg.bag.splice(inv.i, 1); inv.dc = null; invNoteT = 0; saveGame(); SFX.hit(); }
+    if (it.rar < 3 || (inv.dc === it && invNoteT > 0)) { inv.dc = null; discardBag(inv.i); }
     else { inv.dc = it; invNote = 'TAP JUMP AGAIN TO DISCARD'; invNoteT = 120; SFX.land(); }
   }
 }
