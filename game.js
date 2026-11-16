@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.29.2';
+const VERSION = '1.29.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1158,17 +1158,25 @@ function elemBuild(e, el, amt, T, noSpread) {
       if (T >= 6 && !noSpread) for (const o of elNear(e, 55)) elemBuild(o, 'frost', 50, T, true);
     } else { S.chill = 150; }
   } else {
-    const n = T >= 7 ? 3 : T >= 4 ? 2 : 1, r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1);
+    const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0), r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1);
     elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#c8a8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
     if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
     spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
   }
 }
-function elemRekindle(e, att, was) { // a fire skill cast on a foe that is still burning from before doubles the burn until it dies out
-  if (!att.pn || !att.sk || rpg.elem !== 'fire' || !elemTier() || !e.el || e.dead || e.el.bsk === att.sk) return;
-  const S = e.el; if (S.burn <= 0) return; S.bsk = att.sk;
-  if (was && !S.bdbl) { S.bdbl = 1; S.burn = Math.max(S.burn, 150 + 25 * elemTier()); floatText(e.x, e.y - e.h - 22, 'BURN x2', '#ffb43a', 9); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 12, { c: ['#fff1b0', '#ff7a2a', '#ff3a1a'], s0: 1, s1: 2.6, l0: 12, l1: 26, add: true, size: 2, up: 2 }); }
+const elemActive = e => { const S = e.el, el = rpg.elem; return !!S && (el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.stun > 0 || S.bolt >= 30); };
+function elemRekindle(e, att, was) { // a skill cast on a foe still under your element from before doubles the effect (once per cast and foe)
+  const el = rpg.elem, T = elemTier(); if (!att.pn || !att.sk || !el || !T || !e.el || e.dead || e.el.bsk === att.sk) return;
+  const S = e.el; if (!(el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.bolt >= 1 || S.stun > 0)) return; S.bsk = att.sk;
+  if (!was) return;
+  if (el === 'fire' && !S.bdbl) { S.bdbl = 1; S.burn = Math.max(S.burn, 150 + 25 * T); floatText(e.x, e.y - e.h - 22, 'BURN x2', '#ffb43a', 9); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 12, { c: ['#fff1b0', '#ff7a2a', '#ff3a1a'], s0: 1, s1: 2.6, l0: 12, l1: 26, add: true, size: 2, up: 2 }); }
+  else if (el === 'frost' && !S.fdbl) { // deeper cold: twice as long, a harder slow, a frozen foe stays frozen longer and can be frozen again sooner
+    S.fdbl = 1; S.chill = Math.max(S.chill, 300); if (S.frz > 0) S.frz *= 2; S.cd = Math.min(S.cd, 90);
+    floatText(e.x, e.y - e.h - 22, 'DEEP FREEZE', '#9ae8ff', 9); SFX.freeze(); spawn(e.x, e.y, e.h * 0.5, 12, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 2.4, l0: 12, l1: 26, add: true, size: 2, up: 1.6 });
+  } else if (el === 'bolt') { // overcharge: an extra chain that hits twice as hard and jumps one foe further
+    S.cd = 0; S.bx = 1; elemBuild(e, 'bolt', 101, T); S.bx = 0; floatText(e.x, e.y - e.h - 22, 'OVERCHARGE', '#fff6a0', 9);
+  }
 }
 function elemHit(e, att, kind, crit) { // called after one of the hero's hits lands
   const T = elemTier(); if (!T || e.dead || e.pn) return; const el = rpg.elem, cls = att.k && att.k.cls;
@@ -1194,6 +1202,7 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
   for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35);
   if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--;
+  if (S.fdbl && !(S.chill > 0 || S.frz > 0)) { S.fdbl = 0; S.bsk = null; } if (S.bsk && rpg.elem === 'bolt' && !(S.bolt >= 1 || S.stun > 0)) S.bsk = null;
   if (S.frz > 0) { S.frz--; if (tickN % 12 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#e8faff', '#7ad8ff'], l0: 8, l1: 16, add: true, size: 1, g: 0 }); }
   if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });
   if (S.burn > 0) {
@@ -1203,7 +1212,7 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
   }
   if (free) return false;
   if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
-  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; sl = Math.min(sl, isBoss(e) ? 0.3 : 0.5);
+  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; sl = S.fdbl ? Math.min(sl * 1.5, isBoss(e) ? 0.45 : 0.7) : Math.min(sl, isBoss(e) ? 0.3 : 0.5); // deep freeze slows harder
   if (sl > 0) { S.acc += sl; if (S.acc >= 1) { S.acc -= 1; if (e.flash > 0) e.flash--; return true; } }
   return false;
 }
@@ -1255,7 +1264,7 @@ function strike(att, box, dmg, kind, targets) {
       const shielded = e.barrier > 0;
       if (hurt(e, r.d, kind, att)) {
         if (e.blockT === tickN) continue;
-        if (!shielded && !e.dead) { const was = !!(e.el && e.el.burn > 0); elemHit(e, att, kind, r.crit); elemProc(e, att, r.d, !!att.sk); elemRekindle(e, att, was); }
+        if (!shielded && !e.dead) { const was = elemActive(e); elemHit(e, att, kind, r.crit); elemProc(e, att, r.d, !!att.sk); elemRekindle(e, att, was); }
         floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
         if (r.crit) { shake = Math.max(shake, 5); freeze = Math.max(freeze, 4); sparks(e.x, e.y, e.z + e.h * 0.6, true); }
       }

@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.29.3] - 2026-11-16
+- Skill rekindle now works for every element: casting a skill on a foe that is still under your element from an earlier hit or skill doubles the effect, once per cast. Fire: BURN x2. Frost: DEEP FREEZE (chill lasts twice as long and slows harder, a frozen foe stays frozen twice as long and can be frozen again sooner). Lightning: OVERCHARGE (an extra chain that hits twice as hard and jumps to one more foe).
+
 ## [1.29.2] - 2026-11-16
 - Dragon's Wrath is much stronger: its damage now also scales with your damage multiplier and bites a share of each foe's maximum health: 40% to 85% of a regular foe (more jars, more bite) and 15% to 36% of a boss, so it matters against a Cinder King at any depth.
 - Fire skills rekindle: casting a skill on a foe that is still burning from before doubles its burn damage (BURN x2) and refreshes the duration, until the fire dies out.
