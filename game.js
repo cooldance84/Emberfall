@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.0';
+const VERSION = '1.36.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -786,8 +786,8 @@ function pickupGear(it, bought) {
     const gd = itemValue(it), pt = gd * 10; rpg.gold += gd; score += pt;
     floatText(hero.x, hero.y - 60, 'DUPLICATE  +' + gd + 'G  +' + pt + 'PTS', '#ffd24a', 8); SFX.pick(); return true;
   }
-  if (!rpg.eq[it.slot] && canWear(it)) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, R.col, 8); }
-  else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); sortBag(); floatText(hero.x, hero.y - 60, it.name, R.col, 8); }
+  if (!rpg.eq[it.slot] && canWear(it)) { rpg.eq[it.slot] = it; PS = null; heroStats(false); floatText(hero.x, hero.y - 60, 'EQUIPPED ' + it.name, itemCol(it), 8); }
+  else if (rpg.bag.length < BAG_MAX) { rpg.bag.push(it); sortBag(); floatText(hero.x, hero.y - 60, it.name, itemCol(it), 8); }
   else return false;
   saveGame(); return true;
 }
