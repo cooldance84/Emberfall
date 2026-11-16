@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.1] - 2026-11-16
+- Chasms fixed: the pit used to be drawn slanted while the game treated it as a straight band, so foes (and heroes) could stand visibly over it without falling, or fall while standing on solid ground. Pits and barricades are now drawn exactly where the rules put them. Foes that back away (archers, casters, retreating soldiers) now stop at the lip of a chasm instead of drifting out over it, soldiers chasing you still hop across, and the fleeing Pilferer jumps over chasms and barricades instead of running on air.
+
 ## [1.35.0] - 2026-11-16
 - Shrines: now and then (about one stage in three, never on stage 1 of the campaign, always before the boss) a stone shrine stands by the road. Strike it with a sword swing or one of Panni's bolts for a random blessing that the whole party shares: Haste (+25% speed, faster swings and skill cool-down), Fury (+30% damage, elemental damage included), Warding (a barrier worth 40% of your life soaks blows), Wisdom (+50% kill XP, adds to the kill combo), Fortune (+60% gold, +50% gear drops) or Surge (+40% element power, only offered when you have an element). Each lasts 25 to 40 seconds and shows at the top of the HUD with its timer. About 1 shrine in 12 is a golden Sacred shrine: four seconds of invulnerability. A shrine can be used once, falls silent while a boss is on the field, and a new blessing replaces the old one.
 

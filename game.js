@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.0';
+const VERSION = '1.35.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1626,7 +1626,13 @@ function updateHeroCore(f) {
 }
 
 /* ---------- enemies ---------- */
-function updateEnemy(e) {
+function updateEnemy(e) { // foes that back away (archers, casters, retreating soldiers) stop at the lip of a chasm instead of drifting out over it; chasers still hop across
+  const px = e.x; updateEnemy0(e);
+  if (e.dead || e.pitT || isBoss(e) || e.kind === 'imp' || e.hopDir || e.z > 0.5 || e.st === 'down' || e.st === 'hurt' || e.st === 'getup') return;
+  const q = gapAt(e.x, 4);
+  if (q && q.type === 'pit' && !gapAt(px, 4)) { const h = nearestPlayer(px); if (Math.abs(h.x - e.x) > Math.abs(h.x - px)) e.x = px; }
+}
+function updateEnemy0(e) {
   if (e.el && !e.dead && elemTick(e)) return;
   if (e.kind === 'imp') { updateImp(e); return; }
   e.t++; if (e.inv > 0) e.inv--; if (e.flash > 0) e.flash--;
@@ -1836,6 +1842,7 @@ function updateImp(e) {
   if (groundPhysics(e)) return;
   e.st = 'walk'; e.anim += e.fled ? 0.5 : 0.35; e.face = e.dir;
   e.x += e.dir * (e.fled ? 3 : 1.9); e.y = clamp(e.y + Math.sin(e.t * 0.12) * 0.35, Y_MIN, Y_MAX);
+  if (gapAt(e.x, 4)) e.z = Math.min(26, e.z + 3.5); else if (e.z > 0) e.z = Math.max(0, e.z - 3); // it hops over chasms and barricades like the husks do
   if (e.x < cam - 140 || e.x > cam + W + 140) e.gone = true;
 }
 function updateImpSpawn() {
@@ -2771,14 +2778,14 @@ function drawGaps() {
     const x0 = Math.round(q.x - cam), x1 = Math.round(q.x + q.w - cam); if (x1 < -40 || x0 > W + 40) continue;
     const top = Y_MIN - 14;
     if (q.type === 'pit') { // a chasm across the whole road, ember-light far below
-      const sk = 0.18, P = (y, s) => [x0 + (y - top) * sk * s, x1 + (y - top) * sk * s];
+      const sk = 0, P = (y, s) => [x0 + (y - top) * sk * s, x1 + (y - top) * sk * s];
       g.fillStyle = '#020104'; g.beginPath(); g.moveTo(...[P(top, 1)[0], top]); g.lineTo(P(top, 1)[1], top); g.lineTo(P(H, 1)[1], H); g.lineTo(P(H, 1)[0], H); g.fill();
       const gr = g.createLinearGradient(0, top, 0, H); gr.addColorStop(0, 'rgba(255,90,20,0.0)'); gr.addColorStop(1, `rgba(255,90,20,${0.18 + 0.06 * Math.sin(tickN * 0.05 + q.x)})`); g.fillStyle = gr; g.fill();
       for (let y = top; y < H; y += 6) { const a = P(y, 1), j = ((q.x * 7 + y * 13) % 5) - 2; g.fillStyle = '#7a6a70'; g.fillRect(Math.round(a[0]) - 3 + j, y, 4, 5); g.fillRect(Math.round(a[1]) - 1 - j, y, 4, 5); g.fillStyle = '#a8949a'; g.fillRect(Math.round(a[0]) - 3 + j, y, 4, 1); g.fillRect(Math.round(a[1]) - 1 - j, y, 4, 1); g.fillStyle = '#100810'; g.fillRect(Math.round(a[0]) + 1 + j, y, 3, 6); g.fillRect(Math.round(a[1]) - 4 - j, y, 3, 6); }
       if (((tickN + q.x) % 40) === 0) spawn(q.x + q.w / 2 + rnd(-8, 8), rnd(Y_MIN, Y_MAX), -2, 1, { c: '#ff8a2a', s0: 0.1, s1: 0.3, l0: 20, l1: 40, add: true, up: 0.8, g: -0.01, size: 1 });
     } else { // a rubble barricade
       for (let y = top; y < H; y += 7) {
-        const xx = Math.round(x0 + (y - top) * 0.18), hsh = ((q.x * 31 + y * 17) >>> 0) % 7, ht = 14 + hsh;
+        const xx = Math.round(x0), hsh = ((q.x * 31 + y * 17) >>> 0) % 7, ht = 14 + hsh;
         g.fillStyle = 'rgba(0,0,0,0.4)'; g.fillRect(xx - 2, y + 2, q.w + 6, 4);
         g.fillStyle = '#0c0810'; g.fillRect(xx - 1, y - ht - 1, q.w + 2, ht + 6);
         g.fillStyle = hsh % 2 ? '#6a5a5e' : '#5a4c52'; g.fillRect(xx, y - ht, q.w, ht + 4);
