@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.0] - 2026-11-16
+- Elements reach tiers VIII, IX and X: every 10 paragon points (10, 20, 30) open the next tier at the Blacksmith (level 70 required, bought with gold like the others). Each tier adds +1 to every numbered modifier of your element: one more stackable layer (up to 6), wider spread and blast reach, one more lightning arc with longer range, longer stun, and a slightly stronger burn, freeze and tick damage.
+- A message tells you when a paragon point opens a new element tier. The Blacksmith panel shows all ten tiers, and Hungarian text covers the new rows.
+- Every fourth stage (4, 8, 12 and so on) now always has at least one shrine; the other stages keep the usual random chance.
+
 ## [1.35.7] - 2026-11-16
 - Paragon points come faster: the first costs 4,500 XP (was 6,000) and each further point 80 more (was 120 more), so all 100 points take about 846,000 XP instead of 1,194,000. What a point gives is unchanged. Points you already earned stay, and any leftover XP converts at the new price.
 

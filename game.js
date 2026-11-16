@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.7';
+const VERSION = '1.36.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -586,20 +586,22 @@ const ELEM = {
   bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '110,180,255', info: 'ARCS THAT SHOCK AND STUN' }
 };
 const ELEM_TIERS = {
-  fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES'],
-  frost: ['CHILL: SLOWS ENEMIES', 'FASTER FROST BUILDUP', 'DEEP FREEZE: SHORT STASIS', 'FROZEN FOES TAKE +20% DAMAGE', 'LONGER FREEZE, DEEPER CHILL', 'FREEZING SPREADS A FROST BURST', 'FROZEN FOES SHATTER ON DEATH'],
-  bolt: ['ARCS LEAP TO A NEARBY FOE', 'LONGER, STRONGER ARCS', 'SHOCK: BRIEF STUN', 'ARCS HIT 2 FOES', 'LONGER STUN', 'LIGHTNING STRIKES THE TARGET', 'ARCS HIT 3 FOES']
+  fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES', 'FIRE MODIFIERS +1', 'FIRE MODIFIERS +2', 'FIRE MODIFIERS +3'],
+  frost: ['CHILL: SLOWS ENEMIES', 'FASTER FROST BUILDUP', 'DEEP FREEZE: SHORT STASIS', 'FROZEN FOES TAKE +20% DAMAGE', 'LONGER FREEZE, DEEPER CHILL', 'FREEZING SPREADS A FROST BURST', 'FROZEN FOES SHATTER ON DEATH', 'FROST MODIFIERS +1', 'FROST MODIFIERS +2', 'FROST MODIFIERS +3'],
+  bolt: ['ARCS LEAP TO A NEARBY FOE', 'LONGER, STRONGER ARCS', 'SHOCK: BRIEF STUN', 'ARCS HIT 2 FOES', 'LONGER STUN', 'LIGHTNING STRIKES THE TARGET', 'ARCS HIT 3 FOES', 'LIGHTNING MODIFIERS +1', 'LIGHTNING MODIFIERS +2', 'LIGHTNING MODIFIERS +3']
 };
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
-const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09]; // status damage as a share of one normal hit
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const ELEM_PT = [0, 0.045, 0.05, 0.055, 0.06, 0.065, 0.075, 0.09, 0.095, 0.10, 0.105]; // status damage as a share of one normal hit
 // weakness (>1) and resistance (<1) by monster: never below 0.4 or above 1.4, so nothing is immune and nothing is helpless
 // Rock-paper-scissors: every elemental monster resists its own element and is weak to the one that beats it. Fire loses to frost, frost to lightning, lightning to fire. The third element is neutral.
 // Never immune: buildup is floored at 40%, resistance only slows it.
 const MON_EL = { boss: 'fire', smith: 'fire', king: 'fire', wyrm: 'frost', witch: 'bolt', bomber: 'fire', caller: 'fire', runner: 'fire', archer: 'frost', wraith: 'frost', knight: 'frost', wisp: 'bolt', warder: 'bolt', guard: 'bolt' };
 const EL_WEAK = { fire: 'frost', frost: 'bolt', bolt: 'fire' };
 const ELEM_RES = {}; for (const k in MON_EL) ELEM_RES[k] = { [MON_EL[k]]: 0.6, [EL_WEAK[MON_EL[k]]]: 1.25 };
-const elemAvail = () => clamp(Math.floor(rpg.lvl / 10), 0, 7);                          // highest tier your level allows
-const elemTier = () => rpg.elem ? clamp(Math.min(rpg.et | 0, elemAvail()), 0, 7) : 0;      // tiers are bought at the Blacksmith with gold
+const elemAvail = () => clamp(Math.floor(rpg.lvl / 10), 0, 7) + (rpg.lvl >= 70 ? Math.min(3, Math.floor((rpg.pg | 0) / 10)) : 0); // highest tier you may buy: level gives I to VII, every 10 paragon points open VIII, IX and X
+const elemTier = () => rpg.elem ? clamp(Math.min(rpg.et | 0, elemAvail()), 0, 10) : 0;
+const ePar = () => Math.max(0, elemTier() - 7); // tiers VIII to X add +1, +2, +3 to every numbered modifier of the element (layers, reach, arcs, duration)
+const layerCap = () => 3 + ePar();      // tiers are bought at the Blacksmith with gold
 const ENEMY_EL = MON_EL; // the element a monster's own attacks carry (for your resist gear)
 const SHOT_EL = { wave: 'fire', meteor: 'fire', rune: 'fire', ring: 'fire', arrow: 'frost', orb: 'bolt', bolt: 'bolt' };
 let hitEl = null; // the element of the hit being resolved right now (set around projectile and vent damage)
@@ -673,11 +675,13 @@ const KC_WINDOW = 180, kcBonus = () => Math.min(0.75, killCombo * 0.03);
 function gainXP(n) {
   if (rpg.lvl >= MAX_LV && n > 0) {
     if (rpg.pg >= PG_MAX) return;
-    rpg.pxp += n; let up = 0;
+    rpg.pxp += n; let up = 0; const pg0 = rpg.pg;
     while (rpg.pg < PG_MAX && rpg.pxp >= pgNeed(rpg.pg)) { rpg.pxp -= pgNeed(rpg.pg); rpg.pg++; up++; }
     if (rpg.pg >= PG_MAX) rpg.pxp = 0;
     if (up) { PS = null; heroStats(false); for (const p of players()) if (!p.dead) { p.hp = Math.min(p.maxhp, p.hp + (p.maxhp * 0.15 | 0)); floatText(p.x, p.y - 62, '+' + (up > 1 ? up + ' ' : '') + 'PARAGON', '#5ab4ff', 9); }
-      msg = 'PARAGON ' + rpg.pg + (rpg.pg >= PG_MAX ? '  MAX' : ''); msgT = 90; flashA = 0.15; SFX.magic(); saveGame(); }
+      msg = 'PARAGON ' + rpg.pg + (rpg.pg >= PG_MAX ? '  MAX' : ''); msgT = 90; flashA = 0.15; SFX.magic();
+      if (rpg.elem && Math.floor(rpg.pg / 10) > Math.floor(pg0 / 10) && Math.floor(rpg.pg / 10) <= 3) { msg = 'NEW ' + ELEM[rpg.elem].name + ' TIER READY - SEE THE BLACKSMITH'; msgT = 240; }
+      saveGame(); }
     return;
   }
   if (rpg.lvl >= MAX_LV || n <= 0) return;
@@ -819,7 +823,7 @@ function loadGame() {
     const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
-      rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 7); rpg.eg = Math.max(0, o.eg | 0); rpg.tr = clamp(o.tr | 0, 0, TRIAL_MAX); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0); // older saves keep the tiers they had earned
+      rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.tr = clamp(o.tr | 0, 0, TRIAL_MAX); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0); // older saves keep the tiers they had earned
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); sortBag();
       rpg.eq = {}; for (const s of SLOTS) if (o.eq && validItem(o.eq[s]) && o.eq[s].slot === s) rpg.eq[s] = o.eq[s];
       rpg.ini = String(o.ini || 'AAA').toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
@@ -1186,35 +1190,35 @@ function elDmg(e, d, col) { // status damage: no knock-back, no invulnerability 
 }
 function elArc(a, b, col) { for (let i = 0; i <= 5; i++) { const t = i / 5; spawn(a.x + (b.x - a.x) * t + rnd(-3, 3), a.y + (b.y - a.y) * t, a.h * 0.55 + rnd(-6, 6), 1, { c: col, l0: 6, l1: 12, add: true, size: 2, g: 0 }); } }
 function elemBuild(e, el, amt, T, noSpread) {
-  const S = elOf(e); if (e.dead || e.barrier > 0) return;
+  const S = elOf(e), R = ePar(); if (e.dead || e.barrier > 0) return;
   const rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1); amt *= rs;
   S[el] += amt;
   if (el === 'fire' && S.burn > 0) S.burn = Math.max(S.burn, 150 + 25 * T);
   if (!noSpread && T >= 5 && (el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.shk > 0)) { // from tier V an afflicted foe takes its next layer after fewer direct hits: a separate quick-layer meter (chained and spread build-up never counts), so the main build-up and its bursts are untouched
     S.lq = (S.lq || 0) + amt;
-    if (S.lq >= 65) { S.lq -= 65; if (el === 'fire') S.bst = Math.min(3, S.bst + 1); else if (el === 'frost') S.fst = Math.min(3, (S.fst | 0) + 1); else S.sst = Math.min(3, (S.sst | 0) + 1); }
+    if (S.lq >= 65) { S.lq -= 65; if (el === 'fire') S.bst = Math.min(layerCap(), S.bst + 1); else if (el === 'frost') S.fst = Math.min(layerCap(), (S.fst | 0) + 1); else S.sst = Math.min(layerCap(), (S.sst | 0) + 1); }
   }
   if (S[el] < 100) return; S[el] -= 100;
   const base = elBase(), col = ELEM[el].col, cap = isBoss(e) ? 0.4 : 1;
   if (el === 'fire') {
-    S.burn = [0, 150, 200, 200, 220, 240, 260, 300][T]; S.bst = T >= 5 ? Math.min(3, S.bst + 1) : 1;
+    S.burn = [0, 150, 200, 200, 220, 240, 260, 300, 300, 320, 340][T]; S.bst = T >= 5 ? Math.min(layerCap(), S.bst + 1) : 1;
     floatText(e.x, e.y - e.h - 10, 'IGNITED', col, 8); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 8, { c: ['#ffd070', '#ff7a2a'], l0: 10, l1: 22, add: true, size: 2, up: 1.5 });
-    if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 28, T, true);
-    if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 1.3, col);
+    if (T >= 3 && !noSpread) for (const o of elNear(e, 60 + 6 * R)) elemBuild(o, 'fire', 28 + 2 * R, T, true);
+    if (T >= 7) for (const o of elNear(e, 50 + 6 * R)) elDmg(o, base * ELEM_PT[T] * 1.3, col);
   } else if (el === 'frost') {
-    S.fst = T >= 5 ? Math.min(3, (S.fst | 0) + 1) : 1; // from tier V the cold stacks up to three layers
+    S.fst = T >= 5 ? Math.min(layerCap(), (S.fst | 0) + 1) : 1; // from tier V the cold stacks up to three layers
     if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); SFX.freeze(); }
     else if (S.cd <= 0) {
-      S.frz = Math.round([0, 0, 0, 54, 54, 80, 80, 100][T] * cap); S.cd = isBoss(e) ? 420 : 0; S.chill = 150;
+      S.frz = Math.round([0, 0, 0, 54, 54, 80, 80, 100, 105, 110, 115][T] * cap); S.cd = isBoss(e) ? 420 : 0; S.chill = 150;
       floatText(e.x, e.y - e.h - 10, 'FROZEN', col, 8); SFX.freeze(); spawn(e.x, e.y, e.h * 0.5, 10, { c: ['#e8faff', '#7ad8ff'], l0: 12, l1: 26, add: true, size: 2, up: 1.2 });
-      if (T >= 6 && !noSpread) for (const o of elNear(e, 55)) elemBuild(o, 'frost', 50, T, true);
+      if (T >= 6 && !noSpread) for (const o of elNear(e, 55 + 10 * R)) elemBuild(o, 'frost', 50 + 4 * R, T, true);
     } else { S.chill = 150; }
   } else {
-    S.sst = T >= 5 ? Math.min(3, (S.sst | 0) + 1) : 1; // ...and so do the shocks
-    const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0), r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1) * (1 + 0.1 * (S.sst - 1));
+    S.sst = T >= 5 ? Math.min(layerCap(), (S.sst | 0) + 1) : 1; // ...and so do the shocks
+    const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0) + R, r = 70 + (T >= 2 ? 25 : 0) + 10 * R, dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1) * (1 + 0.1 * (S.sst - 1));
     elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#6ab8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
-    if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
+    if (T >= 3 && S.cd <= 0) { S.stun = Math.round(((T >= 5 ? 34 : 20) + 6 * R) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
     S.shk = 120 + 15 * T; S.sdbl = S.bx ? 1 : S.sdbl; // electrified: shock damage over time, doubled after an overcharge
     spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#6ab8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
   }
@@ -1264,19 +1268,19 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
     if (tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.bdbl ? 2 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
     if (S.burn === 0) { S.bst = 0; S.bdbl = 0; S.bsk = null; }
   }
-  if ((S.chill > 0 || S.frz > 0) && tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.fdbl ? 2 : 1) * (S.frz > 0 ? 1.4 : 1) * (1 + 0.15 * ((S.fst || 1) - 1)), ELEM.frost.col); // frostbite: damage over time while chilled or frozen
-  if (S.shk > 0) { S.shk--; if (tickN % 20 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 0.55 * (S.sdbl ? 2 : 1) * (1 + 0.2 * ((S.sst || 1) - 1)), ELEM.bolt.col); if (S.shk === 0) { S.sdbl = 0; S.sst = 0; } if (tickN % 8 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.9), 1, { c: ['#fff6a0', '#6ab8ff'], l0: 4, l1: 8, add: true, size: 1, g: 0 }); }
+  if ((S.chill > 0 || S.frz > 0) && tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.fdbl ? 2 : 1) * (S.frz > 0 ? 1.4 : 1) * (1 + 0.15 * Math.min(2, (S.fst || 1) - 1) + 0.3 * Math.max(0, (S.fst || 1) - 3)), ELEM.frost.col); // frostbite: damage over time while chilled or frozen
+  if (S.shk > 0) { S.shk--; if (tickN % 20 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 0.55 * (S.sdbl ? 2 : 1) * (1 + 0.2 * Math.min(2, (S.sst || 1) - 1) + 0.5 * Math.max(0, (S.sst || 1) - 3)), ELEM.bolt.col); if (S.shk === 0) { S.sdbl = 0; S.sst = 0; } if (tickN % 8 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.9), 1, { c: ['#fff6a0', '#6ab8ff'], l0: 4, l1: 8, add: true, size: 1, g: 0 }); }
   if (free) return false;
   if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
-  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; const fs = 1 + 0.2 * ((S.fst || 1) - 1), cp = 0.05 * ((S.fst || 1) - 1); if (S.chill > 0) sl *= fs;
+  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; const fs = 1 + 0.2 * ((S.fst || 1) - 1), cp = Math.min(0.15, 0.05 * ((S.fst || 1) - 1)); if (S.chill > 0) sl *= fs;
   sl = S.fdbl ? Math.min(sl * 1.5, (isBoss(e) ? 0.45 : 0.7) + cp) : Math.min(sl, (isBoss(e) ? 0.3 : 0.5) + cp); // deep freeze slows harder
   if (sl > 0) { S.acc += sl; if (S.acc >= 1) { S.acc -= 1; if (e.flash > 0) e.flash--; return true; } }
   return false;
 }
 function elemDeath(e) { // burning foes erupt, frozen foes shatter
   const S = e.el, T = elemTier(); if (!S || !T) return;
-  if (S.burn > 0 && T >= 4) { SFX.big(); for (const o of elNear(e, 48)) elDmg(o, elBase() * ELEM_PT[T] * 3, ELEM.fire.col); spawn(e.x, e.y, 14, 14, { c: ['#ffd070', '#ff7a2a'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
-  if (S.frz > 0 && T >= 7) { SFX.shatter(); for (const o of elNear(e, 52)) elDmg(o, elBase() * ELEM_PT[T] * 4, ELEM.frost.col); spawn(e.x, e.y, 14, 14, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+  if (S.burn > 0 && T >= 4) { SFX.big(); for (const o of elNear(e, 48 + 10 * ePar())) elDmg(o, elBase() * ELEM_PT[T] * 3, ELEM.fire.col); spawn(e.x, e.y, 14, 14, { c: ['#ffd070', '#ff7a2a'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
+  if (S.frz > 0 && T >= 7) { SFX.shatter(); for (const o of elNear(e, 52 + 10 * ePar())) elDmg(o, elBase() * ELEM_PT[T] * 4, ELEM.frost.col); spawn(e.x, e.y, 14, 14, { c: ['#e8faff', '#7ad8ff'], s0: 1, s1: 3, l0: 10, l1: 22, add: true, size: 2, up: 2 }); }
 }
 function gearSparks() { // forged gear (+5 and more) throws golden sparks, more with every level
   if (tickN % 6) return;
@@ -2068,12 +2072,14 @@ function beginStage(i) {
     const td = dailyIs('TREASURE DAY'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1), k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(), type = r < (dailyIs('TREASURE DAY') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
   shrines = []; buff = null; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
   if (i >= 1 || cycle) {
-    const want = Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0, bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
+    const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
+      bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
     for (let n = 0; n < want; n++) for (let tries = 0; tries < 14; tries++) {
       const x = Math.round(420 + Math.random() * Math.max(60, stop - 420));
       if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40) || shrines.some(q => Math.abs(q.x - x) < 160)) continue;
       shrines.push({ x, y: Math.round(Y_MIN + 14 + Math.random() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: Math.random() < 0.08 }); break;
     }
+    if ((i + 1) % 4 === 0 && !shrines.length) shrines.push({ x: Math.round(stop * 0.5 + 200), y: 215, used: 0, t: 0, shake: 0, sacred: false }); // the fixed shrine is never skipped
   }
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
@@ -2185,13 +2191,13 @@ function drawForge() {
       text('IT STARTS AT TIER I. BUY MORE WITH GOLD', 364, 196, 7, '#a89078', 'center'); text('ENTER CHOOSE   ESC BACK', 364, 214, 7, '#a89078', 'center');
     } else {
       text(E ? E.name + '  TIER ' + ROMAN[T] : 'NO ELEMENT YET', 364, 64, 9, E ? E.col : '#ffd24a', 'center');
-      if (E) ELEM_TIERS[rpg.elem].forEach((d, i) => text(ROMAN[i + 1] + '  LV ' + (i + 1) * 10 + '  ' + d, 270, 80 + i * 12, 7, i < T ? E.col2 : '#6a5a50'));
+      if (E) ELEM_TIERS[rpg.elem].forEach((d, i) => text(ROMAN[i + 1] + (i < 7 ? '  LV ' + (i + 1) * 10 : '  PARAGON ' + (i - 6) * 10) + '  ' + d, 270, 76 + i * 9, 7, i < T ? E.col2 : '#6a5a50'));
       else { text('FIRE   FROST   LIGHTNING', 364, 90, 8, '#e0c8a0', 'center'); text('HITS BUILD UP A STATUS ON FOES', 364, 110, 7, '#c8b8a0', 'center'); text('A NEW TIER EVERY 10 LEVELS', 364, 122, 7, '#c8b8a0', 'center'); }
       if (E) {
         const nt = (rpg.et | 0) + 1, can = nt <= elemAvail(), sel0 = f.menu === 0, sel1 = f.menu === 1;
-        const up = nt > 7 ? 'PEAK REACHED' : can ? 'UPGRADE TO TIER ' + ROMAN[nt] + '   ' + elemTierCost(nt) + 'G' : 'NEXT TIER AT LEVEL ' + nt * 10;
+        const up = nt > 10 ? 'PEAK REACHED' : can ? 'UPGRADE TO TIER ' + ROMAN[nt] + '   ' + elemTierCost(nt) + 'G' : nt > 7 ? 'NEXT TIER AT PARAGON ' + (nt - 7) * 10 : 'NEXT TIER AT LEVEL ' + nt * 10;
         if (f.menu !== null) { g.fillStyle = 'rgba(255,140,60,0.2)'; g.fillRect(266, (sel0 ? 168 : 182), 196, 14); }
-        text((sel0 ? '> ' : '  ') + up, 270, 178, 7, nt <= 7 && can ? (rpg.gold >= elemTierCost(nt) ? '#ffd24a' : '#ff6a6a') : '#8a7a6a');
+        text((sel0 ? '> ' : '  ') + up, 270, 178, 7, nt <= 10 && can ? (rpg.gold >= elemTierCost(nt) ? '#ffd24a' : '#ff6a6a') : '#8a7a6a');
         text((sel1 ? '> ' : '  ') + 'DISMISS ELEMENT   +' + elemRefund() + 'G BACK', 270, 192, 7, f.arm > 0 ? '#ff8a6a' : '#c8b8a0');
         text(f.menu !== null ? 'ENTER CONFIRM   ESC BACK' : 'ENTER TO MANAGE', 364, 214, 7, '#a89078', 'center');
       } else text('ENTER TO CHOOSE', 364, 214, 7, '#a89078', 'center');
