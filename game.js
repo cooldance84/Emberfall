@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.1';
+const VERSION = '1.36.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2132,8 +2132,8 @@ function updateForge() {
     if (isHit('start') || isHit('atk')) {
       if (f.menu === 0) {
         const nt = (rpg.et | 0) + 1, cost = elemTierCost(nt);
-        if (nt > 7) say('YOUR ELEMENT IS AT ITS PEAK', false);
-        else if (nt > elemAvail()) say('REACH LEVEL ' + nt * 10 + ' FIRST', false);
+        if (nt > 10) say('YOUR ELEMENT IS AT ITS PEAK', false);
+        else if (nt > elemAvail()) say(nt > 7 ? 'REACH PARAGON ' + (nt - 7) * 10 + ' FIRST' : 'REACH LEVEL ' + nt * 10 + ' FIRST', false);
         else if (rpg.gold < cost) { say('NOT ENOUGH GOLD', false); SFX.land(); }
         else { rpg.gold -= cost; rpg.eg = (rpg.eg | 0) + cost; rpg.et = nt; PS = null; heroStats(false); saveGame(); SFX.magic(); f.fx = 40; say(tr(ELEM[rpg.elem].name) + ' ' + tr('TIER') + ' ' + ROMAN[nt] + '!', true); }
       } else if (f.arm > 0) {

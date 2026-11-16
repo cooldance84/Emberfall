@@ -295,6 +295,7 @@ const HU_RULES = [
   [/^(FIRE|FROST|LIGHTNING) MODIFIERS \+(\d)$/, m => tr(m[1]) + " MÓDOSÍTÓK +" + m[2]],
   [/^DISMISS ELEMENT   \+(\d+)G BACK$/, m => "ELEM ELVETÉSE   +" + m[1] + "A VISSZA"],
   [/^REACH LEVEL (\d+) FIRST$/, m => "ELŐBB ÉRD EL A(Z) " + m[1] + ". SZINTET"],
+  [/^REACH PARAGON (\d+) FIRST$/, m => "ELŐBB ÉRD EL A(Z) PARAGON " + m[1] + " SZINTET"],
   [/^NEW (FIRE|FROST|LIGHTNING) TIER READY - SEE THE BLACKSMITH$/, m => "ÚJ " + tr(m[1]) + " FOKOZAT KÉSZ - KERESD A KOVÁCSOT"],
   [/^YOURS: (FIRE|FROST|LIGHTNING) TIER ([IVX]+)$/, m => "A TIED: " + tr(m[1]) + " " + m[2] + ". FOKOZAT"],
   [/^3: DAILY CHALLENGE  -  (.+)$/, m => "3: NAPI KIHÍVÁS  -  " + tr(m[1])],

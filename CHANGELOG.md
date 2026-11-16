@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.2] - 2026-11-16
+- Fix: tiers VIII to X could be seen but not bought at the Blacksmith (the purchase still stopped at tier VII with a peak message). They can now be bought once paragon 10, 20 and 30 are reached; too early shows REACH PARAGON n FIRST.
+
 ## [1.36.1] - 2026-11-16
 - The pick-up and equip messages of set items are now green like the rest of the set item text, instead of the pink of mythic.
 
