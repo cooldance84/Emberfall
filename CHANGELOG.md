@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.33.0] - 2026-11-16
+- Paragon: at level 70 experience keeps counting. Every paragon point (up to 100) gives +0.8% max life, +0.7% damage and 0.3% less damage taken, heals you a little and flashes "+1 PARAGON" in blue. The count shows in blue next to your level ("LV 70 +12") in the game and on the hero screen, where the bar and a PARAGON n/100 line replace the XP bar. A point costs 6000 xp plus 120 per point already earned (roughly 10 to 12 points per Ember Trial). Saved per hero.
+- Ember Trials are gentler so the whole game can be finished: each Trial adds 14% foe life (was 20%) and 8% foe damage (was 12%). Measured with a full-stat hero (four Emberheart pieces, two best mythics, all +10, fire VII) against the final boss: Trial X takes about 60 seconds and nine hits to kill you, against 31 seconds and eight hits in the campaign, so the later Trials are a longer, tighter fight but no longer a wall.
+
 ## [1.32.0] - 2026-11-16
 - Bosses reward a max-level hero better: at level 70 a boss's first drop is always at least legendary, and the set chance of all its drops is 50% higher. A boss kill now yields a set piece about 24% of the time in the campaign (up from about 7%), 28% in Trial I and 35% in Trial III. Regular foes are unchanged (around 1% per brute).
 

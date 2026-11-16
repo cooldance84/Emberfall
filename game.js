@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.32.0';
+const VERSION = '1.33.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -56,9 +56,9 @@ const areaLv = () => Math.round(4 + stageIdx * 1.6);                            
 const monLv = () => Math.max(areaLv(), rpg.lvl - 12);            // an over-levelled hero meets monsters of their own league
 const late = () => Math.max(0, monLv() - 30);                    // past the middle of the campaign the ramp steepens
 const HP_TIER = [1, 1.2, 1.45, 1.75, 2.05, 2.4, 2.8];                            // every act (tier) adds a flat layer of monster health
-const hpTier = () => HP_TIER[Math.min(6, (stageIdx / 5) | 0)] * Math.pow(1.2, trialN()); // each Ember Trial: foes have 20% more life, compounding
+const hpTier = () => HP_TIER[Math.min(6, (stageIdx / 5) | 0)] * Math.pow(1.14, trialN()); // each Ember Trial: foes have 14% more life, compounding
 const hpMul = () => (1 + (monLv() - 4) * 0.12 + late() * late() * 0.004) * hpTier();  // monsters get tougher every stage, tier and cycle
-const dmgMul = () => (1 + (monLv() - 4) * 0.055 + late() * late() * 0.0012) * Math.pow(1.12, trialN()); // ...and hit 12% harder, compounding
+const dmgMul = () => (1 + (monLv() - 4) * 0.055 + late() * late() * 0.0012) * Math.pow(1.08, trialN()); // ...and hit 8% harder, compounding
 const tierOf = () => cycle ? Math.max(stageIdx, 2) : stageIdx; // loot tier: later cycles unlock magic and legendary everywhere
 const keysOf = (a, pn) => pn === 2 ? (KEYMAP2[a] || []) : (coop ? KEYMAP[a].filter(c => !c.startsWith('Arrow')) : KEYMAP[a]);
 const inD = (f, a) => keysOf(a, f.pn).some(c => keys[c]);
@@ -606,7 +606,7 @@ const elemPower = () => rpg.elem ? Math.min(60, gearSum('ea', rpg.elem) + setBon
 const elemResist = el => el ? Math.min(60, gearSum('er', el) + setBonus('res')) / 100 : 0;        // share of that element's damage you ignore
 const elemTierCost = t => t <= 1 ? 0 : Math.round(120 * Math.pow(t, 1.6)); // tier I is free, the rest cost gold
 const elemRefund = () => Math.floor((rpg.eg | 0) * 0.75);                  // dismissing your element returns 75% of the gold you put into it
-let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null, et: 0, eg: 0, tr: 0 };
+let rpg = { lvl: 1, xp: 0, bag: [], eq: {}, coins: 3, gold: 0, ini: 'AAA', elem: null, et: 0, eg: 0, tr: 0, pg: 0, pxp: 0 };
 let PS = null, floats = [];
 
 const XPN = [62, 31];
@@ -621,7 +621,8 @@ function pstats() {
   s.crit = Math.min(CLS === 'luca' ? 70 : 60, s.crit); s.hit = Math.min(100, s.hit);
   if (s.cdmg > 250) s.cdmg = Math.min(500, Math.round(250 + (s.cdmg - 250) * 0.35));
   s.mult = (1 + Math.min(s.str, 120) * C.mul + Math.max(0, s.str - 120) * C.mul * 0.45) * (dailyIs('GLASS CANNON') ? 1.5 : 1);
-  s.maxhp = Math.round((C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2)) * (1 + setBonus('hp') / 100));
+  s.mult *= pgDmg();
+  s.maxhp = Math.round((C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2)) * (1 + setBonus('hp') / 100) * pgHp());
   return (PS = s);
 }
 const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a6a24', armor2: '#ffe84a', cloth: '#6a5a14', blade: '#fff6b0' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
@@ -661,7 +662,19 @@ function rollHit(dmg) { // hit chance, crit chance, crit damage, STR
   const crit = Math.random() * 100 < s.crit;
   return { crit, d: Math.max(1, Math.round(dmg * s.mult * (crit ? s.cdmg / 100 : 1) * rnd(0.93, 1.07))) };
 }
+/* ---------- paragon: after level 70 the experience goes on, and every paragon point adds a little of everything ---------- */
+const PG_MAX = 100, pgNeed = n => 6000 + 120 * n;
+const pgHp = () => 1 + 0.008 * (rpg.pg | 0), pgDmg = () => 1 + 0.007 * (rpg.pg | 0), pgRes = () => 0.003 * (rpg.pg | 0); // +0.8% life, +0.7% damage, 0.3% less damage taken per point
 function gainXP(n) {
+  if (rpg.lvl >= MAX_LV && n > 0) {
+    if (rpg.pg >= PG_MAX) return;
+    rpg.pxp += n; let up = 0;
+    while (rpg.pg < PG_MAX && rpg.pxp >= pgNeed(rpg.pg)) { rpg.pxp -= pgNeed(rpg.pg); rpg.pg++; up++; }
+    if (rpg.pg >= PG_MAX) rpg.pxp = 0;
+    if (up) { PS = null; heroStats(false); for (const p of players()) if (!p.dead) { p.hp = Math.min(p.maxhp, p.hp + (p.maxhp * 0.15 | 0)); floatText(p.x, p.y - 62, '+' + (up > 1 ? up + ' ' : '') + 'PARAGON', '#5ab4ff', 9); }
+      msg = 'PARAGON ' + rpg.pg + (rpg.pg >= PG_MAX ? '  MAX' : ''); msgT = 90; flashA = 0.15; SFX.magic(); saveGame(); }
+    return;
+  }
   if (rpg.lvl >= MAX_LV || n <= 0) return;
   rpg.xp += n; let up = false; const lv0 = rpg.lvl;
   while (rpg.lvl < MAX_LV && rpg.xp >= xpNeed(rpg.lvl)) { rpg.xp -= xpNeed(rpg.lvl); rpg.lvl++; up = true; }
@@ -788,7 +801,7 @@ const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + Stri
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
-function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0 })); } catch (e) { } }
+function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -799,7 +812,7 @@ function loadGame() {
     const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
-      rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 7); rpg.eg = Math.max(0, o.eg | 0); rpg.tr = clamp(o.tr | 0, 0, TRIAL_MAX); // older saves keep the tiers they had earned
+      rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 7); rpg.eg = Math.max(0, o.eg | 0); rpg.tr = clamp(o.tr | 0, 0, TRIAL_MAX); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0); // older saves keep the tiers they had earned
       rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); sortBag();
       rpg.eq = {}; for (const s of SLOTS) if (o.eq && validItem(o.eq[s]) && o.eq[s].slot === s) rpg.eq[s] = o.eq[s];
       rpg.ini = String(o.ini || 'AAA').toUpperCase().replace(/[^A-Z]/g, 'A').padEnd(3, 'A').slice(0, 3);
@@ -828,7 +841,7 @@ function updateResume() {
 function drawResume() {
   g.fillStyle = 'rgba(4,2,10,0.7)'; g.fillRect(0, 0, W, H);
   const o = runInfo, can = o.coins > 0, C = cls();
-  text(C.name + '  LV ' + rpg.lvl, W / 2, 60, 14, C.col, 'center');
+  lvText(C.name + '  LV ' + rpg.lvl, W / 2, 60, 14, C.col, 'center');
   text('UNFINISHED RUN ON THIS DEVICE', W / 2, 82, 9, '#c9a8ff', 'center');
   text((o.cycle ? trialName(o.cycle) + '  ' : '') + 'STAGE ' + (o.stage + 1) + '  ' + STAGES[o.stage].name, W / 2, 100, 10, '#fff1d0', 'center');
   drawCoins(W / 2 - 14, 116, o.coins, 14);
@@ -841,7 +854,7 @@ function drawResume() {
 function peekSave(c) { try { const o = migrateSave(JSON.parse(localStorage.getItem(saveKey(c)) || 'null')) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
-  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; PS = null; loadGame(); saveSettings();
+  if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; loadGame(); saveSettings();
   if (hero) heroStats(true);
 }
 
@@ -861,7 +874,7 @@ function endRun(won) {
 }
 function startDaily() {
   daily = { date: dayStr(), mod: dayMod() }; coop = false; cycle = 0;
-  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
+  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
   beginStage(0); msg = 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function toTitle() { if (daily) { daily = null; boardView = 0; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
@@ -1032,9 +1045,9 @@ function drawInv() {
   const sv = hero.st, sm = hero.mount; hero.st = 'idle'; hero.mount = null; drawHuman(hero, 92, 150); hero.st = sv; hero.mount = sm;
   EQ_ORDER.forEach((s, i) => { const [x, y] = eqPos(i); slotBox(x, y, rpg.eq[s], inv.z === 'eq' && inv.i === i, s); text(SLOT_NAME[s], x + 13, y + 36, 7, '#8a7a9a', 'center'); });
   const s = pstats(), y0 = 184, need = xpNeed(rpg.lvl);
-  text('LV ' + rpg.lvl + (rpg.lvl >= MAX_LV ? '  MAX' : ''), 14, y0, 10, '#ffd24a');
-  bar(14, y0 + 5, 154, 4, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : need, '#8a6aff', '#1c1430');
-  text(rpg.lvl >= MAX_LV ? 'XP MAX' : 'XP ' + rpg.xp + '/' + need, 14, y0 + 22, 8, '#b8a8d8');
+  lvText('LV ' + rpg.lvl + (rpg.lvl >= MAX_LV ? '  MAX' : ''), 14, y0, 10, '#ffd24a');
+  if (rpg.lvl >= MAX_LV) { const full = rpg.pg >= PG_MAX; bar(14, y0 + 5, 154, 4, full ? 1 : rpg.pxp, full ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); text('PARAGON ' + rpg.pg + '/' + PG_MAX + (full ? '' : '   ' + Math.round(rpg.pxp / pgNeed(rpg.pg) * 100) + '%'), 14, y0 + 22, 8, '#8fc8ff'); }
+  else { bar(14, y0 + 5, 154, 4, rpg.xp, need, '#8a6aff', '#1c1430'); text('XP ' + rpg.xp + '/' + need, 14, y0 + 22, 8, '#b8a8d8'); }
   text(cls().stat + ' ' + s.str + '    DMG x' + s.mult.toFixed(2), 14, y0 + 36, 8, '#e8e0f0');
   text('CRIT ' + s.crit + '%   CRIT DMG ' + s.cdmg + '%', 14, y0 + 48, 8, '#e8e0f0');
   text('HIT ' + s.hit + '%    HP ' + s.maxhp, 14, y0 + 60, 8, '#e8e0f0');
@@ -1087,7 +1100,7 @@ function hurt(e, dmg, kind, from) {
   const dir = sgn(e.x - from.x) || -from.face;
   if (!e.pn && e.el && e.el.frz > 0 && elemTier() >= 4) dmg = Math.round(dmg * 1.2); // frozen foes are brittle
   if (!e.pn && from.pn && e.el && (e.el.burn > 0 || e.el.frz > 0 || e.el.stun > 0 || e.el.chill > 0)) { const af = setBonus('afl'); if (af) dmg = Math.round(dmg * (1 + af / 100)); } // Emberheart 4: more damage to burning, frozen, stunned or chilled foes
-  if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (dailyIs('GLASS CANNON') ? 1.5 : 1) * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1) * (1 - elemResist(hitEl || from.el || ENEMY_EL[from.kind]))));
+  if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (dailyIs('GLASS CANNON') ? 1.5 : 1) * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1) * (1 - elemResist(hitEl || from.el || ENEMY_EL[from.kind])) * (1 - pgRes())));
   if (!e.pn && e.barrier > 0 && e.kind !== 'imp') { // arcane barrier: no damage gets through until it shatters; heavy blows crack it fastest
     const d = kind === 'down' ? dmg : Math.max(1, Math.round(dmg * 0.35));
     e.barrier -= d; e.bflash = 6; e.blockT = tickN; lastEnemy = e; freeze = Math.max(freeze, 2);
@@ -2704,7 +2717,7 @@ function step() {
   pollPad(); musicTick();
   if (mode === 'title') {
     if (resetArm > 0) resetArm--;
-    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
+    if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
@@ -3440,6 +3453,11 @@ function bar(x, y, w, h, v, max, c1, c2) {
   g.fillStyle = c1; g.fillRect(x, y, Math.max(0, w * v / max) | 0, h);
   g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x, y, Math.max(0, w * v / max) | 0, 1);
 }
+function lvText(label, x, y, size, col, align) { // a level line with the blue paragon count after it
+  text(label, x, y, size, col, align);
+  if (!(rpg.pg > 0) || rpg.lvl < MAX_LV) return; const w = g.measureText(tr(label)).width, x0 = align === 'center' ? x + w / 2 : x + w;
+  text(' +' + rpg.pg, x0, y, size, '#5ab4ff', 'left');
+}
 function text(s, x, y, size, col, align) {
   s = tr(s);
   g.font = `bold ${size}px "Courier New",monospace`; g.textAlign = align || 'left'; g.fillStyle = '#000'; g.fillText(s, x + 1, y + 1); g.fillStyle = col; g.fillText(s, x, y);
@@ -3475,7 +3493,7 @@ function drawElemTags(e, x, y, right) { // weak (green up-arrow) and resistant (
 function drawHUD() {
   if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
-  text(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
+  lvText(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
