@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.30.0] - 2026-11-16
+- Frost and lightning now deal damage over time like fire: frostbite ticks every half second while a foe is chilled (more while frozen) with white numbers, and an electrified foe takes shock damage with blue numbers. All lightning damage and arcs are blue now (the element ring too).
+- Fixed: burning (and the new ticks) no longer stall while you keep hitting. The burn timer reset on every hit, so a foe you attacked constantly almost never took burn damage. Ticks now follow the clock.
+- Elements balanced against each other: single-target totals over a long fight are within about 10% across fire, frost and lightning; against groups fire is still ahead as the damage-over-time spreader (its tier VII blast and spread are weaker than before, 3x to 1.3x and 45 to 28), while frost and lightning gain frostbite and shocks.
+
 ## [1.29.3] - 2026-11-16
 - Skill rekindle now works for every element: casting a skill on a foe that is still under your element from an earlier hit or skill doubles the effect, once per cast. Fire: BURN x2. Frost: DEEP FREEZE (chill lasts twice as long and slows harder, a frozen foe stays frozen twice as long and can be frozen again sooner). Lightning: OVERCHARGE (an extra chain that hits twice as hard and jumps to one more foe).
 

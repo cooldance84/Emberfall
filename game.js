@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.29.3';
+const VERSION = '1.30.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -580,7 +580,7 @@ const ELEMS = ['fire', 'frost', 'bolt'];
 const ELEM = {
   fire: { name: 'FIRE', col: '#ff7a2a', col2: '#ffd070', rgb: '255,130,40', info: 'BURNING: DAMAGE OVER TIME' },
   frost: { name: 'FROST', col: '#7ad8ff', col2: '#e8faff', rgb: '120,210,255', info: 'CHILL, THEN DEEP FREEZE' },
-  bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '200,170,255', info: 'ARCS THAT SHOCK AND STUN' }
+  bolt: { name: 'LIGHTNING', col: '#c8a8ff', col2: '#fff6a0', rgb: '110,180,255', info: 'ARCS THAT SHOCK AND STUN' }
 };
 const ELEM_TIERS = {
   fire: ['BURNING: DAMAGE OVER TIME', 'STRONGER, LONGER BURN', 'BURN SPREADS TO NEIGHBOURS', 'BURNING FOES ERUPT ON DEATH', 'BURNS STACK UP TO 3 TIMES', 'RING OF FIRE AROUND YOU', 'IGNITING BLASTS NEARBY FOES'],
@@ -1130,11 +1130,12 @@ function hurt(e, dmg, kind, from) {
   return true;
 }
 const elBase = () => 9 * pstats().mult * (1 + elemPower() / 100);
-function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0 }); }
+function elOf(e) { return e.el || (e.el = { fire: 0, frost: 0, bolt: 0, burn: 0, bst: 0, frz: 0, stun: 0, chill: 0, cd: 0, acc: 0, shk: 0 }); }
 function elNear(e, r) { return enemies.filter(o => o !== e && !o.dead && o.kind !== 'imp' && Math.abs(o.x - e.x) < r && Math.abs(o.y - e.y) < r * 0.6); }
+const DMG_COL = { '#7ad8ff': '#ffffff', '#c8a8ff': '#4aa8ff' }; // frost damage shows white, lightning damage blue
 function elDmg(e, d, col) { // status damage: no knock-back, no invulnerability frames; a kill falls through the normal death path
   if (e.dead || !(d > 0) || e.barrier > 0) return; d = Math.max(1, Math.round(d)); e.hp -= d; lastEnemy = e;
-  floatText(e.x + rnd(-5, 5), e.y - e.z - e.h * 0.95, String(d), col, 7);
+  floatText(e.x + rnd(-5, 5), e.y - e.z - e.h * 0.95, String(d), DMG_COL[col] || col, 7);
   if (e.hp <= 0 && e.st !== 'down' && e.st !== 'getup') { e.st = 'down'; e.t = 0; e.vz = 2; e.vx = 0; e.z = Math.max(e.z, 0.01); }
 }
 function elArc(a, b, col) { for (let i = 0; i <= 5; i++) { const t = i / 5; spawn(a.x + (b.x - a.x) * t + rnd(-3, 3), a.y + (b.y - a.y) * t, a.h * 0.55 + rnd(-6, 6), 1, { c: col, l0: 6, l1: 12, add: true, size: 2, g: 0 }); } }
@@ -1148,8 +1149,8 @@ function elemBuild(e, el, amt, T, noSpread) {
   if (el === 'fire') {
     S.burn = [0, 150, 200, 200, 220, 240, 260, 300][T]; S.bst = T >= 5 ? Math.min(3, S.bst + 1) : 1;
     floatText(e.x, e.y - e.h - 10, 'IGNITED', col, 8); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 8, { c: ['#ffd070', '#ff7a2a'], l0: 10, l1: 22, add: true, size: 2, up: 1.5 });
-    if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 45, T, true);
-    if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 3, col);
+    if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 28, T, true);
+    if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 1.3, col);
   } else if (el === 'frost') {
     if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); SFX.freeze(); }
     else if (S.cd <= 0) {
@@ -1159,10 +1160,11 @@ function elemBuild(e, el, amt, T, noSpread) {
     } else { S.chill = 150; }
   } else {
     const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0), r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1);
-    elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#c8a8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
+    elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#6ab8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
     if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
-    spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
+    S.shk = 120 + 15 * T; S.sdbl = S.bx ? 1 : S.sdbl; // electrified: shock damage over time, doubled after an overcharge
+    spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#6ab8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
   }
 }
 const elemActive = e => { const S = e.el, el = rpg.elem; return !!S && (el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.stun > 0 || S.bolt >= 30); };
@@ -1207,9 +1209,11 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
   if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });
   if (S.burn > 0) {
     S.burn--; if (tickN % 6 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.8), 1, { c: ['#ffd070', '#ff7a2a'], l0: 8, l1: 16, add: true, size: 2, up: 1.4, g: -0.02 });
-    if (S.burn % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.bdbl ? 2 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
+    if (tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.bdbl ? 2 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
     if (S.burn === 0) { S.bst = 0; S.bdbl = 0; S.bsk = null; }
   }
+  if ((S.chill > 0 || S.frz > 0) && tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 1.25 * (S.fdbl ? 2 : 1) * (S.frz > 0 ? 1.4 : 1), ELEM.frost.col); // frostbite: damage over time while chilled or frozen
+  if (S.shk > 0) { S.shk--; if (tickN % 20 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 0.55 * (S.sdbl ? 2 : 1), ELEM.bolt.col); if (S.shk === 0) S.sdbl = 0; if (tickN % 8 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.9), 1, { c: ['#fff6a0', '#6ab8ff'], l0: 4, l1: 8, add: true, size: 1, g: 0 }); }
   if (free) return false;
   if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
   let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; sl = S.fdbl ? Math.min(sl * 1.5, isBoss(e) ? 0.45 : 0.7) : Math.min(sl, isBoss(e) ? 0.3 : 0.5); // deep freeze slows harder
