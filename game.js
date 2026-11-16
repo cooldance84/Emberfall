@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.26.0';
+const VERSION = '1.26.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -925,11 +925,14 @@ function panel(x, y, w, h, title) {
   g.strokeStyle = '#3a2a4a'; g.strokeRect(x + 3.5, y + 3.5, w - 7, h - 7);
   text(title, x + w / 2, y + 15, 9, '#e8c46a', 'center');
 }
+const SET_GREEN = '#46e06a', SET_GREEN_RGB = '70,224,106';
+const itemCol = it => it.set ? SET_GREEN : RARITY[it.rar].col;
 function slotBox(x, y, it, sel, ghost) {
   g.fillStyle = '#0a0710'; g.fillRect(x - 1, y - 1, 28, 28);
-  g.fillStyle = it ? `rgba(${RARITY[it.rar].rgb},0.2)` : '#1a1422'; g.fillRect(x, y, 26, 26);
-  g.strokeStyle = it ? RARITY[it.rar].col : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
-  if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, RARITY[it.rar].col);
+  const IC = it ? itemCol(it) : null; // set pieces are green, everything else keeps its rarity colour
+  g.fillStyle = it ? `rgba(${it.set ? SET_GREEN_RGB : RARITY[it.rar].rgb},0.2)` : '#1a1422'; g.fillRect(x, y, 26, 26);
+  g.strokeStyle = it ? IC : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
+  if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, IC);
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
   if (it && it.set) { g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); }
   if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
@@ -941,7 +944,7 @@ function drawTip(it, cmp, x, y) {
   if (!it) { text('EMPTY', x + 75, y + 24, 9, '#6a5a7a', 'center'); return; }
   const R = RARITY[it.rar];
   const nm = iname(it), ist = itemSt(it), cst = cmp ? itemSt(cmp) : null;
-  text(nm, x + 8, y + 26, nm.length > 20 ? 8 : 9, R.col);
+  text(nm, x + 8, y + 26, nm.length > 20 ? 8 : 9, itemCol(it));
   text(R.name + ' ' + SLOT_NAME[it.slot], x + 8, y + 38, 8, '#9a90a8');
   text('REQUIRES LV ' + (it.lvl || 1), x + 8, y + 49, 8, canWear(it) ? '#9a90a8' : '#ff6a6a');
   if (it.q != null) text('ROLL ' + it.q + '%', x + 146, y + 49, 8, it.q >= 85 ? '#ffd24a' : it.q >= 50 ? '#9affb8' : '#7a7088', 'right');
@@ -1965,7 +1968,7 @@ function drawForge() {
     if (o.el) { const E = rpg.elem && ELEM[rpg.elem]; text((sel ? '> ' : '  ') + (E ? tr('ELEMENT') + ': ' + tr(E.name) + ' ' + ROMAN[elemTier()] : tr('CHOOSE YOUR ELEMENT')), 20, y, 8, E ? E.col : '#ffd24a'); { const nt = (rpg.et | 0) + 1, can = rpg.elem && nt <= elemAvail(); text(!rpg.elem ? 'FREE' : can ? elemTierCost(nt) + 'G' : rpg.et >= 7 ? 'MAX' : '', 246, y, 8, !rpg.elem || (can && rpg.gold >= elemTierCost(nt)) ? '#ffd24a' : can ? '#ff6a6a' : '#8a7a6a', 'right'); } return; }
     const it = o.it, nm = iname(it), mx = (it.up | 0) >= forgeCap();
     if (o.worn) { text('E', 8, y, 7, '#c9a8ff'); g.fillStyle = 'rgba(160,120,255,0.28)'; g.fillRect(172, y - 7, 40, 10); text('EQUIPPED', 192, y, 6, '#d9c4ff', 'center'); }
-    text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, RARITY[it.rar].col);
+    text((sel ? '> ' : '  ') + nm, 20, y, nm.length > 22 ? 7 : 8, itemCol(it));
     text(mx ? 'MAX' : forgeCost(it) + 'G', 246, y, 8, mx ? '#8a7a6a' : rpg.gold >= forgeCost(it) ? '#ffd24a' : '#ff6a6a', 'right');
   });
   // anvil and hammer
@@ -2048,7 +2051,7 @@ function drawShop() {
   s.stock.forEach((o, i) => {
     const y = 62 + i * 22, sel = i === s.i;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.18)'; g.fillRect(14, y - 11, 238, 18); g.strokeStyle = '#ffb43a'; g.strokeRect(14.5, y - 10.5, 237, 17); }
-    const col = o.sold ? '#5a4a6a' : o.kind === 'gear' ? RARITY[o.it.rar].col : o.kind === 'go' ? '#9fd0ff' : '#ffffff';
+    const col = o.sold ? '#5a4a6a' : o.kind === 'gear' ? itemCol(o.it) : o.kind === 'go' ? '#9fd0ff' : '#ffffff';
     text((sel ? '> ' : '  ') + (o.prem ? '* ' : '') + o.name, 20, y, o.name.length > 20 ? 7 : 8, col);
     if (o.kind !== 'go') text(o.sold ? 'SOLD' : o.price + 'G', 246, y, 8, o.sold ? '#5a4a6a' : rpg.gold >= o.price ? '#ffd24a' : '#ff6a6a', 'right');
   });
@@ -3097,7 +3100,7 @@ function drawItems() {
       continue;
     }
     if (it.kind === 'gear') {
-      const R = RARITY[it.it.rar], z = it.z || 0, yy = y - z + Math.sin(it.t * 0.1) * 1.2;
+      const R = it.it.set ? Object.assign({}, RARITY[it.it.rar], { col: SET_GREEN, rgb: SET_GREEN_RGB }) : RARITY[it.it.rar], z = it.z || 0, yy = y - z + Math.sin(it.t * 0.1) * 1.2;
       g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 8, 2.5, 0, 0, 7); g.fill();
       if (it.it.rar > 0) {
         const bh = 36 + it.it.rar * 14; g.globalCompositeOperation = 'lighter';

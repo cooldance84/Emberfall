@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.26.1] - 2026-11-16
+- Set pieces are green (Diablo style): their backpack slot, icon, tooltip name, forge and shop lists and the item on the ground are drawn in green instead of the rarity colour; the small coloured set marker stays.
+
 ## [1.26.0] - 2026-11-16
 - The level-70 skill is now a true ultimate with its own version for each hero: Nolan's LEGION OF ASH (spectral swords rain on every foe), Panni's STARFALL (columns of falling stars) and Luca's THOUSAND CUTS (shadow blades streak through every foe).
 - For about 4 seconds the hero hovers untouchable while every foe on screen takes non-stop damage and is kept staggered (18 ticks), then a finishing blow knocks them down and heals the party by 15%. Cooldown 25 seconds. Foes off screen are not hit.
