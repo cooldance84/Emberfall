@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.5] - 2026-11-16
+- Skills (including the level-70 ultimate) can now be cast while riding a wyrmling; the mount stays under the rider.
+
 ## [1.36.4] - 2026-11-16
 - Once you reach level 70, every drop and market item is item level 70, so no lower level gear falls any more.
 

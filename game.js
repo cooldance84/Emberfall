@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.4';
+const VERSION = '1.36.5';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1444,7 +1444,7 @@ const skillsOf = () => SKILLS.filter(k => k.lv <= rpg.lvl);
 function skillOf(f) { const a = skillsOf(); return a.length ? a[clamp(f.ski == null ? a.length - 1 : f.ski, 0, a.length - 1)] : null; }
 function cycleSkill(f) { const a = skillsOf(); if (a.length < 2) return; f.ski = ((f.ski == null ? a.length - 1 : f.ski) + 1) % a.length; SFX.pick(); floatText(f.x, f.y - 66, skName(skillOf(f), f), '#8cc4ff', 8); }
 function castSkill(f) {
-  const S = skillOf(f); if (!S || f.skcd > 0 || f.mount) return false;
+  const S = skillOf(f); if (!S || f.skcd > 0) return false; // works from the saddle too: the mount carries on beneath the rider
   f.sk = { id: SKILLS.indexOf(S), face0: f.face }; f.st = 'atk'; f.combo = 2; f.t = 0; f.queued = false; f.hits.clear(); f.skcd = S.cd; f.inv = Math.max(f.inv, 14); f.vx = 0;
   floatText(f.x, f.y - 66, skName(S, f) + '!', S.ult ? '#ffd24a' : '#8cc4ff', S.ult ? 10 : 8); return true;
 }
