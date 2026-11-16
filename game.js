@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.25.2';
+const VERSION = '1.26.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -671,7 +671,7 @@ function levelUp(lv0) {
   msg = rpg.lvl >= MAX_LV ? 'MAX LEVEL 70!' : 'LEVEL UP!  LV ' + rpg.lvl; msgT = 130; flashA = 0.3; SFX.magic();
   spawn(hero.x, hero.y, 20, 36, { s0: 1, s1: 3.4, c: ['#fff1b0', '#ffd24a', '#c9a8ff'], l0: 16, l1: 36, add: true, size: 2, up: 3, g: 0.05 });
   const sk = SKILLS.filter(k => k.lv > (lv0 || 0) && k.lv <= rpg.lvl).pop();
-  if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + sk.name + '  (U)'; msgT = 220; }
+  if (sk) { for (const p of players()) p.ski = skillsOf().length - 1; msg = 'NEW SKILL: ' + skName(sk, hero) + '  (U)'; msgT = 220; }
   if (rpg.lvl >= 10 && !rpg.elem && lv0 < 10) { msg = 'ELEMENT UNLOCKED - SEE THE BLACKSMITH'; msgT = 240; }
   else if (rpg.elem && elemAvail() > (rpg.et | 0) && Math.floor(rpg.lvl / 10) > Math.floor((lv0 || 0) / 10)) { msg = 'NEW ' + ELEM[rpg.elem].name + ' TIER READY - SEE THE BLACKSMITH'; msgT = 240; }
   saveGame();
@@ -1073,7 +1073,7 @@ function hurt(e, dmg, kind, from) {
       e.barrier = 0; e.bbreak = tickN; e.st = 'down'; e.t = 0; e.vz = 3; e.vx = dir * 1.6; e.z = Math.max(e.z, 0.01);
       spawn(e.x, e.y, e.z + e.h * 0.5, 26, { s0: 1, s1: 3.2, c: ['#9ae8ff', '#ffffff', '#b88aff'], l0: 12, l1: 28, add: true, size: 2, up: 2, g: 0.06 });
       if (from.pn) floatText(e.x, e.y - e.h - 10, 'BARRIER BROKEN!', '#9ae8ff', 9); SFX.big(); shake = Math.max(shake, 5);
-    } else { SFX.land(); if (from.pn) floatText(e.x, e.y - e.z - e.h * 0.9, kind === 'down' ? '-' + d : 'BARRIER', '#9ae8ff', 8); }
+    } else { if (!(from.sk && from.sk.id === 6 && kind === 'hurt')) SFX.land(); if (from.pn && !(from.sk && from.sk.id === 6 && kind === 'hurt')) floatText(e.x, e.y - e.z - e.h * 0.9, kind === 'down' ? '-' + d : 'BARRIER', '#9ae8ff', 8); } // the ultimate's many ticks stay quiet on a barrier
     return true;
   }
   if (e.pn && e.mount) { // the blow throws the rider off; the wyrmling waits, but bolts after the second fall
@@ -1264,15 +1264,18 @@ function reviveP(f, mate) {
 /* ---------- skills: a new special attack every 10 levels (U casts, Q swaps) ---------- */
 const SKILLS = [
   { lv: 10, name: 'RISING SLASH', cd: 150 }, { lv: 20, name: 'DASH STRIKE', cd: 180 }, { lv: 30, name: 'WHIRLWIND', cd: 240 },
-  { lv: 40, name: 'FLAME WAVE', cd: 260 }, { lv: 50, name: 'METEOR DIVE', cd: 330 }, { lv: 60, name: 'EMBER NOVA', cd: 400 }, { lv: 70, name: 'HEART-EMBER BURST', cd: 900 }
+  { lv: 40, name: 'FLAME WAVE', cd: 260 }, { lv: 50, name: 'METEOR DIVE', cd: 330 }, { lv: 60, name: 'EMBER NOVA', cd: 400 }, { lv: 70, name: 'ULTIMATE', cd: 1500, ult: true }
 ];
+// the level-70 skill is an ultimate: for about four seconds the hero is untouchable and every foe on screen takes non-stop damage; each hero has their own
+const ULT = { nolan: { name: 'LEGION OF ASH' }, panni: { name: 'STARFALL' }, luca: { name: 'THOUSAND CUTS' } };
+const skName = (S, f) => S.ult ? ULT[(f && f.k && f.k.cls) || CLS].name : S.name;
 const skillsOf = () => SKILLS.filter(k => k.lv <= rpg.lvl);
 function skillOf(f) { const a = skillsOf(); return a.length ? a[clamp(f.ski == null ? a.length - 1 : f.ski, 0, a.length - 1)] : null; }
-function cycleSkill(f) { const a = skillsOf(); if (a.length < 2) return; f.ski = ((f.ski == null ? a.length - 1 : f.ski) + 1) % a.length; SFX.pick(); floatText(f.x, f.y - 66, skillOf(f).name, '#8cc4ff', 8); }
+function cycleSkill(f) { const a = skillsOf(); if (a.length < 2) return; f.ski = ((f.ski == null ? a.length - 1 : f.ski) + 1) % a.length; SFX.pick(); floatText(f.x, f.y - 66, skName(skillOf(f), f), '#8cc4ff', 8); }
 function castSkill(f) {
   const S = skillOf(f); if (!S || f.skcd > 0 || f.mount) return false;
   f.sk = { id: SKILLS.indexOf(S), face0: f.face }; f.st = 'atk'; f.combo = 2; f.t = 0; f.queued = false; f.hits.clear(); f.skcd = S.cd; f.inv = Math.max(f.inv, 14); f.vx = 0;
-  floatText(f.x, f.y - 66, S.name + '!', '#8cc4ff', 8); return true;
+  floatText(f.x, f.y - 66, skName(S, f) + '!', S.ult ? '#ffd24a' : '#8cc4ff', S.ult ? 10 : 8); return true;
 }
 function stepSkill(f) {
   const t = f.t, id = f.sk.id, ff = f.sk.face0, foes = enemies;
@@ -1305,14 +1308,39 @@ function stepSkill(f) {
     if (t === 8) { f.hits.clear(); strike(f, { x0: -130, x1: 130, dy: 50, z0: -20, z1: 120 }, 38, 'down', foes); shake = Math.max(shake, 10); flashA = Math.max(flashA, 0.25); burst(60, ['#fff1b0', '#ffb43a', '#ff5a1f'], 4.4); SFX.big(); }
     if (t === 22) { f.hits.clear(); strike(f, { x0: -150, x1: 150, dy: 56, z0: -20, z1: 120 }, 30, 'hurt', foes); burst(40, ['#ffd070', '#ff8a2a'], 4.8); SFX.big(); }
     if (t >= 34) end();
-  } else if (id === 6) { // heart-ember burst: screen-wide blast that heals the party
-    if (t < 18 && t % 4 === 0) spawn(f.x, f.y, 30, 6, { s0: 0.4, s1: 1.4, c: ['#fff1b0', '#ffd24a', '#c9a8ff'], l0: 14, l1: 26, add: true, up: 2.4, g: 0.04 });
-    if (t === 18) {
-      f.hits.clear(); strike(f, { x0: -W, x1: W, dy: 200, z0: -40, z1: 200 }, 70, 'down', foes);
+  } else if (id === 6) { // ultimate: ~4 seconds of non-stop damage to every foe on screen, then a finishing blow and a heal for the party
+    const cls = f.k.cls, FIRST = 24, STEP = 10, TICKS = 18, FIN = FIRST + STEP * TICKS, ALL = { x0: -2 * W, x1: 2 * W, dy: 400, z0: -400, z1: 400 };
+    const onScreen = () => foes.filter(e => !e.dead && e.x - cam > -24 && e.x - cam < W + 24);
+    if (!f.sk.began) { f.sk.began = 1; flashA = Math.max(flashA, 0.3); SFX.magic(); }
+    f.inv = Math.max(f.inv, 8); f.vx = 0;
+    if (cls !== 'luca') f.z = Math.min(12, t * 0.6) + Math.sin(t * 0.25) * 1.5; // the hero rises while channelling
+    if (t < FIRST) { // gathering power
+      if (t % 3 === 0) spawn(f.x, f.y, f.z + 20, 4, { s0: 0.4, s1: 1.6, c: cls === 'panni' ? ['#d8b8ff', '#ffffff'] : cls === 'luca' ? ['#9affb8', '#ffffff'] : ['#fff1b0', '#9fd0ff'], l0: 12, l1: 24, add: true, up: 2.4, g: -0.01, size: 2 });
+      shake = Math.max(shake, 2 + t * 0.1);
+    } else if (t < FIN) {
+      if ((t - FIRST) % STEP === 0) {
+        const tg = onScreen(), k = (t - FIRST) / STEP;
+        f.hits.clear(); strike(f, ALL, 6 + (k % 3 === 2 ? 2 : 0), 'hurt', tg); freeze = 0;
+        shake = Math.max(shake, 3); flashA = Math.max(flashA, 0.1); if (k % 3 === 0) SFX.big(); else SFX.swing();
+        if (cls === 'nolan') { // spectral swords rain down on everyone
+          for (const e of tg.slice(0, 9)) { spawn(e.x + rnd(-16, 16), e.y + rnd(-6, 6), e.z + 120, 7, { s0: 0.1, s1: 0.5, c: ['#ffffff', '#fff1b0', '#9fd0ff'], l0: 9, l1: 13, add: true, up: -9, g: 0, size: 2 }); spawn(e.x, e.y, e.z + 8, 8, { s0: 0.8, s1: 2.6, c: ['#fff1b0', '#ffb43a'], l0: 8, l1: 16, add: true, flat: true, size: 2 }); }
+          spawn(f.x, f.y, f.z + 10, 10, { s0: 1, s1: 3.2, c: ['#fff1b0', '#9fd0ff'], l0: 10, l1: 20, add: true, flat: true });
+        } else if (cls === 'panni') { // stars fall in columns of light
+          for (const e of tg.slice(0, 9)) { spawn(e.x, e.y, e.z + 140, 12, { s0: 0.1, s1: 0.7, c: ['#d8b8ff', '#ffffff', '#8cc4ff'], l0: 10, l1: 15, add: true, up: -11, g: 0, size: 3 }); spawn(e.x, e.y, e.z + 10, 9, { s0: 1, s1: 3, c: ['#d8b8ff', '#ffffff'], l0: 10, l1: 20, add: true, size: 2 }); }
+          spawn(f.x, f.y, f.z + 30, 10, { s0: 1, s1: 3.6, c: ['#d8b8ff', '#c9a8ff'], l0: 12, l1: 22, add: true, size: 2 });
+        } else { // shadow blades: the rogue's phantoms streak from him through every foe, slashing
+          for (const e of tg.slice(0, 9)) {
+            for (let q = 0; q <= 6; q++) { const u = q / 6; spawn(f.x + (e.x - f.x) * u, f.y + (e.y - f.y) * u, f.z + 22 + (e.z + e.h * 0.6 - 22) * u, 1, { s0: 0.1, s1: 0.5, c: ['#9affb8', '#1c3a2a', '#ffffff'], l0: 6, l1: 11, add: true, size: 2 }); }
+            spawn(e.x, e.y, e.z + e.h * 0.6, 12, { s0: 1.5, s1: 4.2, c: ['#ffffff', '#9affb8'], l0: 5, l1: 11, add: true, flat: true, size: 2 });
+          }
+        }
+      }
+    } else if (t === FIN) {
+      f.hits.clear(); strike(f, ALL, 40, 'down', onScreen());
       for (const p of players()) if (!p.dead) p.hp = Math.min(p.maxhp, p.hp + (p.maxhp * 0.15 | 0));
-      flashA = 0.8; shake = Math.max(shake, 16); burst(80, ['#fff1b0', '#ffd24a', '#ffffff'], 5.4); SFX.magic(); SFX.big();
+      flashA = 0.8; shake = Math.max(shake, 16); burst(90, ['#fff1b0', '#ffd24a', '#ffffff'], 5.6); SFX.magic(); SFX.big();
     }
-    if (t >= 40) end();
+    if (t >= FIN + 16) end();
   }
 }
 
@@ -1717,7 +1745,7 @@ function drawPause() {
   }
   if (pausePg === 2) {
     const cur = skillOf(hero);
-    SKILLS.forEach((k, i) => { const on = k.lv <= rpg.lvl, y = 80 + i * 18; text('LV ' + k.lv, W / 2 - 96, y, 8, on ? '#8cc4ff' : '#4a4a5a', 'left'); text(k.name, W / 2 - 60, y, 9, on ? (cur === k ? '#ffd24a' : '#e8dcc8') : '#4a4a5a', 'left'); if (!on) text('LOCKED', W / 2 + 96, y, 7, '#4a4a5a', 'right'); else if (cur === k) text('ACTIVE', W / 2 + 96, y, 7, '#ffd24a', 'right'); });
+    SKILLS.forEach((k, i) => { const on = k.lv <= rpg.lvl, y = 80 + i * 18; text('LV ' + k.lv, W / 2 - 96, y, 8, on ? '#8cc4ff' : '#4a4a5a', 'left'); text(skName(k, hero), W / 2 - 60, y, 9, on ? (cur === k ? '#ffd24a' : '#e8dcc8') : '#4a4a5a', 'left'); if (!on) text('LOCKED', W / 2 + 96, y, 7, '#4a4a5a', 'right'); else if (cur === k) text('ACTIVE', W / 2 + 96, y, 7, '#ffd24a', 'right'); });
     text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
@@ -3293,7 +3321,7 @@ function drawHUD() {
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
-  { const S = skillOf(hero); if (S) { text('U: ' + S.name, 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
+  { const S = skillOf(hero); if (S) { text('U: ' + skName(S, hero), 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
   for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
   text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
   if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }

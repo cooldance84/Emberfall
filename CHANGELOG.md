@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.26.0] - 2026-11-16
+- The level-70 skill is now a true ultimate with its own version for each hero: Nolan's LEGION OF ASH (spectral swords rain on every foe), Panni's STARFALL (columns of falling stars) and Luca's THOUSAND CUTS (shadow blades streak through every foe).
+- For about 4 seconds the hero hovers untouchable while every foe on screen takes non-stop damage and is kept staggered (18 ticks), then a finishing blow knocks them down and heals the party by 15%. Cooldown 25 seconds. Foes off screen are not hit.
+
 ## [1.25.2] - 2026-11-15
 - Discarding on a phone: only legendary and mythic items ask for a second tap; everything else is dropped at once. (Moved from 1.25.1's wording.)
 
