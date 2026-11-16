@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.31.0';
+const VERSION = '1.31.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1157,6 +1157,7 @@ function elemBuild(e, el, amt, T, noSpread) {
     if (T >= 3 && !noSpread) for (const o of elNear(e, 60)) elemBuild(o, 'fire', 28, T, true);
     if (T >= 7) for (const o of elNear(e, 50)) elDmg(o, base * ELEM_PT[T] * 1.3, col);
   } else if (el === 'frost') {
+    S.fst = T >= 5 ? Math.min(3, (S.fst | 0) + 1) : 1; // from tier V the cold stacks up to three layers
     if (T < 3) { S.chill = 150; floatText(e.x, e.y - e.h - 10, 'CHILLED', col, 8); SFX.freeze(); }
     else if (S.cd <= 0) {
       S.frz = Math.round([0, 0, 0, 54, 54, 80, 80, 100][T] * cap); S.cd = isBoss(e) ? 420 : 0; S.chill = 150;
@@ -1164,7 +1165,8 @@ function elemBuild(e, el, amt, T, noSpread) {
       if (T >= 6 && !noSpread) for (const o of elNear(e, 55)) elemBuild(o, 'frost', 50, T, true);
     } else { S.chill = 150; }
   } else {
-    const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0), r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1);
+    S.sst = T >= 5 ? Math.min(3, (S.sst | 0) + 1) : 1; // ...and so do the shocks
+    const n = (T >= 7 ? 3 : T >= 4 ? 2 : 1) + (S.bx ? 1 : 0), r = 70 + (T >= 2 ? 25 : 0), dm = base * ELEM_PT[T] * 2.2 * (T >= 2 ? 1.25 : 1) * (S.bx ? 2 : 1) * (1 + 0.1 * (S.sst - 1));
     elNear(e, r).sort((a, b) => Math.abs(a.x - e.x) - Math.abs(b.x - e.x)).slice(0, n).forEach(o => { elArc(e, o, ['#fff6a0', '#6ab8ff']); elDmg(o, dm, col); elemBuild(o, 'bolt', 30, T, true); });
     if (T >= 6) { elDmg(e, base * ELEM_PT[T] * 3, col); for (let i = 0; i < 6; i++) spawn(e.x + rnd(-2, 2), e.y, i * 9, 1, { c: ['#fff6a0', '#ffffff'], l0: 8, l1: 14, add: true, size: 2, g: 0 }); }
     if (T >= 3 && S.cd <= 0) { S.stun = Math.round((T >= 5 ? 34 : 20) * cap); S.cd = isBoss(e) ? 420 : 0; floatText(e.x, e.y - e.h - 10, 'SHOCKED', col, 8); }
@@ -1209,7 +1211,7 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
   for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35);
   if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--;
-  if (S.fdbl && !(S.chill > 0 || S.frz > 0)) { S.fdbl = 0; S.bsk = null; } if (S.bsk && rpg.elem === 'bolt' && !(S.bolt >= 1 || S.stun > 0)) S.bsk = null;
+  if (!(S.chill > 0 || S.frz > 0)) { S.fst = 0; if (S.fdbl) { S.fdbl = 0; S.bsk = null; } } if (S.bsk && rpg.elem === 'bolt' && !(S.bolt >= 1 || S.stun > 0)) S.bsk = null;
   if (S.frz > 0) { S.frz--; if (tickN % 12 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#e8faff', '#7ad8ff'], l0: 8, l1: 16, add: true, size: 1, g: 0 }); }
   if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });
   if (S.burn > 0) {
@@ -1217,11 +1219,12 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
     if (tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.bdbl ? 2 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
     if (S.burn === 0) { S.bst = 0; S.bdbl = 0; S.bsk = null; }
   }
-  if ((S.chill > 0 || S.frz > 0) && tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 1.25 * (S.fdbl ? 2 : 1) * (S.frz > 0 ? 1.4 : 1), ELEM.frost.col); // frostbite: damage over time while chilled or frozen
-  if (S.shk > 0) { S.shk--; if (tickN % 20 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 0.55 * (S.sdbl ? 2 : 1), ELEM.bolt.col); if (S.shk === 0) S.sdbl = 0; if (tickN % 8 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.9), 1, { c: ['#fff6a0', '#6ab8ff'], l0: 4, l1: 8, add: true, size: 1, g: 0 }); }
+  if ((S.chill > 0 || S.frz > 0) && tickN % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.fdbl ? 2 : 1) * (S.frz > 0 ? 1.4 : 1) * (1 + 0.15 * ((S.fst || 1) - 1)), ELEM.frost.col); // frostbite: damage over time while chilled or frozen
+  if (S.shk > 0) { S.shk--; if (tickN % 20 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * 0.55 * (S.sdbl ? 2 : 1) * (1 + 0.2 * ((S.sst || 1) - 1)), ELEM.bolt.col); if (S.shk === 0) { S.sdbl = 0; S.sst = 0; } if (tickN % 8 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.9), 1, { c: ['#fff6a0', '#6ab8ff'], l0: 4, l1: 8, add: true, size: 1, g: 0 }); }
   if (free) return false;
   if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
-  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; sl = S.fdbl ? Math.min(sl * 1.5, isBoss(e) ? 0.45 : 0.7) : Math.min(sl, isBoss(e) ? 0.3 : 0.5); // deep freeze slows harder
+  let sl = S.chill > 0 ? 0.35 + (T >= 5 ? 0.1 : 0) : S.frost * 0.003; const fs = 1 + 0.2 * ((S.fst || 1) - 1), cp = 0.05 * ((S.fst || 1) - 1); if (S.chill > 0) sl *= fs;
+  sl = S.fdbl ? Math.min(sl * 1.5, (isBoss(e) ? 0.45 : 0.7) + cp) : Math.min(sl, (isBoss(e) ? 0.3 : 0.5) + cp); // deep freeze slows harder
   if (sl > 0) { S.acc += sl; if (S.acc >= 1) { S.acc -= 1; if (e.flash > 0) e.flash--; return true; } }
   return false;
 }

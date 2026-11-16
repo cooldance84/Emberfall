@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.31.1] - 2026-11-16
+- Frost and lightning stack like fire: from elemental tier V every new freeze/shock adds a layer (up to three). Frost layers deepen the slow (and its cap) and raise frostbite damage; lightning layers raise shock damage and the chain damage. Layers fall off when the status ends. Re-balanced so the three elements stay within about 10% of each other on a single target.
+
 ## [1.31.0] - 2026-11-16
 - A proper finale: clearing the last stage (and every Ember Trial, and the daily challenge) now ends with a big CONGRATULATIONS! screen: a fanfare, fireworks and falling confetti over slowly turning rays of light, and a rank that fades in line by line (HERO OF EMBERFALL, TRIAL n CHAMPION, LEGEND OF THE ASHEN VOW after Trial X, DAILY CHALLENGE COMPLETE). The choices to continue appear after a moment so the celebration cannot be skipped by accident. Hungarian included.
 
