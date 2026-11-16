@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.30.1';
+const VERSION = '1.30.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2187,7 +2187,8 @@ function updateBonus() {
     if (--B.spawnT <= 0 && B.left > 30) { B.spawnT = Math.round(lerp(20, 10, prog)); const n = Math.random() < 0.25 ? 2 : 1; for (let i = 0; i < n; i++) spawnGob(Math.random() < 0.07); }
     if (B.left <= 0) { B.phase = 'grace'; B.t = 0; msg = 'TIME UP'; msgT = 80; SFX.land(); }
   } else if (B.phase === 'grace') {
-    if (B.t >= (chests.some(c => !c.open) ? 170 : 50)) { B.phase = 'done'; B.t = 0; for (const e of enemies) if (!e.dead) e.gone = true; SFX.magic(); saveGame(); }
+    const open = chests.some(c => !c.open), loot = items.some(i => i.kind === 'gear'); // the clock stops mattering: stay until the chests are smashed and the gear picked up (at most 12 seconds)
+    if (B.t >= 720 || (B.t >= 90 && !open && !loot)) { B.phase = 'done'; B.t = 0; for (const e of enemies) if (!e.dead) e.gone = true; SFX.magic(); saveGame(); }
   } else if (B.t > 40 && (isHit('start') || isHit('atk') || B.t > 500)) { const n = B.next; bonus = null; chests = []; n(); }
 }
 function drawBonusHud() {
@@ -2197,7 +2198,7 @@ function drawBonusHud() {
   text('GOLD +' + B.gold, W / 2, 68, 9, '#ffd24a', 'center');
   if (B.combo >= 2 && tickN - B.last < 75) text('COMBO x' + B.combo + '   GOLD x' + (1 + Math.min(10, B.combo - 1) * 0.2).toFixed(1), W / 2, 80, 8, '#ff9a4a', 'center');
   if (B.phase === 'ready') { g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 100, W, 70); text('BONUS STAGE', W / 2, 122, 12, '#ffb43a', 'center'); text('GOBLIN TREASURY', W / 2, 146, 18, '#fff1d0', 'center'); text('10 SECONDS. CATCH THE GOBLINS, SMASH THEIR CHESTS', W / 2, 162, 7, '#c9a8ff', 'center'); }
-  if (B.phase === 'grace' && chests.some(c => !c.open)) text('SMASH THE CHESTS!', W / 2, 110, 12, '#fff1b0', 'center');
+  if (B.phase === 'grace') { const open = chests.some(c => !c.open), loot = items.some(i => i.kind === 'gear'); if (open || loot) { text(open ? 'SMASH THE CHESTS!' : 'GRAB THE LOOT!', W / 2, 110, 12, '#fff1b0', 'center'); bar(W / 2 - 50, 116, 100, 4, 720 - B.t, 720, '#ffd24a', '#3a2a10'); } }
   if (B.phase === 'done') {
     g.fillStyle = 'rgba(14,8,4,0.9)'; g.fillRect(130, 70, 220, 132); g.strokeStyle = '#ffd24a'; g.strokeRect(130.5, 70.5, 219, 131);
     text('BONUS CLEAR', W / 2, 92, 13, '#ffd24a', 'center');

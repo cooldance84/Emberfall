@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.30.2] - 2026-11-16
+- Bonus stage: after the timer you keep going until the chests are smashed and the gear is picked up (at least 1.5 seconds, at most 12), with a bar showing how long is left, before the results panel appears.
+
 ## [1.30.1] - 2026-11-16
 - Discarding a backpack item now scraps it for gold: 40% of its worth, so deeper and rarer gear pays more (a white starter ring about 6G, a legendary around 330G, a mythic near 1000G). Works with the X key and the phone JUMP button; the amount shows in the item panel.
 
