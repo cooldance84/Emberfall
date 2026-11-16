@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.2';
+const VERSION = '1.36.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1002,13 +1002,16 @@ function drawTip(it, cmp, x, y, slim) { // slim: set bonus lines are left out (t
     yy += slim ? 0 : 2;
   }
   if (cmp !== undefined) {
-    const CS = it.set ? 10 : 12; // set items carry an extra block, so the comparison is packed tighter
-    yy += it.set ? 3 : 6; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff'); yy += CS;
-    for (const k of STAT_KEYS) { const d = (ist[k] || 0) - ((cst && cst[k]) || 0); if (d) { text((d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += CS; } }
+    const rows = []; // the comparison lines, built first so they can be packed to fit the frame
+    for (const k of STAT_KEYS) { const d = (ist[k] || 0) - ((cst && cst[k]) || 0); if (d) rows.push([(d > 0 ? '+' : '') + d + STATS[k].sfx + ' ' + statName(k), d > 0]); }
     for (const key of ['ea', 'er']) for (const el of ELEMS) { // elemental power and resist count in the comparison too
       const d = ((it[key] && it[key].k === el) ? it[key].v : 0) - ((cmp && cmp[key] && cmp[key].k === el) ? cmp[key].v : 0);
-      if (d) { text((d > 0 ? '+' : '') + d + '% ' + ELEM[el].name + (key === 'ea' ? ' POWER' : ' RESIST'), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += CS; }
+      if (d) rows.push([(d > 0 ? '+' : '') + d + '% ' + ELEM[el].name + (key === 'ea' ? ' POWER' : ' RESIST'), d > 0]);
     }
+    yy += it.set ? 3 : 6; text(cmp ? 'VS EQUIPPED' : 'VS EMPTY SLOT', x + 8, yy, 8, '#c9a8ff');
+    const CS = Math.max(8, Math.min(it.set ? 10 : 12, Math.floor((254 - yy) / Math.max(1, rows.length)))); // never below the text height, never past the bottom frame
+    yy += CS;
+    for (const r of rows) { text(r[0], x + 8, yy, 8, r[1] ? '#7aff9a' : '#ff6a6a'); yy += CS; }
   }
   return yy;
 }
