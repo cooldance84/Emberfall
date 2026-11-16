@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.33.1';
+const VERSION = '1.33.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2286,6 +2286,7 @@ function updateBoss(e) {
     if (e.cool <= 0 && !heroDown) chooseBossAttack(e, adx, p2);
   } else if (e.st === 'wind') {
     e.face = sgn(dx) || e.face;
+    if (e.atk === 'flames' || e.atk === 'breath') e.y = clamp(e.y + clamp(dy, -1.2, 1.2), Y_MIN, Y_MAX); // turns into the hero's lane while it winds up, so the fire leaves its mouth straight
     if (e.atk === 'blink' && e.t === 1) spawn(e.x, e.y, e.h * 0.5, 16, { c: ['#ff6a9a', '#ffb0c8'], add: true, l0: 10, l1: 24 });
     if (e.atk === 'meteor' && e.t === 8) {
       const n = p2 ? 9 : 6;
@@ -2396,7 +2397,7 @@ function bossAttack(e, dx, p2) {
         const mx = e.x + e.face * 80, mz = e.z + 75, fc = ['#fff1b0', '#ffb43a', '#ff5a1f'];
         spawn(mx, e.y, mz, 4, { dx: e.face * 3.4, s0: 0.2, s1: 1.0, c: fc, l0: 10, l1: 26, g: 0.01, add: true, size: 3, flat: true });
         spawn(mx, e.y, mz, 3, { dx: e.face * 5.6, s0: 0.2, s1: 0.8, c: fc, l0: 10, l1: 24, g: 0.012, add: true, size: 3, flat: true });
-        e.y = clamp(e.y + clamp(hero.y - e.y, -0.6, 0.6), Y_MIN, Y_MAX);
+        e.y = clamp(e.y + clamp(hero.y - e.y, -0.3, 0.3), Y_MIN, Y_MAX); // follows the hero slowly, so the stream stays straight
         if (t % 10 === 2) e.hits.clear();
         strike(e, { x0: 40, x1: 190, dy: 14, z0: 0, z1: 80 }, 11, t > 42 ? 'down' : 'hurt', players());
         if (t % 8 === 0) shake = Math.max(shake, 3);
@@ -2404,7 +2405,9 @@ function bossAttack(e, dx, p2) {
       if (t >= 60) end(p2 ? 45 : 85);
       break;
     case 'flames':
-      if (t === 2 || (p2 && t === 12)) { for (const dy of [-18, 0, 18]) shots.push({ type: 'wave', x: e.x + e.face * 90, y: clamp(hero.y + dy, Y_MIN, Y_MAX), z: 0, vx: e.face * 3, t: 0, dmg: 15, life: 120 }); SFX.big(); }
+      if (t === 2 || (p2 && t === 12)) { // the flame waves leave the dragon's mouth, in its own lane, and curve into the lanes around the hero
+        for (const dy of [-18, 0, 18]) shots.push({ type: 'wave', x: e.x + e.face * 90, y: e.y, ty: clamp(hero.y + dy, Y_MIN, Y_MAX), vy: 1.5, z: 0, vx: e.face * 3, t: 0, dmg: 15, life: 120 });
+        spawn(e.x + e.face * 84, e.y, 62, 12, { dx: e.face * 3, s0: 0.3, s1: 1.6, c: ['#fff1b0', '#ffb43a', '#ff5a1f'], l0: 10, l1: 22, add: true, size: 3, g: 0.01 }); SFX.big(); }
       if (t >= 22) end(p2 ? 45 : 80);
       break;
     default: end(60);
@@ -2426,7 +2429,7 @@ function updateShots() {
       if (!hero.dead && Math.abs(dx) < 9 && Math.abs(dy) < 8 && hero.z < s.z + 8) { hurt(hero, s.dmg, 'hurt', { x: s.x, face: sgn(s.vx) || 1 }); sparks(s.x, s.y, s.z, false); s.dead = true; }
       if (s.t > s.life || s.x < cam - 40 || s.x > cam + W + 40) s.dead = true;
     } else if (s.type === 'wave') {
-      s.x += s.vx;
+      s.x += s.vx; if (s.ty !== undefined) s.y += clamp(s.ty - s.y, -s.vy, s.vy);
       if (s.t % 2 === 0) spawn(s.x, s.y, 2, 1, { c: ['#ff8a2a', '#ffd070'], s0: 0.1, s1: 0.6, l0: 8, l1: 16, add: true, up: 1, g: 0.04 });
       if (!hero.dead && Math.abs(dx) < 9 && Math.abs(dy) < 10 && hero.z < 12) { hurt(hero, s.dmg, 'down', { x: s.x, face: sgn(s.vx) || 1 }); s.dead = true; }
       if (s.t > s.life || s.x < cam - 40 || s.x > cam + W + 40) s.dead = true;

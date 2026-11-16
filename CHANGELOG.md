@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.33.2] - 2026-11-16
+- Ember Wyrm fire fixed: the flame waves used to appear in the hero's lane ahead of the dragon, detached from it. Now the dragon turns into your lane while it winds up, a burst of flame shows at its mouth, and the three waves leave the mouth in its own lane, fanning out to cover the lanes around you. The breath stream follows you more slowly while it burns (0.3 instead of 0.6 lanes per frame), so it stays straight instead of shearing diagonally.
+
 ## [1.33.1] - 2026-11-16
 - Smoother combat for every hero (Nolan, Panni and Luca): a foe knocked down can now be hit while it lies there or gets up, for half damage, so the combo no longer stalls for two seconds after the knockdown. Foes get up faster (down 42 frames instead of 55, getting up 12 instead of 18) and are protected for a shorter time after rising (14 frames instead of 40). Bosses and heroes are unchanged.
 - Luca's daggers reach a little further (38 instead of 32), so chains hold on to a target that is knocked back.
