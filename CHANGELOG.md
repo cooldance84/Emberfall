@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.28.0] - 2026-11-16
+- Skills carry a chance of elemental damage: every skill hit has a 30% chance (10% per hit for the ultimate, which hits every foe 18 times) to proc an element on the foe. Your own element comes up half the time, the other two share the rest. It works even before you have chosen an element (tier 1 effects), and with a chosen element the effect uses your element tier, so a high tier makes the skill's frost freeze and its lightning chain. Normal attacks are unchanged: only your own element builds up.
+
 ## [1.27.0] - 2026-11-16
 - Set pieces are stronger than any mythic: they are built from mythic stats and then rolled above the best mythic roll (about +40% stats on average), always with the mythic elemental affix chance. A single set piece beats a mythic in ~88% of pairs, 2 pieces plus the bonus add about +13-21% overall power, 4 pieces about +25-42%.
 - Because of that, set drops are rarer: 12% of legendary and 30% of mythic drops from item level 50 up (before the Ember Trial luck). Set drops get a green "SET DROP!" banner; old set pieces in existing saves keep their old stats.
