@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.33.0';
+const VERSION = '1.33.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1096,6 +1096,12 @@ function dust(x, y, n) { spawn(x, y, 0, n, { s0: 0.3, s1: 1.2, c: ['#8d7a8f', '#
 
 /* ---------- combat ---------- */
 function hurt(e, dmg, kind, from) {
+  if (!e.pn && !isBoss(e) && from.pn && !e.dead && e.hp > 0 && e.kind !== 'imp' && (e.st === 'down' || e.st === 'getup')) { // a foe on the ground can still be hit, for half damage: the combo never stalls while it gets up
+    if (e.barrier > 0) return false;
+    dmg = Math.max(1, Math.round(dmg * 0.5)); e.hp -= dmg; e.flash = 4; lastEnemy = e; sparks(e.x, e.y, e.z + 6, false); SFX.hit();
+    if (e.hp <= 0) { e.hp = 0; e.st = 'down'; e.t = 21; e.z = 0; e.vz = 0; e.vx = 0; }
+    return true;
+  }
   if (e.dead || e.inv > 0 || e.st === 'down' || e.st === 'getup') return false;
   const dir = sgn(e.x - from.x) || -from.face;
   if (!e.pn && e.el && e.el.frz > 0 && elemTier() >= 4) dmg = Math.round(dmg * 1.2); // frozen foes are brittle
@@ -1321,10 +1327,10 @@ function groundPhysics(f) {
     if (f.z <= 0) { f.z = 0; if (f.vz < -1.5) { f.vz *= -0.35; f.vx *= 0.6; dust(f.x, f.y, 5); SFX.land(); } else { f.vz = 0; f.vx *= 0.8; } }
     f.t++;
     if (f.hp <= 0 && !f.dead && f.z === 0 && f.t > 20) { f.dead = true; f.fade = 0; SFX.die(); if (!f.pn) { onKill(f); addDecal(f); score += isBoss(f) ? 5000 : f.kind === 'b' ? 400 : 150; if (isBoss(f)) { shake = 14; flashA = 0.5; sparks(f.x, f.y, 30, true); sparks(f.x, f.y, 55, true); SFX.big(); } if (Math.random() < (f.kind === 'h' ? 0.22 : 0.6)) items.push({ x: f.x, y: f.y, t: 0, kind: 'meat' }); } }
-    if (f.hp > 0 && f.t > 55) { f.st = 'getup'; f.t = 0; }
+    if (f.hp > 0 && f.t > (f.pn ? 55 : 42)) { f.st = 'getup'; f.t = 0; }
     return true;
   }
-  if (f.st === 'getup') { if (++f.t > 18) { f.st = 'idle'; f.t = 0; f.inv = 40; } return true; }
+  if (f.st === 'getup') { if (++f.t > (f.pn ? 18 : 12)) { f.st = 'idle'; f.t = 0; f.inv = f.pn ? 40 : 14; } return true; }
   return false;
 }
 
@@ -1511,7 +1517,7 @@ function updateHeroCore(f) {
         shots.push({ type: 'mbolt', owner: f, x: f.x + f.face * 18, y: f.y, z: 30, vx: f.face * (c.big ? 3.4 : 4.6), t: 0, dmg: c.dmg, kind: c.kind, big: !!c.big, life: c.big ? 72 : 54, hit: new Set() });
         spawn(f.x + f.face * 22, f.y, 32, 6, { c: ['#e0d0ff', '#b88aff'], l0: 6, l1: 14, add: true }); } }
       if (f.t < 7) f.x += f.vx * (mage ? 0.3 : 1), f.vx *= 0.9;
-      if (!mage && f.t >= c.a && f.t <= c.b) strike(f, { x0: 0, x1: f.k.cls === 'luca' ? 32 : 40, dy: 11, z0: 4, z1: 40 }, c.dmg, c.kind, foes);
+      if (!mage && f.t >= c.a && f.t <= c.b) strike(f, { x0: 0, x1: f.k.cls === 'luca' ? 38 : 40, dy: 11, z0: 4, z1: 40 }, c.dmg, c.kind, foes);
       if (inH(f, 'atk') && f.combo < CB.length - 1 && f.t >= (f.k.cls === 'luca' ? 3 : 5)) f.queued = true;
       if (f.t >= c.d) { if (f.queued) startAttack(f, f.combo + 1); else { f.st = 'idle'; f.t = 0; } }
       break;

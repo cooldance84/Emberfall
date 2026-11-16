@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.33.1] - 2026-11-16
+- Smoother combat for every hero (Nolan, Panni and Luca): a foe knocked down can now be hit while it lies there or gets up, for half damage, so the combo no longer stalls for two seconds after the knockdown. Foes get up faster (down 42 frames instead of 55, getting up 12 instead of 18) and are protected for a shorter time after rising (14 frames instead of 40). Bosses and heroes are unchanged.
+- Luca's daggers reach a little further (38 instead of 32), so chains hold on to a target that is knocked back.
+- Measured with a full-stat hero against a pack of six foes in Trial III: Nolan 7.6 s to 6.6 s, Panni 15.7 s to 10 s, Luca about 7 s (Luca is noisier).
+
 ## [1.33.0] - 2026-11-16
 - Paragon: at level 70 experience keeps counting. Every paragon point (up to 100) gives +0.8% max life, +0.7% damage and 0.3% less damage taken, heals you a little and flashes "+1 PARAGON" in blue. The count shows in blue next to your level ("LV 70 +12") in the game and on the hero screen, where the bar and a PARAGON n/100 line replace the XP bar. A point costs 6000 xp plus 120 per point already earned (roughly 10 to 12 points per Ember Trial). Saved per hero.
 - Ember Trials are gentler so the whole game can be finished: each Trial adds 14% foe life (was 20%) and 8% foe damage (was 12%). Measured with a full-stat hero (four Emberheart pieces, two best mythics, all +10, fire VII) against the final boss: Trial X takes about 60 seconds and nine hits to kill you, against 31 seconds and eight hits in the campaign, so the later Trials are a longer, tighter fight but no longer a wall.
