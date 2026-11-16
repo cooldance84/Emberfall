@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.29.0] - 2026-11-16
+- New bonus stage, GOBLIN TREASURY: after every act boss (stages 5, 10, 15, 20, 25 and 30, before the next story chapter) you get ten seconds in a gold-lit hall with fast loot goblins that sprint across the screen and dodge you. They never fight back.
+- Each goblin you catch pays gold (scales with your depth and Ember Trial); quick kills build a combo that raises the gold up to x3. About one in five drops a chest to smash open, and the rare golden goblin (three hits) pays four times as much and always drops a golden chest with a gear drop.
+- After the timer there is a short moment to smash the chests that are left, then a results panel shows goblins caught and lost, chests opened, best combo and gold earned. Hungarian texts included.
+
 ## [1.28.2] - 2026-11-16
 - Blacksmith: long item tooltips (set pieces with many stats) no longer run into the forge preview. Set bonus lines are left out there, and the forge gains are packed two to a row when space is tight.
 

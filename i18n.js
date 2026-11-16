@@ -260,7 +260,16 @@ const HU_PHRASE = { "TRIAL": "PRÓBA",
 
 /* word-order rules for strings with numbers and names in them */
 Object.assign(HU_EXACT, { "OK     EQUIP/UNEQUIP": "OK     FELVESZ/LEVESZ", "JUMP   DISCARD": "UGRÁS  ELDOB", "GEAR   CLOSE": "FELSZ. BEZÁR", "TAP JUMP AGAIN TO DISCARD": "ELDOBÁSHOZ NYOMD MEG ÚJRA: UGRÁS", "VS STATUS": "ÁLLAPOT ELLEN", "TRIAL": "PRÓBA", "MAX HP": "MAX ÉLET", "ALL RESIST": "MIND. ELLENÁLLÁS", "ELEM POWER": "ELEM ERŐ" });
+Object.assign(HU_EXACT, { "BONUS STAGE": "BÓNUSZ PÁLYA", "GOBLIN TREASURY": "GOBLIN KINCSTÁR", "BONUS STAGE   GOBLIN TREASURY": "BÓNUSZ PÁLYA   GOBLIN KINCSTÁR", "LOOT GOBLIN": "ZSÁKMÁNY-GOBLIN", "GOLDEN GOBLIN": "ARANY GOBLIN", "CATCH THEM ALL!": "ÉRD EL MINDET!", "TIME UP": "LEJÁRT AZ IDŐ", "SMASH THE CHESTS!": "TÖRD ÖSSZE A LÁDÁKAT!", "BONUS CLEAR": "BÓNUSZ TELJESÍTVE", "CHEST!": "LÁDA!", "GOLDEN CHEST!": "ARANYLÁDA!", "10 SECONDS. CATCH THE GOBLINS, SMASH THEIR CHESTS": "10 MÁSODPERC. FOGD EL A GOBLINOKAT, TÖRD ÖSSZE A LÁDÁIKAT" });
 const HU_RULES = [
+  [/^GOBLINS CAUGHT  (\d+)$/, m => "ELKAPOTT GOBLIN  " + m[1]],
+  [/^GOBLINS LOST  (\d+)$/, m => "ELSZÖKÖTT GOBLIN  " + m[1]],
+  [/^CHESTS OPENED  (\d+)$/, m => "KINYITOTT LÁDA  " + m[1]],
+  [/^BEST COMBO  x(\d+)$/, m => "LEGJOBB KOMBÓ  x" + m[1]],
+  [/^GOLD EARNED  \+(\d+)$/, m => "SZERZETT ARANY  +" + m[1]],
+  [/^GOLD \+(\d+)$/, m => "ARANY +" + m[1]],
+  [/^COMBO x(\d+)   GOLD x([0-9.]+)$/, m => "KOMBÓ x" + m[1] + "   ARANY x" + m[2]],
+  [/^([0-9.]+)S$/, m => m[1] + "MP"],
   [/^TRIAL ([IVX+0-9]+) COMPLETE$/, m => m[1] + ". PRÓBA KÉSZ"],
   [/^TRIAL ([IVX+0-9]+)$/, m => "PRÓBA " + m[1]],
   [/^ENTER: BEGIN TRIAL ([IVX+0-9]+)  \(\+1 COIN, TOUGHER FOES\)$/, m => "ENTER: " + m[1] + ". PRÓBA KEZDÉSE  (+1 ÉRME, ERŐSEBB ELLENSÉG)"],

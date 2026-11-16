@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.28.2';
+const VERSION = '1.29.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -495,6 +495,7 @@ const KINDS = {
   smith: { name: 'THE FORGEMASTER', hp: 560, spd: 0.45, scale: 2.1, h: 92, skin: '#6a5a52', hair: '#222222', armor: '#4a4e58', armor2: '#ff8a2a', cloth: '#2a2224', wlen: 34, wwid: 10, wcol: '#6a707c', windup: 42, rng: 70, dmg: 28, poise: 110 },
   wisp: { name: 'BOG WISP', hp: 34, spd: 0.75, scale: 0.95, h: 44, skin: '#9ad8b0', hair: '#2a5a46', armor: '#3a7a64', armor2: '#b8ffd8', cloth: '#1e4a3c', wlen: 14, wwid: 2, wcol: '#b8ffd8', windup: 34, rng: 0, dmg: 12, look: 'h', ai: 'wisp' },
   runner: { name: 'SLAG RUNNER', hp: 56, spd: 1.15, scale: 0.9, h: 40, skin: '#8a5a3a', hair: '#2a1408', armor: '#7a2a14', armor2: '#ffae3a', cloth: '#3a1608', wlen: 16, wwid: 3, wcol: '#ff8a3a', windup: 22, rng: 20, dmg: 15, look: 'h', ai: 'runner' },
+  gob: { name: 'LOOT GOBLIN', hp: 1, spd: 1.9, scale: 0.78, h: 34, skin: '#7fbf4a', hair: '#2a3a12', armor: '#6a4a1a', armor2: '#ffd24a', cloth: '#4a3412', wlen: 10, wwid: 3, wcol: '#ffd24a', windup: 99, rng: 0, dmg: 0, look: 'h', ai: 'gob' },
   guard: { name: 'THRONE GUARD', hp: 170, spd: 0.5, scale: 1.25, h: 56, skin: '#6a5a7a', hair: '#120a1c', armor: '#2a1a4a', armor2: '#c87aff', cloth: '#1a1030', wlen: 28, wwid: 6, wcol: '#9a8ab8', windup: 34, rng: 42, dmg: 20, look: 'b', ai: 'guard' },
   wraith: { name: 'EMBER WRAITH', hp: 80, spd: 0.95, scale: 1.05, h: 46, skin: '#f0e0b0', hair: '#fff4c0', armor: '#8a6a30', armor2: '#fffbe0', cloth: '#5a4018', wlen: 26, wwid: 4, wcol: '#fff1b0', windup: 18, rng: 38, dmg: 16, look: 'h', ai: 'wraith' },
   king: { name: 'THE CINDER KING', hp: 760, spd: 0.9, scale: 1.9, h: 84, skin: '#8a7a86', hair: '#1a1018', armor: '#1a1620', armor2: '#ff6a2a', cloth: '#5a1218', wlen: 38, wwid: 5, wcol: '#2a2430', windup: 20, rng: 58, dmg: 20, poise: 90 },
@@ -724,6 +725,7 @@ function dropGear(x, y, rar) {
   else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
 function onKill(e) {
+  if (e.kind === 'gob') { bonusKill(e); return; }
   const boss = isBoss(e); elemDeath(e);
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1))); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
@@ -1214,7 +1216,7 @@ function elemAura() { // tier VI fire: a ring of fire pulses around each hero
 function openChest(c, att) {
   c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
   if (c.hp > 0) return;
-  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1)); rpg.gold += gd; score += gd * 5;
+  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1)); rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
   floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
   if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
   if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
@@ -1561,6 +1563,14 @@ function updateMinion(e) {
     } else if (e.st === 'wind') {
       face(); if (e.t >= k.windup) { shots.push({ type: 'orb', x: e.x + e.face * 18, y: e.y, z: 22, vx: e.face * 1.9, t: 0, dmg: k.dmg, life: 200 }); e.st = 'eatk'; e.t = 0; SFX.swing(); }
     } else if (e.st === 'eatk') { if (e.t >= 14) { e.st = 'idle'; e.t = 0; e.cool = rnd(90, 150); } }
+  } else if (ai === 'gob') { // bonus stage: runs straight across the arena, jinking away from the hero, and never fights back
+    if (e.st === 'idle' || e.st === 'walk') {
+      e.st = 'walk'; e.anim += 0.32; e.face = e.gdir || 1; e.x += (e.gdir || 1) * (e.gv || 2.4); e.gph = (e.gph || 0) + 0.12;
+      let vy = Math.sin(e.gph * 2) * 0.5;
+      if (adx < 46 && Math.abs(dy) < 18) vy += (dy > 0 ? -1 : 1) * 1.6;
+      e.y = clamp(e.y + vy, Y_MIN, Y_MAX);
+      if ((e.gdir > 0 && e.x > cam + W + 30) || (e.gdir < 0 && e.x < cam - 30)) { e.gone = true; if (bonus) bonus.esc++; }
+    }
   } else if (ai === 'runner') { // telegraphs, then dashes straight through you
     if (e.st === 'idle' || e.st === 'walk') {
       face(); e.cool--; chase(60, k.spd);
@@ -1900,7 +1910,7 @@ function drawStory() {
   if ((tickN >> 5) & 1) text(done ? 'PRESS ENTER' : '...', W / 2, 252, 9, '#ffffff', 'center');
 }
 function beginStage(i) {
-  stageIdx = i; const S = STAGES[i]; TH = themeFor(S.theme, actOf(i)); weather = WEATHER[actOf(i)][S.theme]; WAVES = S.waves; STAGE_END = S.end;
+  bonus = null; stageIdx = i; const S = STAGES[i]; TH = themeFor(S.theme, actOf(i)); weather = WEATHER[actOf(i)][S.theme]; WAVES = S.waves; STAGE_END = S.end;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   decals = []; impT = 240; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 190; flashA = 0; shake = 0; freeze = 0;
   intro = null; slashes = []; vents = []; chests = [];
@@ -2103,12 +2113,78 @@ function drawShop() {
   text('W/S CHOOSE   ENTER BUY   I GEAR', W / 2, 250, 8, '#b8a8c8', 'center');
   text('* PREMIUM SHELF: BEST ODDS FOR LEGENDARY AND MYTHIC    DUPLICATES BECOME GOLD', W / 2, 261, 6, '#8a7aa0', 'center');
 }
+/* ---------- bonus stage: after every act boss, ten seconds of loot goblins ---------- */
+let bonus = null;
+const BONUS_AFTER = i => i % 5 === 4 && i < STAGES.length - 1;
+const BONUS_T = 600;
+function beginBonus(next) {
+  const S = STAGES[stageIdx]; TH = themeFor(S.theme, actOf(stageIdx)); weather = null; WAVES = []; STAGE_END = W;
+  cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
+  decals = []; impT = 1e9; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 0; flashA = 0; shake = 0; freeze = 0;
+  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1;
+  for (const p of players()) {
+    if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
+    p.pitT = 0; p.x = p.pn === 2 ? 150 : 120; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 60; p.hits.clear();
+  }
+  bonus = { next, phase: 'ready', t: 0, left: BONUS_T, gold: 0, kills: 0, opened: 0, esc: 0, combo: 0, best: 0, last: -999, spawnT: 0 };
+  mode = 'play'; SFX.big();
+}
+function spawnGob(golden) {
+  const dir = Math.random() < 0.5 ? 1 : -1, f = makeFighter('gob', dir > 0 ? cam - 24 : cam + W + 24, rnd(Y_MIN + 4, Y_MAX - 4));
+  f.hp = f.maxhp = golden ? 3 : 1; f.gdir = dir; f.face = dir; f.gv = rnd(2.0, 3.0) * (golden ? 1.25 : 1); f.gph = rnd(0, 6); f.golden = golden; f.armor = 0;
+  if (golden) { f.k = Object.assign({}, f.k, { name: 'GOLDEN GOBLIN', skin: '#d8c24a', armor: '#c8921a', armor2: '#fff1b0', scale: 0.86 }); f.glow = '255,210,80'; }
+  enemies.push(f); return f;
+}
+function bonusKill(e) {
+  elemDeath(e); const B = bonus; if (!B) return;
+  B.combo = tickN - B.last < 75 ? B.combo + 1 : 1; B.last = tickN; B.best = Math.max(B.best, B.combo); B.kills++;
+  const mult = 1 + Math.min(10, B.combo - 1) * 0.2;
+  const gd = Math.round(5 * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (e.golden ? 4 : 1) * mult * (dailyIs('GOLD RUSH') ? 2 : 1));
+  rpg.gold += gd; B.gold += gd; score += gd * 3;
+  floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', e.golden ? '#fff1b0' : '#ffd24a', e.golden ? 10 : 8);
+  spawn(e.x, e.y, 14, 10, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 2.6, l0: 14, l1: 26, add: true, size: 2, up: 2.4, g: 0.12 }); SFX.pick();
+  if (e.golden || Math.random() < 0.2) { // some goblins drop their loot chest
+    const type = e.golden || Math.random() < 0.08 ? 'gold' : 'wood';
+    chests.push({ x: Math.round(clamp(e.x, cam + 24, cam + W - 24)), y: clamp(e.y, Y_MIN + 4, Y_MAX - 4), open: 0, hp: type === 'gold' ? 3 : 2, type });
+    floatText(e.x, e.y - e.h - 20, type === 'gold' ? 'GOLDEN CHEST!' : 'CHEST!', '#fff1b0', 8);
+  }
+}
+function updateBonus() {
+  const B = bonus; B.t++;
+  for (const p of players()) p.x = clamp(p.x, cam + 12, cam + W - 12);
+  if (B.phase === 'ready') { if (B.t >= 100) { B.phase = 'run'; B.t = 0; msg = 'CATCH THEM ALL!'; msgT = 70; SFX.big(); } return; }
+  if (B.phase === 'run') {
+    B.left--; const prog = 1 - B.left / BONUS_T;
+    if (--B.spawnT <= 0 && B.left > 30) { B.spawnT = Math.round(lerp(20, 10, prog)); const n = Math.random() < 0.25 ? 2 : 1; for (let i = 0; i < n; i++) spawnGob(Math.random() < 0.07); }
+    if (B.left <= 0) { B.phase = 'grace'; B.t = 0; msg = 'TIME UP'; msgT = 80; SFX.land(); }
+  } else if (B.phase === 'grace') {
+    if (B.t >= (chests.some(c => !c.open) ? 170 : 50)) { B.phase = 'done'; B.t = 0; for (const e of enemies) if (!e.dead) e.gone = true; SFX.magic(); saveGame(); }
+  } else if (B.t > 40 && (isHit('start') || isHit('atk') || B.t > 500)) { const n = B.next; bonus = null; chests = []; n(); }
+}
+function drawBonusHud() {
+  const B = bonus, secs = Math.max(0, B.left) / 60;
+  text('BONUS STAGE   GOBLIN TREASURY', W / 2, 31, 8, '#ffd24a', 'center');
+  if (B.phase === 'run' || B.phase === 'ready') { bar(W / 2 - 70, 36, 140, 6, B.left, BONUS_T, B.left < 180 ? '#ff5a3a' : '#ffd24a', '#3a2a10'); text(secs.toFixed(1) + 'S', W / 2, 55, 10, '#fff1b0', 'center'); }
+  text('GOLD +' + B.gold, W / 2, 68, 9, '#ffd24a', 'center');
+  if (B.combo >= 2 && tickN - B.last < 75) text('COMBO x' + B.combo + '   GOLD x' + (1 + Math.min(10, B.combo - 1) * 0.2).toFixed(1), W / 2, 80, 8, '#ff9a4a', 'center');
+  if (B.phase === 'ready') { g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 100, W, 70); text('BONUS STAGE', W / 2, 122, 12, '#ffb43a', 'center'); text('GOBLIN TREASURY', W / 2, 146, 18, '#fff1d0', 'center'); text('10 SECONDS. CATCH THE GOBLINS, SMASH THEIR CHESTS', W / 2, 162, 7, '#c9a8ff', 'center'); }
+  if (B.phase === 'grace' && chests.some(c => !c.open)) text('SMASH THE CHESTS!', W / 2, 110, 12, '#fff1b0', 'center');
+  if (B.phase === 'done') {
+    g.fillStyle = 'rgba(14,8,4,0.9)'; g.fillRect(130, 70, 220, 132); g.strokeStyle = '#ffd24a'; g.strokeRect(130.5, 70.5, 219, 131);
+    text('BONUS CLEAR', W / 2, 92, 13, '#ffd24a', 'center');
+    text('GOBLINS CAUGHT  ' + B.kills, 150, 114, 9, '#e8e0f0'); text('GOBLINS LOST  ' + B.esc, 150, 128, 9, '#9a90a8');
+    text('CHESTS OPENED  ' + B.opened, 150, 142, 9, '#e8e0f0'); text('BEST COMBO  x' + B.best, 150, 156, 9, '#ff9a4a');
+    text('GOLD EARNED  +' + B.gold, W / 2, 178, 11, '#ffd24a', 'center');
+    if (B.t > 40 && (tickN >> 5) & 1) text('PRESS ENTER', W / 2, 194, 8, '#ffffff', 'center');
+  }
+}
 function stageCleared() {
   score += 3000; saveGame(); openShop(() => openForge(afterClear));
 }
-function afterClear() {
+function afterClear(skipBonus) {
   const S = STAGES[stageIdx];
   if (daily && stageIdx >= DAILY_STAGES - 1) { score += 5000; mode = 'victory'; endTimer = 0; TH = THEMES[4]; return; }
+  if (skipBonus !== true && !daily && BONUS_AFTER(stageIdx)) { beginBonus(() => afterClear(true)); return; } // a short gold run after every act boss
   if (stageIdx < STAGES.length - 1) saveRun(stageIdx + 1);
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme, actOf(stageIdx + 1));
   else openStory(cycle === 0 ? 'THE END' : trialName(cycle) + ' COMPLETE', 'EMBERFALL', cycle === 0 ? STORY.ending : STORY.cycleEnd, () => { score += 5000 * (cycle + 1); if (cycle >= 1 && cycle > (rpg.tr | 0)) rpg.tr = Math.min(TRIAL_MAX, cycle); mode = 'victory'; endTimer = 0; TH = THEMES[4]; saveGame(); }, 4);
@@ -2458,6 +2534,7 @@ function spawnFoe(t, x, hasBoss) {
   enemies.push(f); return f;
 }
 function updateStage() {
+  if (bonus) { updateBonus(); return; }
   const w = WAVES[waveIdx];
   if (w && lockX === Infinity && leadX() > w.x - 120) {
     lockX = w.x - 200 > cam ? Math.max(cam, w.x - 200) : cam;
@@ -3373,7 +3450,8 @@ function drawHUD() {
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); drawCoins(W - 46, 46, rpg.coins, 14);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
-  if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
+  if (bonus) drawBonusHud();
+  else if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
   else text((cycle ? trialName(cycle) + '  ' : '') + 'STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, cycle ? '#e0a8ff' : '#b8a8c8', 'center');
   if (stageCard > 0) { const a = Math.min(1, stageCard / 40, (190 - stageCard) / 25); g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(0, 92, W, 70); text((cycle ? trialName(cycle) + '  ' : '') + 'STAGE ' + (stageIdx + 1), W / 2, 114, 12, '#ffb43a', 'center'); text(STAGES[stageIdx].name, W / 2, 138, 20, '#fff1d0', 'center'); text(STAGES[stageIdx].tag, W / 2, 154, 8, '#c9a8ff', 'center'); g.globalAlpha = 1; }
   if (lastEnemy && lastEnemy !== bossRef && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); if (lastEnemy.barrier > 0) bar(W - 142, 30, 130, 4, lastEnemy.barrier, lastEnemy.bmax, '#9ae8ff', '#1a2440'); if (rpg.lvl >= 10) drawElemTags(lastEnemy, W - 160, 21, true); }
