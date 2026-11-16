@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.1';
+const VERSION = '1.35.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2062,11 +2062,11 @@ function beginStage(i) {
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
     const td = dailyIs('TREASURE DAY'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1), k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(), type = r < (dailyIs('TREASURE DAY') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x), y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
   shrines = []; buff = null; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
-  if ((i >= 1 || cycle) && Math.random() < 0.35) {
-    const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
-    for (let tries = 0; tries < 12; tries++) {
+  if (i >= 1 || cycle) {
+    const want = Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0, bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
+    for (let n = 0; n < want; n++) for (let tries = 0; tries < 14; tries++) {
       const x = Math.round(420 + Math.random() * Math.max(60, stop - 420));
-      if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40)) continue;
+      if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40) || shrines.some(q => Math.abs(q.x - x) < 160)) continue;
       shrines.push({ x, y: Math.round(Y_MIN + 14 + Math.random() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: Math.random() < 0.08 }); break;
     }
   }
@@ -3564,7 +3564,7 @@ function bar(x, y, w, h, v, max, c1, c2) {
 }
 function lvText(label, x, y, size, col, align) { // a level line with the blue paragon count after it
   text(label, x, y, size, col, align);
-  if (!(rpg.pg > 0) || rpg.lvl < MAX_LV) return; const w = g.measureText(tr(label)).width, x0 = align === 'center' ? x + w / 2 : x + w;
+  if (rpg.lvl < MAX_LV) return; const w = g.measureText(tr(label)).width, x0 = align === 'center' ? x + w / 2 : x + w;
   text(' +' + rpg.pg, x0, y, size, '#5ab4ff', 'left');
 }
 function text(s, x, y, size, col, align) {
@@ -3604,7 +3604,8 @@ function drawHUD() {
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
   lvText(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
-  bar(12, 40, 110, 2, rpg.lvl >= MAX_LV ? 1 : rpg.xp, rpg.lvl >= MAX_LV ? 1 : xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
+  if (rpg.lvl >= MAX_LV) bar(12, 40, 110, 2, rpg.pg >= PG_MAX ? 1 : rpg.pxp, rpg.pg >= PG_MAX ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); // at the cap the bar fills toward the next paragon point
+  else bar(12, 40, 110, 2, rpg.xp, xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
   { const S = skillOf(hero); if (S) { text('U: ' + skName(S, hero), 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
   for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);

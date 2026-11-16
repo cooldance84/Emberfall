@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.2] - 2026-11-16
+- Paragon is visible from the moment you hit level 70: the level line always carries the blue paragon count (LV 70 +0, +1, +2...), and the thin bar under the health bar becomes a blue bar that fills toward the next paragon point.
+- Shrines are more common: about 55% of stages now have one (was 35%), and one stage in nine has two. Two shrines never stand close together.
+
 ## [1.35.1] - 2026-11-16
 - Chasms fixed: the pit used to be drawn slanted while the game treated it as a straight band, so foes (and heroes) could stand visibly over it without falling, or fall while standing on solid ground. Pits and barricades are now drawn exactly where the rules put them. Foes that back away (archers, casters, retreating soldiers) now stop at the lip of a chasm instead of drifting out over it, soldiers chasing you still hop across, and the fleeing Pilferer jumps over chasms and barricades instead of running on air.
 
