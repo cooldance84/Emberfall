@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.2';
+const VERSION = '1.35.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -970,6 +970,7 @@ function slotBox(x, y, it, sel, ghost) {
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
   if (it && it.set) { g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); }
   if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
+  if (it && it.up > 0) text('+' + it.up, x + 2, y + 8, 7, it.up >= 8 ? '#ff9ae0' : it.up >= 5 ? '#ffb45a' : '#ffd24a'); // forge level, top left (the set mark sits top right)
   if (sel) { g.strokeStyle = (tickN >> 3) & 1 ? '#ffd24a' : '#fff1b0'; g.lineWidth = 2; g.strokeRect(x - 2, y - 2, 30, 30); }
 }
 const eqPos = i => i < 3 ? [16, 34 + i * 44] : [136, 34 + (i - 3) * 44];

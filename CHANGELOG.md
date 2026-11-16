@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.3] - 2026-11-16
+- The forge level is now shown in the top left corner of every item icon (backpack, equipment, blacksmith) as +1, +7 and so on, opposite the set mark: gold up to +4, orange from +5, pink from +8.
+
 ## [1.35.2] - 2026-11-16
 - Paragon is visible from the moment you hit level 70: the level line always carries the blue paragon count (LV 70 +0, +1, +2...), and the thin bar under the health bar becomes a blue bar that fills toward the next paragon point.
 - Shrines are more common: about 55% of stages now have one (was 35%), and one stage in nine has two. Two shrines never stand close together.
