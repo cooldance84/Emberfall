@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.27.0] - 2026-11-16
+- Set pieces are stronger than any mythic: they are built from mythic stats and then rolled above the best mythic roll (about +40% stats on average), always with the mythic elemental affix chance. A single set piece beats a mythic in ~88% of pairs, 2 pieces plus the bonus add about +13-21% overall power, 4 pieces about +25-42%.
+- Because of that, set drops are rarer: 12% of legendary and 30% of mythic drops from item level 50 up (before the Ember Trial luck). Set drops get a green "SET DROP!" banner; old set pieces in existing saves keep their old stats.
+- Foes can climb back onto a free wyrmling lying on the stage: the nearest plain soldier runs to it and mounts it (not elites or brutes), at most twice per wyrmling.
+
 ## [1.26.1] - 2026-11-16
 - Set pieces are green (Diablo style): their backpack slot, icon, tooltip name, forge and shop lists and the item on the ground are drawn in green instead of the rarity colour; the small coloured set marker stays.
 

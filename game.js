@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.26.1';
+const VERSION = '1.27.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -543,7 +543,7 @@ const STATS = {
 const STAT_KEYS = Object.keys(STATS);
 const SLOT_PRIMARY = { weapon: ['str', 'cdmg'], helm: ['crit', 'hit'], armor: ['str', 'hit'], boots: ['hit', 'crit'], ring: ['crit', 'cdmg'], amulet: ['str', 'cdmg', 'crit', 'hit'] };
 /* ---------- gear sets: legendary and mythic pieces from item level 50 up can belong to a set; wear 2 or 4 pieces of the same set for a bonus. Sets combine freely (2+2, 4+2...) ---------- */
-const SET_MIN_LV = 50, SET_CH = { 3: 0.2, 4: 0.35 };
+const SET_MIN_LV = 50, SET_CH = { 3: 0.12, 4: 0.3 }; // set pieces are always built at mythic strength, then boosted: a set piece beats any mythic
 const SETS = {
   vow: { name: 'VOWBOUND', pre: 'Vowbound', col: '#ff6a8a', b: [[2, { crit: 6, cdmg: 25 }], [4, { crit: 14, cdmg: 70 }]] },
   bulwark: { name: 'BULWARK', pre: 'Bulwark', col: '#6ad8ff', b: [[2, { hp: 15 }], [4, { hp: 30, res: 20 }]] },
@@ -687,9 +687,12 @@ function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +le
 }
 const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
-  slot = slot || pickOf(SLOTS); const R = RARITY[rar];
+  slot = slot || pickOf(SLOTS);
   const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV); // drops land around your level; now and then a find a few levels above it
-  const Q = Math.random() ** 1.5, qm = 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic
+  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) ? pickOf(Object.keys(SETS)) : null;
+  if (setId) rar = 4; // a set piece is built from mythic stats...
+  const R = RARITY[rar];
+  const Q = Math.random() ** 1.5, qm = setId ? 1.4 + 0.12 * Q : 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic; a set piece rolls above the best mythic
   const lc = Math.pow(il / 70, 1.6); // item level counts more than before: same strength at level 70, clearly weaker below it
   const sc = k => (k === 'str' || k === 'cdmg') ? 1 + 3.15 * lc : 1 + 0.84 * lc;
   const first = pickOf(SLOT_PRIMARY[slot]);
@@ -699,7 +702,6 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * qm * sc(k))); }
   const WN = slot === 'weapon' && WNAMES[CLS];
   const base = WN ? WN.magic : MAGIC_BASE[slot];
-  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) ? pickOf(Object.keys(SETS)) : null;
   const name = setId ? SETS[setId].pre + ' ' + pickOf(base) : rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
     : rar === 3 ? pickOf(WN ? WN.leg : LEG_NAMES[slot]) : pickOf(WN ? WN.myth : MYTH_NAMES[slot]);
   const it = { slot, rar, name, st, lvl: il, q: Math.round(Q * 100) };
@@ -714,10 +716,11 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
 function dropGear(x, y, rar) {
   const R = RARITY[rar];
   items.push({ x, y, t: 0, kind: 'gear', it: genItem(rar), z: 14, vz: 3.4 });
-  spawn(x, y, 14, 10 + rar * 8, { c: [R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
+  const gi = items[items.length - 1].it; if (gi.set) { rar = 4; }
+  spawn(x, y, 14, 10 + rar * 8, { c: [gi.set ? SET_GREEN : R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
   if (items[items.length - 1].it.q >= 90 && rar < 3) floatText(x, y - 58, 'PERFECT ROLL!', '#ffd24a', 8);
-  const di = items[items.length - 1].it; if (di.set) floatText(x, y - 62, SETS[di.set].name + ' SET DROP!', SETS[di.set].col, 8);
-  if (rar >= 3) { flashA = Math.max(flashA, 0.2); SFX.big(); floatText(x, y - 50, rar === 4 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
+  const di = items[items.length - 1].it; if (di.set) floatText(x, y - 54, SETS[di.set].name + ' SET DROP!', SET_GREEN, 10);
+  if (rar >= 3) { flashA = Math.max(flashA, 0.2); SFX.big(); if (!gi.set) floatText(x, y - 50, rar === 4 ? 'MYTHIC DROP!' : 'LEGENDARY DROP!', R.col, 10); }
   else if (rar === 2) { SFX.magic(); floatText(x, y - 46, 'RARE DROP', R.col, 8); }
 }
 function onKill(e) {
@@ -1488,6 +1491,21 @@ function updateEnemy(e) {
   if (e.k.ai) { updateMinion(e); return; }
   const k = e.k, spdK = (e.mount ? 1.7 : 1) * (e.kind === 'boss' && bossPhase2(e) ? 1.5 : 1), dx = hero.x - e.x, dy = hero.y - e.y;
   const heroDown = hero.dead || hero.st === 'down';
+  if ((e.st === 'idle' || e.st === 'walk') && e.kind === 'h' && !e.mount && !e.elite && mounts.length) { // a foe may climb back onto a free wyrmling lying around: the nearest soldier goes for it
+    const wm = mounts.find(m => !m.flee && !m.gone && m.z < 3 && (m.mobRides | 0) < 2 && Math.abs(m.x - e.x) < 220);
+    if (wm) {
+      const mine = enemies.filter(o => !o.dead && o.kind === 'h' && !o.mount && !o.elite && (o.st === 'idle' || o.st === 'walk')).sort((a, b) => Math.abs(a.x - wm.x) - Math.abs(b.x - wm.x))[0];
+      if (mine === e) {
+        const mdx = wm.x - e.x, mdy = wm.y - e.y;
+        if (Math.abs(mdx) < 16 && Math.abs(mdy) < 9) {
+          e.mount = wm; wm.mobRides = (wm.mobRides | 0) + 1; mounts.splice(mounts.indexOf(wm), 1); e.h = k.h + 12; e.hp = Math.max(e.hp, Math.round(e.maxhp * 0.6)); e.st = 'idle'; e.t = 0; e.cool = Math.max(e.cool, 30);
+          SFX.pick(); sparks(e.x, e.y, 20, true); floatText(e.x, e.y - e.h - 10, 'MOUNTED!', '#ff9a6a', 8); return;
+        }
+        e.face = sgn(mdx) || e.face; e.st = 'walk'; e.anim += 0.2; e.x += sgn(mdx) * k.spd * 1.15; if (Math.abs(mdy) > 4) e.y = clamp(e.y + sgn(mdy) * k.spd * 0.8, Y_MIN, Y_MAX);
+        return;
+      }
+    }
+  }
   if (e.st === 'idle' || e.st === 'walk') {
     e.face = sgn(dx) || e.face; e.cool--;
     const rng = k.rng, inRange = Math.abs(dx) < rng + 4 && Math.abs(dy) < 9;
