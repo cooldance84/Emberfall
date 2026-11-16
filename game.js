@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.8';
+const VERSION = '1.36.9';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1560,6 +1560,10 @@ function mountFire(f, t) {
   }
 }
 const gapAt = (x, m) => gaps.find(q => x > q.x - (m || 0) && x < q.x + q.w + (m || 0));
+function offGap(x, dir) { // a foe arriving from the screen edge must start on solid ground: a spot over a chasm or barricade moves outward past it
+  for (let k = 0; k < 4; k++) { const q = gapAt(x, 22); if (!q) break; x = dir < 0 ? q.x - 24 : q.x + q.w + 24; }
+  return x;
+}
 function heroHazards(f, ox) { // barricades block anyone below their height; chasms swallow anyone who lands in them
   if (f.dead || f.pitT) return;
   for (const q of gaps) {
@@ -1660,6 +1664,8 @@ function updateEnemy(e) { // foes that back away (archers, casters, retreating s
   if (e.dead || e.pitT || isBoss(e) || e.kind === 'imp' || e.hopDir || e.z > 0.5 || e.st === 'down' || e.st === 'hurt' || e.st === 'getup') return;
   const q = gapAt(e.x, 4);
   if (q && q.type === 'pit' && !gapAt(px, 4)) { const h = nearestPlayer(px); if (Math.abs(h.x - e.x) > Math.abs(h.x - px)) e.x = px; }
+  const q2 = gapAt(e.x, -2); // nobody stands over a chasm: a grounded foe that ended up inside one (spawned, shoved, stopped there) is set on the nearer lip
+  if (q2 && q2.type === 'pit') e.x = e.x < q2.x + q2.w / 2 ? q2.x - 7 : q2.x + q2.w + 7;
 }
 function updateEnemy0(e) {
   if (e.el && !e.dead && elemTick(e)) return;
@@ -2381,7 +2387,7 @@ function bossPhase2(e) {
   if (!e.p2 && e.hp < e.maxhp * 0.5) {
     e.p2 = true; e.cool = 30; shake = 12; flashA = 0.4; freeze = 10; msg = 'ENRAGED!'; msgT = 80; sparks(e.x, e.y, e.h * 0.6, true); SFX.big();
     const esc = [MINION[stageIdx % 5] || 'h', stageIdx >= 1 || cycle ? 'warder' : 'h']; // the enraged boss calls in escorts
-    esc.forEach((t, i) => { const f = makeFighter(t, i ? cam + W + 30 : cam - 30, rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && STAGES[stageIdx].tint) f.k = Object.assign({}, f.k, STAGES[stageIdx].tint); enemies.push(f); });
+    esc.forEach((t, i) => { const f = makeFighter(t, offGap(i ? cam + W + 30 : cam - 30, i ? 1 : -1), rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && STAGES[stageIdx].tint) f.k = Object.assign({}, f.k, STAGES[stageIdx].tint); enemies.push(f); });
   }
   return !!e.p2;
 }
@@ -2464,7 +2470,7 @@ function bossAttack(e, dx, p2) {
       break;
     case 'summon':
       if (t === 1) {
-        for (let i = 0; i < 2; i++) { const f = makeFighter('h', i ? cam + W + 30 : cam - 30, rnd(Y_MIN + 6, Y_MAX - 6)); f.k = Object.assign({}, f.k, STAGES[stageIdx].tint || {}); enemies.push(f); }
+        for (let i = 0; i < 2; i++) { const f = makeFighter('h', offGap(i ? cam + W + 30 : cam - 30, i ? 1 : -1), rnd(Y_MIN + 6, Y_MAX - 6)); f.k = Object.assign({}, f.k, STAGES[stageIdx].tint || {}); enemies.push(f); }
         spawn(e.x, e.y, 30, 30, { c: ['#7aff9a', '#2aa860'], add: true, l0: 20, l1: 40, up: 2, g: 0.02 }); SFX.magic();
       }
       if (t >= 16) end(60);
@@ -2737,7 +2743,7 @@ function updateStage() {
     const hasBoss = w.e.some(t => BOSSES[t]), list = buildList(w); let rode = false;
     list.forEach((t, i) => {
       const side = i % 2 ? 1 : -1;
-      const ex = side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22;
+      const ex = offGap(side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22, side);
       const f = spawnFoe(t, ex, hasBoss);
       if (t === 'h' && !rode && ((stageIdx === 0 && !cycle && waveIdx === 0 && i === 0) || Math.random() < 0.08 + 0.02 * Math.min(stageIdx + cycle, 5))) { rode = true; f.mount = makeMount(0, 0, 0, pickMountType()); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } // wyrmlings are rare now: at most one per wave
     });

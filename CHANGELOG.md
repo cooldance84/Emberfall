@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.9] - 2026-11-17
+- Foes no longer stand over a chasm. Reinforcements arriving at the screen edge start beside a chasm or barricade instead of on it, and any grounded foe that ends up inside a chasm is set on the nearer lip. Chasers still hop across as before.
+
 ## [1.36.8] - 2026-11-17
 - Fix: the game could freeze during an ultimate (or any skill) in a big crowd with the Lightning element. An overcharged or higher-tier chain handed out more shock than a foe needs to fire again, so the arcs bounced between foes forever. A fired chain now hands out less than that and all element chains are cut off after a few hops.
 
