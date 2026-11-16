@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.6] - 2026-11-16
+- Melee heroes close the gap to ranged play: Luca's attacks now dart at the nearest foe up to about 64 px ahead (and line up with it), and Nolan's third hit drives forward. Nolan's sword swing is also no longer interrupted by light blows (heavy blows still knock him down). Panni is unchanged.
+
 ## [1.36.5] - 2026-11-16
 - Skills (including the level-70 ultimate) can now be cast while riding a wyrmling; the mount stays under the rider.
 

@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.5';
+const VERSION = '1.36.6';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1179,7 +1179,10 @@ function hurt(e, dmg, kind, from) {
   }
   if (isBoss(e) && e.hp > 0) { e.armor -= dmg; if (e.armor <= 0) { e.armor = e.k.poise || 70; knock = true; } else knock = false; }
   if (knock) { e.st = 'down'; e.t = 0; e.vz = 3.2; e.vx = dir * 2.1; e.z = Math.max(e.z, 0.01); e.combo = 0; }
-  else if (!isBoss(e)) { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
+  else if (!isBoss(e)) { // Nolan's heavy sword swing is not interrupted by light blows (heavy ones still knock him down)
+    if (e.pn && e.k && e.k.cls === 'nolan' && e.st === 'atk' && !e.sk && kind !== 'down' && e.z <= 3 && e.t >= comboOf(e)[e.combo].a - 2 && e.t <= comboOf(e)[e.combo].b + 2) spawn(e.x, e.y, e.z + 26, 5, { c: ['#fff1b0', '#ffd24a'], l0: 6, l1: 12, add: true });
+    else { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
+  }
   return true;
 }
 const elBase = () => 9 * pstats().mult * (buffIs('fury') ? 1.3 : 1) * (1 + elemPower() / 100);
@@ -1400,7 +1403,16 @@ function strike(att, box, dmg, kind, targets) {
     } else hurt(e, dmg, kind, att);
   }
 }
-function startAttack(f, n) { f.st = 'atk'; f.combo = n; f.t = 0; f.queued = false; f.hits.clear(); f.vx = f.face * 1.3; }
+function startAttack(f, n) {
+  f.st = 'atk'; f.combo = n; f.t = 0; f.queued = false; f.hits.clear(); f.vx = f.face * 1.3;
+  const cls = f.k && f.k.cls;
+  if (cls === 'nolan' && n === 2) f.vx = f.face * 4.5; // the heavy finisher drives forward
+  if (cls === 'luca') { // the rogue darts at the nearest foe ahead of him, so melee closes the gap by itself
+    let tg = null, bd = 64;
+    for (const o of enemies) { if (o.dead || o.kind === 'imp' || o.z > 24 || sgn(o.x - f.x) !== f.face || Math.abs(o.y - f.y) > 30) continue; const d = Math.abs(o.x - f.x); if (d < bd) { bd = d; tg = o; } }
+    if (tg && bd > 30) { f.vx = f.face * Math.min(11, (bd - 28) / 5.2 + 1.3); f.y = clamp(f.y + clamp(tg.y - f.y, -6, 6), Y_MIN, Y_MAX); }
+  }
+}
 const COMBO = [{ d: 15, a: 4, b: 8, dmg: 9, kind: 'hurt' }, { d: 15, a: 4, b: 8, dmg: 9, kind: 'hurt' }, { d: 25, a: 7, b: 12, dmg: 16, kind: 'down' }];
 const LCOMBO = [{ d: 10, a: 3, b: 6, dmg: 6, kind: 'hurt' }, { d: 10, a: 3, b: 6, dmg: 6, kind: 'hurt' }, { d: 11, a: 3, b: 6, dmg: 7, kind: 'hurt' }, { d: 19, a: 5, b: 9, dmg: 12, kind: 'down' }];
 const PCOMBO = [{ d: 16, a: 5, b: 8, dmg: 8, kind: 'hurt' }, { d: 16, a: 5, b: 8, dmg: 8, kind: 'hurt' }, { d: 28, a: 9, b: 12, dmg: 17, kind: 'down', big: true }];
