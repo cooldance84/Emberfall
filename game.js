@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.6';
+const VERSION = '1.35.7';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -665,7 +665,7 @@ function rollHit(dmg) { // hit chance, crit chance, crit damage, STR
   return { crit, d: Math.max(1, Math.round(dmg * s.mult * (buffIs('fury') ? 1.3 : 1) * (crit ? s.cdmg / 100 : 1) * rnd(0.93, 1.07))) };
 }
 /* ---------- paragon: after level 70 the experience goes on, and every paragon point adds a little of everything ---------- */
-const PG_MAX = 100, pgNeed = n => 6000 + 120 * n;
+const PG_MAX = 100, pgNeed = n => 4500 + 80 * n;
 const pgHp = () => 1 + 0.008 * (rpg.pg | 0), pgDmg = () => 1 + 0.007 * (rpg.pg | 0), pgRes = () => 0.003 * (rpg.pg | 0); // +0.8% life, +0.7% damage, 0.3% less damage taken per point
 /* kill combo: foes killed within three seconds of each other build a combo that adds up to +75% experience; any hit on a hero breaks it */
 let killCombo = 0, killComboT = -999;

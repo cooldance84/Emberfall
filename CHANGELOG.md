@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.7] - 2026-11-16
+- Paragon points come faster: the first costs 4,500 XP (was 6,000) and each further point 80 more (was 120 more), so all 100 points take about 846,000 XP instead of 1,194,000. What a point gives is unchanged. Points you already earned stay, and any leftover XP converts at the new price.
+
 ## [1.35.6] - 2026-11-16
 - The bonus stage summary now also shows the experience earned (XP EARNED), under the gold.
 
