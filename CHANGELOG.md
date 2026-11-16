@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.32.0] - 2026-11-16
+- Bosses reward a max-level hero better: at level 70 a boss's first drop is always at least legendary, and the set chance of all its drops is 50% higher. A boss kill now yields a set piece about 24% of the time in the campaign (up from about 7%), 28% in Trial I and 35% in Trial III. Regular foes are unchanged (around 1% per brute).
+
 ## [1.31.1] - 2026-11-16
 - Frost and lightning stack like fire: from elemental tier V every new freeze/shock adds a layer (up to three). Frost layers deepen the slow (and its cap) and raise frostbite damage; lightning layers raise shock damage and the chain damage. Layers fall off when the status ends. Re-balanced so the three elements stay within about 10% of each other on a single target.
 

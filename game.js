@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.31.1';
+const VERSION = '1.32.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -544,6 +544,7 @@ const STATS = {
 const STAT_KEYS = Object.keys(STATS);
 const SLOT_PRIMARY = { weapon: ['str', 'cdmg'], helm: ['crit', 'hit'], armor: ['str', 'hit'], boots: ['hit', 'crit'], ring: ['crit', 'cdmg'], amulet: ['str', 'cdmg', 'crit', 'hit'] };
 /* ---------- gear sets: legendary and mythic pieces from item level 50 up can belong to a set; wear 2 or 4 pieces of the same set for a bonus. Sets combine freely (2+2, 4+2...) ---------- */
+let setBoost = 1; // bosses of a max-level hero raise the set chance by half for their drops
 const SET_MIN_LV = 50, SET_CH = { 3: 0.12, 4: 0.3 }; // set pieces are always built at mythic strength, then boosted: a set piece beats any mythic
 const SETS = {
   vow: { name: 'VOWBOUND', pre: 'Vowbound', col: '#ff6a8a', b: [[2, { crit: 6, cdmg: 25 }], [4, { crit: 14, cdmg: 70 }]] },
@@ -690,7 +691,7 @@ const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS);
   const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV); // drops land around your level; now and then a find a few levels above it
-  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) ? pickOf(Object.keys(SETS)) : null;
+  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) * setBoost ? pickOf(Object.keys(SETS)) : null;
   if (setId) rar = 4; // a set piece is built from mythic stats...
   const R = RARITY[rar];
   const Q = Math.random() ** 1.5, qm = setId ? 1.4 + 0.12 * Q : 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic; a set piece rolls above the best mythic
@@ -734,12 +735,16 @@ function onKill(e) {
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1))); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
   const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
+  const bigBoss = boss && rpg.lvl >= MAX_LV; // at max level a boss always drops at least a legendary first and raises the set chance of all its drops by half
+  setBoost = bigBoss ? 1.5 : 1;
   for (let i = 0; i < n; i++) {
     let r = rollRarity();
-    if (boss && tierOf() === 1) r = 1;                       // stage 2 boss: two magic drops
+    if (bigBoss && i === 0) r = Math.max(3, r);
+    else if (boss && tierOf() === 1) r = 1;                  // stage 2 boss: two magic drops
     else if (boss && i === 0 && tierOf() >= 2) r = Math.max(1, r);
     dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
   }
+  setBoost = 1;
 }
 const GOLD_MULT = [1, 3, 5, 8, 20];
 const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar] * (1 + 0.25 * (it.up | 0)));
