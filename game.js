@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.3';
+const VERSION = '1.35.4';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1190,6 +1190,10 @@ function elemBuild(e, el, amt, T, noSpread) {
   const rs = clamp((ELEM_RES[e.kind] || {})[el] || 1, 0.4, 1.4) * (isBoss(e) ? 0.8 : 1); amt *= rs;
   S[el] += amt;
   if (el === 'fire' && S.burn > 0) S.burn = Math.max(S.burn, 150 + 25 * T);
+  if (!noSpread && T >= 5 && (el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.shk > 0)) { // from tier V an afflicted foe takes its next layer after fewer direct hits: a separate quick-layer meter (chained and spread build-up never counts), so the main build-up and its bursts are untouched
+    S.lq = (S.lq || 0) + amt;
+    if (S.lq >= 65) { S.lq -= 65; if (el === 'fire') S.bst = Math.min(3, S.bst + 1); else if (el === 'frost') S.fst = Math.min(3, (S.fst | 0) + 1); else S.sst = Math.min(3, (S.sst | 0) + 1); }
+  }
   if (S[el] < 100) return; S[el] -= 100;
   const base = elBase(), col = ELEM[el].col, cap = isBoss(e) ? 0.4 : 1;
   if (el === 'fire') {
@@ -1250,7 +1254,7 @@ function elemProc(e, att, dealt, isSkill) {
 }
 function elemTick(e) { // once per frame per afflicted monster; true when it loses this frame (frozen, stunned, slowed)
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
-  for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35);
+  for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35); if (S.lq > 0) S.lq = Math.max(0, S.lq - 0.35);
   if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--;
   if (!(S.chill > 0 || S.frz > 0)) { S.fst = 0; if (S.fdbl) { S.fdbl = 0; S.bsk = null; } } if (S.bsk && rpg.elem === 'bolt' && !(S.bolt >= 1 || S.stun > 0)) S.bsk = null;
   if (S.frz > 0) { S.frz--; if (tickN % 12 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#e8faff', '#7ad8ff'], l0: 8, l1: 16, add: true, size: 1, g: 0 }); }
