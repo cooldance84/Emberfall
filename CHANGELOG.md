@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.35.5] - 2026-11-16
+- Bonus stage goblins now give experience like any other foe (no extra multiplier) and count toward the kill combo, so a fast run also earns the combo's XP bonus; it shows as XP +N% under the gold counter.
+
 ## [1.35.4] - 2026-11-16
 - Elemental layers build faster: from tier V, a foe that is already burning, chilled/frozen or shocked takes its next layer after about 65% of the usual hits, tracked on a separate meter so ignitions, freezes, shocks and their bursts are unchanged. Three layers now take about 4 seconds of normal hits instead of 6 to 7. Chained and spread build-up does not count, so lightning cannot feed itself. Damage per element stays level (tier VII single target 18.5 / 18.5 / 16.7, groups unchanged).
 

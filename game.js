@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.35.4';
+const VERSION = '1.35.5';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2280,7 +2280,7 @@ function beginBonus(next) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 150 : 120; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 60; p.hits.clear();
   }
-  bonus = { next, phase: 'ready', t: 0, left: BONUS_T, gold: 0, kills: 0, opened: 0, esc: 0, combo: 0, best: 0, last: -999, spawnT: 0 };
+  killCombo = 0; bonus = { next, phase: 'ready', t: 0, left: BONUS_T, gold: 0, kills: 0, opened: 0, esc: 0, combo: 0, best: 0, last: -999, spawnT: 0 };
   mode = 'play'; SFX.big();
 }
 function spawnGob(golden) {
@@ -2293,6 +2293,8 @@ function bonusKill(e) {
   elemDeath(e); const B = bonus; if (!B) return;
   B.combo = tickN - B.last < 75 ? B.combo + 1 : 1; B.last = tickN; B.best = Math.max(B.best, B.combo); B.kills++;
   const mult = 1 + Math.min(10, B.combo - 1) * 0.2;
+  killCombo = (tickN - killComboT <= KC_WINDOW ? killCombo : 0) + 1; killComboT = tickN; // goblins feed the experience combo too, and pay a normal foe's experience with no extra multiplier
+  gainXP(Math.round(10 * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1) * (1 + kcBonus())));
   const gd = Math.round(5 * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (e.golden ? 4 : 1) * mult * (dailyIs('GOLD RUSH') ? 2 : 1));
   rpg.gold += gd; B.gold += gd; score += gd * 3;
   floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', e.golden ? '#fff1b0' : '#ffd24a', e.golden ? 10 : 8);
@@ -2321,6 +2323,7 @@ function drawBonusHud() {
   text('BONUS STAGE   GOBLIN TREASURY', W / 2, 31, 8, '#ffd24a', 'center');
   if (B.phase === 'run' || B.phase === 'ready') { bar(W / 2 - 70, 36, 140, 6, B.left, BONUS_T, B.left < 180 ? '#ff5a3a' : '#ffd24a', '#3a2a10'); text(secs.toFixed(1) + 'S', W / 2, 55, 10, '#fff1b0', 'center'); }
   text('GOLD +' + B.gold, W / 2, 68, 9, '#ffd24a', 'center');
+  if (killCombo >= 2 && tickN - killComboT <= KC_WINDOW) text('XP +' + Math.round(kcBonus() * 100) + '%', W / 2, 90, 8, '#8fc8ff', 'center');
   if (B.combo >= 2 && tickN - B.last < 75) text('COMBO x' + B.combo + '   GOLD x' + (1 + Math.min(10, B.combo - 1) * 0.2).toFixed(1), W / 2, 80, 8, '#ff9a4a', 'center');
   if (B.phase === 'ready') { g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 100, W, 70); text('BONUS STAGE', W / 2, 122, 12, '#ffb43a', 'center'); text('GOBLIN TREASURY', W / 2, 146, 18, '#fff1d0', 'center'); text('10 SECONDS. CATCH THE GOBLINS, SMASH THEIR CHESTS', W / 2, 162, 7, '#c9a8ff', 'center'); }
   if (B.phase === 'grace') { const open = chests.some(c => !c.open), loot = items.some(i => i.kind === 'gear'); if (open || loot) { text(open ? 'SMASH THE CHESTS!' : 'GRAB THE LOOT!', W / 2, 110, 12, '#fff1b0', 'center'); bar(W / 2 - 50, 116, 100, 4, 720 - B.t, 720, '#ffd24a', '#3a2a10'); } }
