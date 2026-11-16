@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.6';
+const VERSION = '1.36.7';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -629,13 +629,14 @@ function pstats() {
   s.maxhp = Math.round((C.hp0 + rpg.lvl * C.hpl + (CLS === 'nolan' ? s.str >> 1 : s.str >> 2)) * (1 + setBonus('hp') / 100) * pgHp());
   return (PS = s);
 }
-const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a6a24', armor2: '#ffe84a', cloth: '#6a5a14', blade: '#fff6b0' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }];
+const GEAR_COL = [null, { armor: '#2a4a7a', armor2: '#5a9cff', cloth: '#26366e', blade: '#a8d0ff' }, { armor: '#7a6a24', armor2: '#ffe84a', cloth: '#6a5a14', blade: '#fff6b0' }, { armor: '#7a4a1a', armor2: '#ffb43a', cloth: '#7a4a10', blade: '#ffe0a0' }, { armor: '#6a1a3a', armor2: '#ff4a88', cloth: '#6a1040', blade: '#ffa8c8' }, { armor: '#1a5a2e', armor2: '#46e06a', cloth: '#14482a', blade: '#b8ffc8' }]; // the last entry is the set green
+const flm = (t, g) => t >= 5 ? `rgb(70,${g},110)` : `rgb(255,${g},40)`; // flame trim: orange, or green on set gear
 function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape and weapon
-  const r = sl => eq[sl] ? eq[sl].rar : 0, top = Math.max(r('helm'), r('armor'), r('boots')), base = KINDS[CLASSES[c].kind];
+  const r = sl => eq[sl] ? (eq[sl].set ? 5 : eq[sl].rar) : 0, top = Math.max(r('helm'), r('armor'), r('boots')), base = KINDS[CLASSES[c].kind];
   const o = Object.assign({}, base);
   const A = GEAR_COL[r('armor')], T = GEAR_COL[top], C = GEAR_COL[Math.max(r('ring'), r('amulet'))], B = GEAR_COL[r('weapon')];
   if (A) o.armor = A.armor; if (T) o.armor2 = T.armor2; if (C) o.cloth = C.cloth; if (B) o.wcol = B.blade;
-  const tier = sl => eq[sl] ? [1, 2, 3, 3, 4][eq[sl].rar] : 0; // look tier: 0 nothing, 1 common, 2 magic, 3 rare/legendary (tinted apart), 4 mythic
+  const tier = sl => eq[sl] ? (eq[sl].set ? 5 : [1, 2, 3, 3, 4][eq[sl].rar]) : 0; // look tier: 0 nothing, 1 common, 2 magic, 3 rare/legendary (tinted apart), 4 mythic, 5 set piece (the mythic look in set green)
   o.gt = { helm: tier('helm'), armor: tier('armor'), boots: tier('boots'), weapon: tier('weapon'), ring: tier('ring'), amulet: tier('amulet') };
   if (!o.gt.armor) { // no armour: a plain tunic, robe or leathers
     if (c === 'panni') { o.armor = '#3a2a6a'; o.armor2 = '#9a7ad8'; o.cloth = '#2a1a5a'; }
@@ -645,15 +646,16 @@ function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape 
   if (o.gt.weapon >= 3) o.wlen = base.wlen + 3;
   o.wup = eq.weapon ? eq.weapon.up | 0 : 0;
   o.gup = Math.max(0, ...SLOTS.filter(sl => sl !== 'weapon').map(sl => eq[sl] ? eq[sl].up | 0 : 0)); // best forge level on the other gear
-  o.glowRgb = Math.max(0, ...SLOTS.map(r)) >= 2 ? RARITY[Math.max(...SLOTS.map(r))].rgb : null;
+  const top5 = Math.max(0, ...SLOTS.map(r)); o.glowRgb = top5 >= 5 ? SET_GREEN_RGB : top5 >= 2 ? RARITY[top5].rgb : null;
   return o;
 }
 function gearLook() {
   for (const p of players()) {
     const c = p.pn === 2 ? CLS2 : CLS; p.k = lookFor(c, rpg.eq); p.glow = p.k.glowRgb;
     if (p.pn === 2 && c === CLS) p.k.hair = '#4a3ab0';
-    if (rpg.elem && elemTier()) { p.k.wcol = ELEM[rpg.elem].col2; p.glow = ELEM[rpg.elem].rgb; }
+    if (rpg.elem && elemTier()) { if (!(rpg.eq.weapon && rpg.eq.weapon.set)) p.k.wcol = ELEM[rpg.elem].col2; p.glow = ELEM[rpg.elem].rgb; }
     else if (p.k.gup >= 5 && !p.glow) p.glow = '255,200,90';
+    if (SLOTS.some(sl => rpg.eq[sl] && rpg.eq[sl].set)) p.glow = SET_GREEN_RGB; // a faint green glow shows that set gear is worn
   }
 }
 function heroStats(full) {
@@ -972,6 +974,7 @@ function slotBox(x, y, it, sel, ghost) {
   g.strokeStyle = it ? IC : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
   if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, IC);
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
+  if (it && it.set) { g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(${SET_GREEN_RGB},${0.07 + Math.sin(tickN * 0.08) * 0.04})`; g.fillRect(x, y, 26, 26); g.globalCompositeOperation = 'source-over'; } // faint pulse on set pieces
   if (it && it.set) { g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); }
   if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
   if (it && it.up > 0) text('+' + it.up, x + 2, y + 8, 7, it.up >= 8 ? '#ff9ae0' : it.up >= 5 ? '#ffb45a' : '#ffd24a'); // forge level, top left (the set mark sits top right)
@@ -3010,23 +3013,23 @@ function drawWeapon(g, C, kind, len, gt) {
   if (kind === 'hero') {
     R(-1.5, -3, 3, 10, '#4a2e1a'); R(-1.5, -3, 1, 10, '#6b4426');
     R(-6, -6, 12, 3, '#c9962e'); R(-6, -6, 12, 1, '#ffe08a'); R(-2.5, 7, 5, 3, '#c9962e');
-    const wt = gt | 0, bc = ['#8a8f99', '#a9bdd6', '#8cc4ff', '#ffd870', '#ff7a3a'][wt], b2 = ['#c8ccd6', '#f4fbff', '#e6f6ff', '#fff6d0', '#fff0a0'][wt], b3 = ['#5a5e68', '#6f86a3', '#4a7ac8', '#c8962e', '#c8401a'][wt];
+    const wt = gt | 0, bc = ['#8a8f99', '#a9bdd6', '#8cc4ff', '#ffd870', '#ff7a3a', '#46e06a'][wt], b2 = ['#c8ccd6', '#f4fbff', '#e6f6ff', '#fff6d0', '#fff0a0', '#d8ffe0'][wt], b3 = ['#5a5e68', '#6f86a3', '#4a7ac8', '#c8962e', '#c8401a', '#1a7a3a'][wt];
     P([-2.6, -6, 2.6, -6, 2, -len, 0, -len - 5, -2, -len], bc);
     R(-1.2, -len + 2, 1.6, len - 8, b2); R(1, -len + 2, 1.3, len - 8, b3);
-    if (wt >= 2) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 2 ? 'rgba(120,190,255,0.22)' : wt === 3 ? 'rgba(255,220,120,0.26)' : 'rgba(255,120,50,0.3)'; g.fillRect(-4, -len - 4, 8, len); g.globalCompositeOperation = 'source-over'; }
-    if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; for (let i = 0; i < 4; i++) { const fy = -len + 4 + i * ((len - 12) / 3); P([2.4, fy, 5 + f2 * 2.5, fy - 4 - f2 * 2, 2.4, fy - 7], i % 2 ? '#ff8a2a' : '#ffd070'); } }
+    if (wt >= 2) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 2 ? 'rgba(120,190,255,0.22)' : wt === 3 ? 'rgba(255,220,120,0.26)' : wt >= 5 ? 'rgba(70,224,106,0.3)' : 'rgba(255,120,50,0.3)'; g.fillRect(-4, -len - 4, 8, len); g.globalCompositeOperation = 'source-over'; }
+    if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; for (let i = 0; i < 4; i++) { const fy = -len + 4 + i * ((len - 12) / 3); P([2.4, fy, 5 + f2 * 2.5, fy - 4 - f2 * 2, 2.4, fy - 7], i % 2 ? (wt >= 5 ? '#46e06a' : '#ff8a2a') : (wt >= 5 ? '#b8ffc8' : '#ffd070')); } }
   } else if (kind === 'pstaff') { // Panni's staff: the crystal glows brighter with rarer weapons
-    const wt = gt | 0, gc = ['#b88aff', '#d8d0e8', '#7ab0ff', '#ffd870', '#ff6aa8'][wt], gl = 0.6 + Math.sin(tickN * 0.2) * 0.4;
+    const wt = gt | 0, gc = ['#b88aff', '#d8d0e8', '#7ab0ff', '#ffd870', '#ff6aa8', '#46e06a'][wt], gl = 0.6 + Math.sin(tickN * 0.2) * 0.4;
     R(-1.2, -len + 2, 2.4, len + 12, '#4a3020'); R(-1.2, -len + 2, 0.8, len + 12, '#6a4a30');
     P([-4, -len + 2, 0, -len - 3, 4, -len + 2, 0, -len + 5], '#c9962e');
     g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(200,170,255,${0.25 + gl * 0.25})`; g.fillRect(-5, -len - 12, 10, 10); g.globalCompositeOperation = 'source-over';
     P([0, -len - 12, 3.5, -len - 6, 0, -len - 1, -3.5, -len - 6], gc); R(-1, -len - 9, 1.5, 3, '#ffffff');
-    if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; P([-3, -len - 10, 0, -len - 17 - f2 * 3, 3, -len - 10], '#ffd070'); }
+    if (wt >= 4) { const f2 = 0.5 + Math.sin(tickN * 0.35) * 0.5; P([-3, -len - 10, 0, -len - 17 - f2 * 3, 3, -len - 10], wt >= 5 ? '#b8ffc8' : '#ffd070'); }
   } else if (kind === 'dagger') {
-    const wt = gt | 0, bc = ['#8a8f99', '#a9bdd6', '#8cc4ff', '#ffd870', '#ff7a3a'][wt];
+    const wt = gt | 0, bc = ['#8a8f99', '#a9bdd6', '#8cc4ff', '#ffd870', '#ff7a3a', '#46e06a'][wt];
     R(-1.2, -2, 2.4, 6, '#2a1a12'); R(-3.5, -3, 7, 1.8, '#8a7a5a');
     P([-1.8, -3, 1.8, -3, 1.2, -len, 0, -len - 3, -1.2, -len], bc); R(-0.4, -len + 1, 0.9, len - 4, '#f4fbff');
-    if (wt >= 3) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 3 ? 'rgba(255,220,120,0.3)' : 'rgba(255,120,50,0.35)'; g.fillRect(-3, -len - 3, 6, len); g.globalCompositeOperation = 'source-over'; }
+    if (wt >= 3) { g.globalCompositeOperation = 'lighter'; g.fillStyle = wt === 3 ? 'rgba(255,220,120,0.3)' : wt >= 5 ? 'rgba(70,224,106,0.32)' : 'rgba(255,120,50,0.35)'; g.fillRect(-3, -len - 3, 6, len); g.globalCompositeOperation = 'source-over'; }
   } else if (kind === 'h') {
     R(-1.5, -len + 4, 3, len + 6, '#6b4a2a'); R(-1.5, -len + 4, 1, len + 6, '#8a6238');
     P([1.5, -len, 10, -len - 5, 11, -len + 9, 1.5, -len + 6], '#8a8f99'); P([1.5, -len + 1, 7, -len - 2, 7, -len + 6, 1.5, -len + 5], '#b9bec8'); R(10, -len - 4, 1.4, 12, '#e8edf5');
@@ -3169,7 +3172,7 @@ function drawHuman(f, sx, sy) {
     R(-3 + o * 0.9, -17 - bob, 6, 9, c); R(-3 + o * 0.9 + 3, -17 - bob, 3, 9, dk(c));
     R(-3 + o * 0.5, -9 - bob, 5, 6, c); R(-3 + o * 0.5, -9 - bob, 2, 6, lt(c));
     R(-4 + o * 0.9, -12 - bob, 7, 2, k.armor2); // knee guard
-    if (bT) { const BC = [null, ['#4a3624', '#6a4c32', '#8a6a44'], ['#243a5a', '#3a5a8a', '#8cc4ff'], ['#7a5a16', '#c9962e', '#ffe08a'], ['#2a1020', '#4a1a30', '#ff6a2a']][bT]; R(-4 + o * 0.2, -4, 8, 4, b < 1 ? BC[0] : BC[1]); R(-4 + o * 0.2 + 5, -4, 3, 4, dk(BC[0])); R(-4 + o * 0.2, -4, 8, 1, BC[2]); if (bT >= 2) R(-4 + o * 0.5, -9 - bob, 6, 1.5, BC[2]); if (bT >= 3) { R(-4 + o * 0.2 - 2, -5, 2, 2, BC[2]); } }
+    if (bT) { const BC = [null, ['#4a3624', '#6a4c32', '#8a6a44'], ['#243a5a', '#3a5a8a', '#8cc4ff'], ['#7a5a16', '#c9962e', '#ffe08a'], ['#2a1020', '#4a1a30', '#ff6a2a'], ['#10301a', '#1a5a2e', '#46e06a']][bT]; R(-4 + o * 0.2, -4, 8, 4, b < 1 ? BC[0] : BC[1]); R(-4 + o * 0.2 + 5, -4, 3, 4, dk(BC[0])); R(-4 + o * 0.2, -4, 8, 1, BC[2]); if (bT >= 2) R(-4 + o * 0.5, -9 - bob, 6, 1.5, BC[2]); if (bT >= 3) { R(-4 + o * 0.2 - 2, -5, 2, 2, BC[2]); } }
     else { R(-4 + o * 0.2, -4, 8, 4, b < 1 ? '#0e080c' : '#1c1219'); R(-4 + o * 0.2 + 5, -4, 3, 4, '#2e2230'); R(-4 + o * 0.2, -4, 8, 1, '#3a2c3c'); }
   }
   // tasset / loincloth
@@ -3186,9 +3189,9 @@ function drawHuman(f, sx, sy) {
     const fl = 0.6 + Math.sin(tickN * 0.2 + f.x) * 0.4; g.globalAlpha *= 1; R(-4 + lean, -30 - bob, 1, 5, `rgb(255,${140 + fl * 80 | 0},40)`); R(3 + lean, -27 - bob, 1, 4, `rgb(255,${130 + fl * 80 | 0},40)`); R(-3 + lean, -25 - bob, 3, 1, '#ff9a3a');
   }
   if (kind === 'hero') {
-    if (aT >= 1) { const ac = ['', '#b8a888', '#c8d0dc', '#ffe08a', '#ff6a2a'][aT]; R(-8 + lean, -36 - bob, 16, 1, ac); if (aT >= 2) R(-5 + lean, -24 - bob, 10, 1, ac); if (aT >= 3) { P([-9 + lean, -36 - bob, -14 + lean, -42 - bob, -6 + lean, -34 - bob], ac); P([9 + lean, -36 - bob, 13 + lean, -41 - bob, 6 + lean, -34 - bob], ac); } }
-    if (aT >= 4) { const fl = 0.6 + Math.sin(tickN * 0.2) * 0.4; R(-4 + lean, -30 - bob, 1, 5, `rgb(255,${140 + fl * 80 | 0},40)`); R(3 + lean, -27 - bob, 1, 4, `rgb(255,${130 + fl * 80 | 0},40)`); R(-3 + lean, -25 - bob, 1, 3, `rgb(255,${150 + fl * 80 | 0},40)`); if (tickN % 9 === 0 && !f.dead) spawn(f.x - f.face * 4, f.y, 30, 1, { c: ['#ffb43a', '#ff6a2a'], s0: 0.1, s1: 0.4, l0: 14, l1: 26, add: true, size: 1, up: 0.8, g: -0.01 }); }
-    if (amT) { const gc = ['', '#cfd4de', '#5a9cff', '#ffb43a', '#ff4a88'][amT], gl = 0.6 + Math.sin(tickN * 0.15) * 0.4; R(-1.5 + lean, -35 - bob, 3, 3, gc); R(-0.5 + lean, -35 - bob, 1, 1, '#fff'); if (amT >= 3) { R(-2.5 + lean, -36 - bob, 5, 1, `rgba(255,255,255,${0.3 + gl * 0.4})`); } }
+    if (aT >= 1) { const ac = ['', '#b8a888', '#c8d0dc', '#ffe08a', '#ff6a2a', '#46e06a'][aT]; R(-8 + lean, -36 - bob, 16, 1, ac); if (aT >= 2) R(-5 + lean, -24 - bob, 10, 1, ac); if (aT >= 3) { P([-9 + lean, -36 - bob, -14 + lean, -42 - bob, -6 + lean, -34 - bob], ac); P([9 + lean, -36 - bob, 13 + lean, -41 - bob, 6 + lean, -34 - bob], ac); } }
+    if (aT >= 4) { const fl = 0.6 + Math.sin(tickN * 0.2) * 0.4; R(-4 + lean, -30 - bob, 1, 5, flm(aT, 140 + fl * 80 | 0)); R(3 + lean, -27 - bob, 1, 4, flm(aT, 130 + fl * 80 | 0)); R(-3 + lean, -25 - bob, 1, 3, flm(aT, 150 + fl * 80 | 0)); if (tickN % 9 === 0 && !f.dead) spawn(f.x - f.face * 4, f.y, 30, 1, { c: aT >= 5 ? ['#9affb8', '#46e06a'] : ['#ffb43a', '#ff6a2a'], s0: 0.1, s1: 0.4, l0: 14, l1: 26, add: true, size: 1, up: 0.8, g: -0.01 }); }
+    if (amT) { const gc = ['', '#cfd4de', '#5a9cff', '#ffb43a', '#ff4a88', '#46e06a'][amT], gl = 0.6 + Math.sin(tickN * 0.15) * 0.4; R(-1.5 + lean, -35 - bob, 3, 3, gc); R(-0.5 + lean, -35 - bob, 1, 1, '#fff'); if (amT >= 3) { R(-2.5 + lean, -36 - bob, 5, 1, `rgba(255,255,255,${0.3 + gl * 0.4})`); } }
   }
   if (kind === 'smith') { P([-6 + lean, -28 - bob, 6 + lean, -28 - bob, 7 + lean, -8, -7 + lean, -8], '#5a3a26'); R(-6 + lean, -28 - bob, 12, 2, '#8a5a36'); R(-5 + lean, -35 - bob, 10, 7, '#140a06'); const ff = 0.6 + Math.sin(tickN * 0.25) * 0.4; R(-4 + lean, -34 - bob, 8, 5, `rgb(255,${90 + ff * 70 | 0},20)`); R(-3 + lean, -33 - bob, 6, 2, '#ffd070'); }
   if (kind === 'king') { R(-8 + lean, -37 - bob, 16, 2, '#ff6a2a'); R(-1 + lean, -35 - bob, 2, 16, '#ff6a2a'); const kf = 0.5 + Math.sin(tickN * 0.22) * 0.5; R(-3 + lean, -31 - bob, 6, 6, `rgb(${200 + kf * 55 | 0},${40 + kf * 60 | 0},30)`); R(-2 + lean, -30 - bob, 4, 4, '#fff1b0'); }
@@ -3202,18 +3205,18 @@ function drawHuman(f, sx, sy) {
       P([-6 + hx, -49 + hy, -12 + hx + tail, -40 + hy, -13 + hx + tail * 1.4, -27 + hy, -8 + hx + tail, -29 + hy, -5 + hx, -38 + hy], k.hair);
       R(-6 + hx, -49 + hy, 3, 12, k.hair); P([-6 + hx, -48 + hy, 5 + hx, -49 + hy, 6 + hx, -45 + hy, 1 + hx, -47 + hy, -3 + hx, -44 + hy], k.hair);
       R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#3a2a6a'); R(2 + hx, -45 + hy, 4, 1, '#1b1b2a'); R(3 + hx, -41 + hy, 2, 1, '#c86a6a');
-      const hatc = [k.cloth, '#5a4a6a', '#2a4aa8', '#b8862a', '#2a1020'][hT], hatl = ['#ffd24a', '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a'][hT];
+      const hatc = [k.cloth, '#5a4a6a', '#2a4aa8', '#b8862a', '#2a1020', '#10301a'][hT], hatl = ['#ffd24a', '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT];
       P([-10 + hx, -48 + hy, 10 + hx, -48 + hy, 8 + hx, -51 + hy, -8 + hx, -51 + hy], hatc);
       P([-6 + hx, -50 + hy, 6 + hx, -50 + hy, 1 + hx - tail * 0.3, -60 + hy, -6 + hx + tail * 0.8, -65 + hy, -3 + hx, -58 + hy], hatc);
       R(-6 + hx, -52 + hy, 12, 1.5, hatl); R(-6 + hx + tail * 0.8, -66 + hy, 2, 2, hatl);
-      if (hT >= 4) for (let i = -1; i <= 1; i++) { const fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([i * 3 + hx - 1, -52 + hy, i * 3 + hx + 1, -52 + hy, i * 3 + hx, -52 - fh + hy], i ? '#ff8a2a' : '#ffd070'); }
+      if (hT >= 4) for (let i = -1; i <= 1; i++) { const fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([i * 3 + hx - 1, -52 + hy, i * 3 + hx + 1, -52 + hy, i * 3 + hx, -52 - fh + hy], i ? (hT >= 5 ? '#46e06a' : '#ff8a2a') : (hT >= 5 ? '#b8ffc8' : '#ffd070')); }
     } else if (hc0 === 'luca') { // hooded rogue with a face scarf; the helm tier colours the hood
-      const hd = [k.cloth, '#3a3a40', '#22407a', '#7a5a1a', '#3a0e1e'][hT], hl2 = ['#4a6a52', '#8a8f99', '#5a9cff', '#ffd870', '#ff4a6a'][hT];
+      const hd = [k.cloth, '#3a3a40', '#22407a', '#7a5a1a', '#3a0e1e', '#0e2a16'][hT], hl2 = ['#4a6a52', '#8a8f99', '#5a9cff', '#ffd870', '#ff4a6a', '#46e06a'][hT];
       P([-7 + hx, -48 + hy, -13 + hx + tail, -45 + hy, -12 + hx + tail * 1.3, -39 + hy, -6 + hx, -42 + hy], hd);
       P([-7 + hx, -40 + hy, -7 + hx, -51 + hy, -3 + hx, -55 + hy, 4 + hx, -55 + hy, 7 + hx, -50 + hy, 6 + hx, -46 + hy, 1 + hx, -48 + hy, -3 + hx, -46 + hy, -3 + hx, -40 + hy], hd);
       R(-3 + hx, -54 + hy, 6, 1, hl2); R(1 + hx, -42 + hy, 6, 3, dk(hd)); R(1 + hx, -42 + hy, 6, 1, hl2);
       R(2 + hx, -45 + hy, 3, 2, '#fff'); R(3 + hx, -45 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, '#1b1b2a');
-      if (hT >= 4) { const fl = 0.5 + Math.sin(tickN * 0.3) * 0.5; R(3 + hx, -45 + hy, 2, 1, `rgb(255,${120 + fl * 100 | 0},40)`); }
+      if (hT >= 4) { const fl = 0.5 + Math.sin(tickN * 0.3) * 0.5; R(3 + hx, -45 + hy, 2, 1, flm(hT, 120 + fl * 100 | 0)); }
     } else {
     P([-6 + hx, -47 + hy, 6 + hx, -47 + hy, 7 + hx, -52 + hy, 3 + hx, -55 + hy, 0 + hx, -52 + hy, -4 + hx, -56 + hy, -7 + hx, -51 + hy], k.hair);
     P([-6 + hx, -47 + hy, -7 + hx, -42 + hy, -4 + hx, -42 + hy, -4 + hx, -47 + hy], dk(k.hair));
@@ -3222,12 +3225,12 @@ function drawHuman(f, sx, sy) {
     R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, dk(k.hair)); R(4 + hx, -42 + hy, 2, 1, dk(k.skin));
     }
     if (hT && hc0 === 'nolan') { // helm by rarity: iron cap, visored helm, crested gold helm, crown of living flame
-      const hc = [null, '#8a8f99', '#4a7ac8', '#d4a62e', '#2a1620'][hT], hl = [null, '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a'][hT];
+      const hc = [null, '#8a8f99', '#4a7ac8', '#d4a62e', '#2a1620', '#10301a'][hT], hl = [null, '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT];
       P([-6 + hx, -45 + hy, -6 + hx, -51 + hy, -3 + hx, -55 + hy, 3 + hx, -55 + hy, 6 + hx, -51 + hy, 6 + hx, -45 + hy, 4 + hx, -47 + hy, -4 + hx, -47 + hy], hc);
       R(-5 + hx, -53 + hy, 9, 1.5, hl); R(-6 + hx, -48 + hy, 12, 1.5, dk(hc));
       if (hT >= 2) { R(3 + hx, -47 + hy, 2, 5, hc); R(-1 + hx, -53 + hy, 2, 2, hl); }
       if (hT === 3) { const pl = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0); P([-3 + hx, -55 + hy, -10 + hx + pl, -59 + hy, -17 + hx + pl * 1.5, -52 + hy, -8 + hx, -52 + hy], '#c8302a'); }
-      if (hT >= 4) for (let i = -2; i <= 2; i++) { const fh = 4 + Math.abs(Math.sin(tickN * 0.3 + i)) * 5; P([i * 2.5 + hx - 1.2, -55 + hy, i * 2.5 + hx + 1.2, -55 + hy, i * 2.5 + hx, -55 - fh + hy], i % 2 ? '#ff8a2a' : '#ffd070'); }
+      if (hT >= 4) for (let i = -2; i <= 2; i++) { const fh = 4 + Math.abs(Math.sin(tickN * 0.3 + i)) * 5; P([i * 2.5 + hx - 1.2, -55 + hy, i * 2.5 + hx + 1.2, -55 + hy, i * 2.5 + hx, -55 - fh + hy], i % 2 ? (hT >= 5 ? '#46e06a' : '#ff8a2a') : (hT >= 5 ? '#b8ffc8' : '#ffd070')); }
     }
   } else if (kind === 'h') {
     R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));

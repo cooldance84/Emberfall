@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.7] - 2026-11-17
+- Set gear now tints the hero green like the item text: armor, trim, cape, boots, helm, amulet and weapon (blade, staff crystal, dagger) all turn set green, and the mythic flames burn green. A faint green glow surrounds a hero wearing set gear, and set pieces pulse softly in the inventory.
+
 ## [1.36.6] - 2026-11-16
 - Melee heroes close the gap to ranged play: Luca's attacks now dart at the nearest foe up to about 64 px ahead (and line up with it), and Nolan's third hit drives forward. Nolan's sword swing is also no longer interrupted by light blows (heavy blows still knock him down). Panni is unchanged.
 
