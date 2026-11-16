@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.31.0] - 2026-11-16
+- A proper finale: clearing the last stage (and every Ember Trial, and the daily challenge) now ends with a big CONGRATULATIONS! screen: a fanfare, fireworks and falling confetti over slowly turning rays of light, and a rank that fades in line by line (HERO OF EMBERFALL, TRIAL n CHAMPION, LEGEND OF THE ASHEN VOW after Trial X, DAILY CHALLENGE COMPLETE). The choices to continue appear after a moment so the celebration cannot be skipped by accident. Hungarian included.
+
 ## [1.30.2] - 2026-11-16
 - Bonus stage: after the timer you keep going until the chests are smashed and the gear is picked up (at least 1.5 seconds, at most 12), with a bar showing how long is left, before the results panel appears.
 

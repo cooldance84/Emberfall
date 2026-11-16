@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.30.2';
+const VERSION = '1.31.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -2721,7 +2721,7 @@ function step() {
     }
     return;
   }
-  if (mode === 'victory') { endTimer++; updateParts(); if (endTimer > 30) { if (daily) { if (isHit('start') || isHit('back')) endRun(true); } else if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
+  if (mode === 'victory') { endTimer++; victoryFx(); updateParts(); if (endTimer > 90) { if (daily) { if (isHit('start') || isHit('back')) endRun(true); } else if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
   if (isHit('pause') && !hero.dead && !dragon) { openPause(); return; }
   if (isHit('inv') && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
   if (intro) { updateIntro(); return; }
@@ -3618,13 +3618,37 @@ function render() {
     drawCoins(W / 2 - 28, 168, rpg.coins, 28);
     if (endTimer > 30) { text(rpg.coins > 0 ? 'ENTER: CONTINUE  (USES 1 COIN)' : 'NO COINS LEFT', W / 2, 192, 10, '#fff', 'center'); text(rpg.coins > 0 ? 'ESC: END RUN AND SAVE SCORE' : 'ENTER: SAVE YOUR SCORE', W / 2, 206, 8, '#b8a8c8', 'center'); drawDonate(226); }
   }
-  if (mode === 'victory') {
-    g.fillStyle = 'rgba(20,10,0,0.5)'; g.fillRect(0, 0, W, H); text('THE WORLD IS SAVED', W / 2, 104, 20, '#ffd24a', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W / 2, 124, 9, '#c9a8ff', 'center');
-    text('SCORE ' + score, W / 2, 144, 12, '#fff1b0', 'center'); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W / 2, 158, 8, '#d9b98a', 'center');
-    if (endTimer > 30) { text('ENTER: BEGIN ' + trialName(cycle + 1) + '  (+1 COIN, TOUGHER FOES)', W / 2, 184, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W / 2, 198, 8, '#b8a8c8', 'center'); }
-    if (cycle >= 1 && cycle <= 3) text('FORGE LEVEL +' + (7 + cycle) + ' UNLOCKED', W / 2, 170, 9, '#ffb46a', 'center');
-    drawDonate(222);
+  if (mode === 'victory') drawVictory();
+}
+function victoryFx() { // fanfare, fireworks and confetti above the cheering hero
+  const t = endTimer;
+  if (t === 1) { flashA = 0.7; SFX.big(); shake = 6; }
+  [[4, 523], [14, 659], [24, 784], [36, 1047]].forEach(([at, f]) => { if (t === at) { tone('square', f, f, 0.32, 0.05); tone('triangle', f / 2, f / 2, 0.4, 0.07); } });
+  if (t === 48) { SFX.magic(); [523, 659, 784, 1047].forEach(f => tone('square', f, f, 1.0, 0.035)); }
+  if (t > 8 && t % 15 === 0) { // a firework: a ring of sparks high above the ground
+    const cx = cam + rnd(50, W - 50), z = rnd(110, 190), cols = [['#ffd24a', '#fff1b0'], ['#ff6a3a', '#ffb43a'], ['#8ad8ff', '#ffffff'], ['#ff8ad8', '#ffe0f4'], ['#9aff8a', '#e8ffe0']][Math.random() * 5 | 0];
+    SFX.pick(); tone('sawtooth', 900, 200, 0.25, 0.03);
+    for (let k = 0; k < 46; k++) { const a = k / 46 * Math.PI * 2 + rnd(-0.05, 0.05), sp = rnd(1.2, 2.8); parts.push({ x: cx, y: 214, z, vx: Math.cos(a) * sp, vy: 0, vz: Math.sin(a) * sp, life: rnd(40, 70), max: 70, g: 0.035, c: cols[k % 2], size: k % 3 ? 2 : 3, add: true }); }
   }
+  if (t % 2 === 0) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: 215, vx: rnd(-0.4, 0.4), vy: 0, vz: -rnd(0.5, 1.1), life: rnd(190, 260), max: 260, g: 0, c: ['#ffd24a', '#ff6a3a', '#8ad8ff', '#ff8ad8', '#9aff8a', '#ffffff'][Math.random() * 6 | 0], size: 2, add: false });
+}
+function drawVictory() {
+  const t = endTimer, fade = k => clamp((t - k) / 18, 0, 1), W2 = W / 2;
+  g.fillStyle = 'rgba(14,6,0,0.55)'; g.fillRect(0, 0, W, H);
+  g.save(); g.globalCompositeOperation = 'lighter'; // slowly turning rays of light behind the title
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + t * 0.004, a2 = a + 0.1; g.fillStyle = 'rgba(255,200,90,0.07)'; g.beginPath(); g.moveTo(W2, 84); g.lineTo(W2 + Math.cos(a) * 420, 84 + Math.sin(a) * 420); g.lineTo(W2 + Math.cos(a2) * 420, 84 + Math.sin(a2) * 420); g.fill(); }
+  glowDot(g, W2, 80, 120 + Math.sin(t * 0.06) * 8, '255,200,90', 0.22); g.restore();
+  const rank = daily ? 'DAILY CHALLENGE COMPLETE' : cycle >= TRIAL_MAX ? 'LEGEND OF THE ASHEN VOW' : cycle >= 1 ? trialName(cycle) + ' CHAMPION' : 'HERO OF EMBERFALL';
+  g.globalAlpha = fade(0); const bob = Math.sin(t * 0.07) * 2;
+  text('CONGRATULATIONS!', W2 + 1, 74 + bob + 2, 26, '#7a3a08', 'center'); text('CONGRATULATIONS!', W2, 74 + bob, 26, (t >> 3) & 1 ? '#ffe27a' : '#ffd24a', 'center');
+  g.globalAlpha = fade(16); text(rank, W2, 98, 12, '#ff9a4a', 'center');
+  g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
+  g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');
+  g.globalAlpha = fade(60); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W2, 163, 8, '#d9b98a', 'center');
+  if (cycle >= 1 && cycle <= 3 && !daily) text('FORGE LEVEL +' + (7 + cycle) + ' UNLOCKED', W2, 175, 9, '#ffb46a', 'center');
+  g.globalAlpha = 1;
+  if (t > 90) { if ((t >> 5) & 1 || t > 200) { if (daily) text('ENTER: SIGN THE LEATHERBOARD', W2, 192, 9, '#fff', 'center'); else { text('ENTER: BEGIN ' + trialName(cycle + 1) + '  (+1 COIN, TOUGHER FOES)', W2, 192, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W2, 205, 8, '#b8a8c8', 'center'); } } }
+  drawDonate(224);
 }
 
 /* ---------- WebGL CRT / bloom presentation ---------- */
