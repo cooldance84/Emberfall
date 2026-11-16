@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.36.4] - 2026-11-16
+- Once you reach level 70, every drop and market item is item level 70, so no lower level gear falls any more.
+
 ## [1.36.3] - 2026-11-16
 - Fix: the item comparison of a set piece could run past the bottom of the tooltip frame. The comparison lines now pack themselves to fit, however many differences there are.
 

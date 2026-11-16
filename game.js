@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.3';
+const VERSION = '1.36.4';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -712,7 +712,7 @@ function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +le
 const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS);
-  const il = ilvl || clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV); // drops land around your level; now and then a find a few levels above it
+  const il = ilvl || (rpg.lvl >= MAX_LV ? MAX_LV : clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV)); // drops land around your level (now and then a few levels above it); at the level cap every drop is full level 70
   const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) * setBoost ? pickOf(Object.keys(SETS)) : null;
   if (setId) rar = 4; // a set piece is built from mythic stats...
   const R = RARITY[rar];
