@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.34.0] - 2026-11-16
+- Kill combo: foes killed within three seconds of each other build a combo, and every kill adds 3% experience to the next ones, up to +75% at 25 kills. Any hit on a hero resets it, and so does three seconds without a kill. The combo and its bonus show on the right of the HUD with a small timer bar, and a blue "COMBO x10 XP +30%" pops up every ten kills. It also speeds up paragon points. The bonus stage keeps its own gold combo.
+
 ## [1.33.2] - 2026-11-16
 - Ember Wyrm fire fixed: the flame waves used to appear in the hero's lane ahead of the dragon, detached from it. Now the dragon turns into your lane while it winds up, a burst of flame shows at its mouth, and the three waves leave the mouth in its own lane, fanning out to cover the lanes around you. The breath stream follows you more slowly while it burns (0.3 instead of 0.6 lanes per frame), so it stays straight instead of shearing diagonally.
 
