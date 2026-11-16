@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.29.0';
+const VERSION = '1.29.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -727,9 +727,13 @@ function dropGear(x, y, rar) {
 function onKill(e) {
   if (e.kind === 'gob') { bonusKill(e); return; }
   const boss = isBoss(e); elemDeath(e);
+  if (boss) for (const o of enemies) { // the boss falls and every foe around it dies with it (xp and gold still count, no gear drops)
+    if (o === e || o.dead || o.kind === 'imp' || isBoss(o)) continue;
+    o.hp = 0; o.dead = true; o.fade = 0; o.noLoot = true; o.st = 'down'; o.vx = 0; o.vz = 0; o.z = 0; sparks(o.x, o.y, o.h * 0.6, false); addDecal(o); onKill(o); score += 100;
+  }
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1))); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1)); rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
-  const n = boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
+  const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) ? 1 : 0;
   for (let i = 0; i < n; i++) {
     let r = rollRarity();
     if (boss && tierOf() === 1) r = 1;                       // stage 2 boss: two magic drops

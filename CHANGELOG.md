@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.29.1] - 2026-11-16
+- When a boss dies, every other foe on the field dies with it. They still give xp and gold, but drop no gear (only the boss drops loot).
+
 ## [1.29.0] - 2026-11-16
 - New bonus stage, GOBLIN TREASURY: after every act boss (stages 5, 10, 15, 20, 25 and 30, before the next story chapter) you get ten seconds in a gold-lit hall with fast loot goblins that sprint across the screen and dodge you. They never fight back.
 - Each goblin you catch pays gold (scales with your depth and Ember Trial); quick kills build a combo that raises the gold up to x3. About one in five drops a chest to smash open, and the rare golden goblin (three hits) pays four times as much and always drops a golden chest with a gear drop.
