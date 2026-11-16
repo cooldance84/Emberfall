@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.29.1';
+const VERSION = '1.29.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1165,6 +1165,11 @@ function elemBuild(e, el, amt, T, noSpread) {
     spawn(e.x, e.y, e.h * 0.6, 8, { c: ['#fff6a0', '#c8a8ff'], l0: 6, l1: 14, add: true, size: 2, up: 1 }); SFX.zap();
   }
 }
+function elemRekindle(e, att, was) { // a fire skill cast on a foe that is still burning from before doubles the burn until it dies out
+  if (!att.pn || !att.sk || rpg.elem !== 'fire' || !elemTier() || !e.el || e.dead || e.el.bsk === att.sk) return;
+  const S = e.el; if (S.burn <= 0) return; S.bsk = att.sk;
+  if (was && !S.bdbl) { S.bdbl = 1; S.burn = Math.max(S.burn, 150 + 25 * elemTier()); floatText(e.x, e.y - e.h - 22, 'BURN x2', '#ffb43a', 9); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 12, { c: ['#fff1b0', '#ff7a2a', '#ff3a1a'], s0: 1, s1: 2.6, l0: 12, l1: 26, add: true, size: 2, up: 2 }); }
+}
 function elemHit(e, att, kind, crit) { // called after one of the hero's hits lands
   const T = elemTier(); if (!T || e.dead || e.pn) return; const el = rpg.elem, cls = att.k && att.k.cls;
   let amt = (kind === 'down' ? 38 : 24) * (cls === 'panni' ? 1.2 : 1) * (crit ? (cls === 'luca' ? 1.5 : 1.25) : 1) * (el === 'frost' && T >= 2 ? 1.25 : 1);
@@ -1193,8 +1198,8 @@ function elemTick(e) { // once per frame per afflicted monster; true when it los
   if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });
   if (S.burn > 0) {
     S.burn--; if (tickN % 6 === 0) spawn(e.x + rnd(-6, 6), e.y, rnd(2, e.h * 0.8), 1, { c: ['#ffd070', '#ff7a2a'], l0: 8, l1: 16, add: true, size: 2, up: 1.4, g: -0.02 });
-    if (S.burn % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
-    if (S.burn === 0) S.bst = 0;
+    if (S.burn % 30 === 0 && !e.dead) elDmg(e, elBase() * ELEM_PT[T] * (T >= 2 ? 1.25 : 1) * (S.bdbl ? 2 : 1) * (1 + 0.35 * (S.bst - 1)) * (rpg.elem === 'fire' && CLS === 'nolan' ? 1.1 : 1), ELEM[rpg.elem || 'fire'].col);
+    if (S.burn === 0) { S.bst = 0; S.bdbl = 0; S.bsk = null; }
   }
   if (free) return false;
   if (S.frz > 0 || S.stun > 0) { if (e.flash > 0) e.flash--; return true; }
@@ -1250,7 +1255,7 @@ function strike(att, box, dmg, kind, targets) {
       const shielded = e.barrier > 0;
       if (hurt(e, r.d, kind, att)) {
         if (e.blockT === tickN) continue;
-        if (!shielded && !e.dead) { elemHit(e, att, kind, r.crit); elemProc(e, att, r.d, !!att.sk); }
+        if (!shielded && !e.dead) { const was = !!(e.el && e.el.burn > 0); elemHit(e, att, kind, r.crit); elemProc(e, att, r.d, !!att.sk); elemRekindle(e, att, was); }
         floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, r.crit ? r.d + '!' : String(r.d), r.crit ? '#ffd24a' : '#ffffff', r.crit ? 12 : 8);
         if (r.crit) { shake = Math.max(shake, 5); freeze = Math.max(freeze, 4); sparks(e.x, e.y, e.z + e.h * 0.6, true); }
       }
@@ -1735,12 +1740,14 @@ function stepDragon() {
   if (d.t >= 128) { d.by.inv = Math.max(d.by.inv, 30); dragon = null; }
 }
 function dragonImpact() {
-  const d = dragon, dmg = 130 * d.mult; shots = [];
+  const d = dragon, flat = 130 * d.mult * Math.max(1, pstats().mult); shots = [];
   hero.st = 'idle'; hero.t = 0;
   for (const e of enemies) {
     if (e.dead) continue;
     e.inv = 0; if (e.st === 'down' || e.st === 'getup') e.st = 'idle';
-    hurt(e, dmg, 'down', { x: cam + W / 2, face: 1 });
+    // the wrath scales with your power and bites a share of the foe's health: 40% to 85% of a husk, 15% to 36% of a boss (more jars, more bite)
+    const share = isBoss(e) ? 0.15 + 0.07 * d.v : 0.4 + 0.15 * d.v;
+    hurt(e, Math.max(flat, Math.round(e.maxhp * share)), 'down', { x: cam + W / 2, face: 1 });
   }
   for (const c of chests) if (!c.open && c.x > cam - 10 && c.x < cam + W + 10) { c.hp = 1; openChest(c); } // the wrath smashes every chest on screen open
   shake = 22; freeze = 8; flashA = 1;
