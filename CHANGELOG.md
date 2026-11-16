@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.28.2] - 2026-11-16
+- Blacksmith: long item tooltips (set pieces with many stats) no longer run into the forge preview. Set bonus lines are left out there, and the forge gains are packed two to a row when space is tight.
+
 ## [1.28.1] - 2026-11-16
 - Elemental procs reworked: a hero who has chosen an element only ever procs that element (no mixing). Heroes without an element still get a random element on skill hits.
 - Skill hits: 30% chance (10% per tick for the ultimate) of the element's status plus bonus elemental damage worth half a hit at your tier.

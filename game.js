@@ -3,7 +3,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.28.1';
+const VERSION = '1.28.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -943,8 +943,8 @@ function slotBox(x, y, it, sel, ghost) {
 }
 const eqPos = i => i < 3 ? [16, 34 + i * 44] : [136, 34 + (i - 3) * 44];
 const bagPos = i => [192 + (i & 3) * 31, 30 + (i >> 2) * 31];
-function drawTip(it, cmp, x, y) {
-  if (!it) { text('EMPTY', x + 75, y + 24, 9, '#6a5a7a', 'center'); return; }
+function drawTip(it, cmp, x, y, slim) { // slim: set bonus lines are left out (the forge needs the room); returns the y below the last line
+  if (!it) { text('EMPTY', x + 75, y + 24, 9, '#6a5a7a', 'center'); return y + 30; }
   const R = RARITY[it.rar];
   const nm = iname(it), ist = itemSt(it), cst = cmp ? itemSt(cmp) : null;
   text(nm, x + 8, y + 26, nm.length > 20 ? 8 : 9, itemCol(it));
@@ -958,12 +958,12 @@ function drawTip(it, cmp, x, y) {
   if (it.set) { // set info: which bonuses are on, counting this piece as worn
     const S = SETS[it.set], n = setCount(it.set, it.slot) + 1;
     text(S.name + ' SET  ' + n + '/6', x + 8, yy + 2, 8, S.col); yy += 13;
-    for (const [need, b] of S.b) {
+    if (!slim) for (const [need, b] of S.b) {
       let t = need + ': ' + setBonusText(b), col = n >= need ? S.col : '#6a5a7a';
       if (t.length > 33) { const cut = t.lastIndexOf(' +', 33); text(t.slice(0, cut), x + 8, yy, 7, col); yy += 10; t = '   ' + t.slice(cut + 1); }
       text(t, x + 8, yy, 7, col); yy += 10;
     }
-    yy += 2;
+    yy += slim ? 0 : 2;
   }
   if (cmp !== undefined) {
     const CS = it.set ? 10 : 12; // set items carry an extra block, so the comparison is packed tighter
@@ -974,6 +974,7 @@ function drawTip(it, cmp, x, y) {
       if (d) { text((d > 0 ? '+' : '') + d + '% ' + ELEM[el].name + (key === 'ea' ? ' POWER' : ' RESIST'), x + 8, yy, 8, d > 0 ? '#7aff9a' : '#ff6a6a'); yy += CS; }
     }
   }
+  return yy;
 }
 function openInv(from) { inv.from = from; inv.z = 'bag'; inv.i = 0; mode = 'inv'; SFX.pick(); }
 function invItem() { return inv.z === 'bag' ? rpg.bag[inv.i] : rpg.eq[EQ_ORDER[inv.i]]; }
@@ -2032,12 +2033,18 @@ function drawForge() {
       } else text('ENTER TO CHOOSE', 364, 214, 7, '#a89078', 'center');
     }
   } else if (o && !o.go) {
-    const it = o.it, up = it.up | 0; drawTip(it, undefined, 258, 36);
+    const it = o.it, up = it.up | 0; const ty = drawTip(it, undefined, 258, 36, !!it.set);
     if (o.worn) { g.fillStyle = 'rgba(160,120,255,0.3)'; g.fillRect(398, 56, 62, 12); text('EQUIPPED', 429, 65, 7, '#e4d6ff', 'center'); }
     if (up < forgeCap()) {
-      const a = itemSt(it), b = itemSt(it, up + 1); let yy = 170;
-      text('FORGE TO +' + (up + 1) + '    CHANCE ' + Math.round(FORGE_P[up] * 100) + '%', 270, yy, 8, '#ffb46a'); yy += 12;
-      for (const k of STAT_KEYS) { const d = (b[k] || 0) - (a[k] || 0); if (d) { text('+' + d + STATS[k].sfx + ' ' + statName(k), 270, yy, 8, '#7aff9a'); yy += 11; } }
+      const a = itemSt(it), b = itemSt(it, up + 1), ds = [];
+      for (const k of STAT_KEYS) { const d = (b[k] || 0) - (a[k] || 0); if (d) ds.push('+' + d + STATS[k].sfx + ' ' + statName(k)); }
+      const tight = ty + 12 + ds.length * 11 > 224; // long item: pack the gains two to a row so nothing runs over the tooltip
+      let yy = Math.min(tight ? 197 : 170, 226 - (tight ? 9 * Math.ceil(ds.length / 2) : ds.length * 11) - 10);
+      yy = Math.max(yy, ty + 6);
+      g.fillStyle = 'rgba(255,140,60,0.35)'; g.fillRect(268, yy - 9, 192, 1);
+      text('FORGE TO +' + (up + 1) + '    CHANCE ' + Math.round(FORGE_P[up] * 100) + '%', 270, yy, 8, '#ffb46a'); yy += tight ? 10 : 12;
+      if (tight) { for (let i = 0; i < ds.length; i += 2) { text(ds[i], 270, yy, 7, '#7aff9a'); if (ds[i + 1]) text(ds[i + 1], 366, yy, 7, '#7aff9a'); yy += 9; } }
+      else for (const d of ds) { text(d, 270, yy, 8, '#7aff9a'); yy += 11; }
     } else text(up >= MAX_UP ? 'FULLY FORGED' : 'CLEAR EMBER TRIAL ' + ROMAN_T[up - 6] + ' TO FORGE +' + (up + 1), 364, 190, up >= MAX_UP ? 9 : 7, '#ffd24a', 'center');
   } else text('BACK TO THE ROAD', 364, 130, 8, '#d9c9f0', 'center');
   if (f.noteT > 0) text(f.note, W / 2, 236, 9, f.ok ? '#7aff9a' : '#ff8a6a', 'center');
