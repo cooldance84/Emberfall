@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.40.1';
+const VERSION = '1.40.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -968,7 +968,7 @@ function updateName() {
     saveBoard(b); saveGame(); if (daily) submitOnline(e); mode = 'board';
   }
 }
-function updateBoard() { if ((daily || boardView) && onlineOn()) loadOnlineBoard(); if (!daily && (isHit('left') || isHit('right'))) { boardView ^= 1; boardHi = -1; SFX.pick(); } if (isHit('start') || isHit('back')) toTitle(); }
+function updateBoard() { if ((daily || boardView) && onlineOn()) loadOnlineBoard(); if (isHit('start') || isHit('back')) toTitle(); }
 function makeLeather() {
   leatherCv = document.createElement('canvas'); leatherCv.width = 360; leatherCv.height = 242;
   const c = leatherCv.getContext('2d');
@@ -1011,7 +1011,7 @@ function drawBoardScreen() {
     if (e) { text(e.n, 104, y, 9, col); text(bv ? (e.w ? fmtTime(e.t) : '-') : String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (bv) text(String(e.pg | 0), 356, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
     else text('---', 104, y, 9, col);
   }
-  text(bv ? '* = REACHED LV 70 + 100 PARAGON' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (mode === 'board' && !daily) text('A/D: ALL TIME / TODAY', 78, 250, 6, '#8a6a3a');
+  text(bv ? '* = REACHED LV 70 + 100 PARAGON' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
   if (bv) { const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...'; text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center'); }
   if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
 }
@@ -2990,7 +2990,8 @@ function step() {
     if (resetArm > 0) resetArm--;
     if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
-    else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
+    else if (pressed.KeyB) { boardView = 0; boardHi = -1; mode = 'board'; return; }
+    else if (pressed.KeyN) { boardView = 1; boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
@@ -3997,7 +3998,7 @@ function drawDonate(y) {
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
-  if (mode === 'dailyinfo') { openSelect(false, true); return; }
+  if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (b && b.go) { boardView = 1; boardHi = -1; mode = 'board'; } else openSelect(false, true); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (!donateBox && !langBox && !dailyBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
@@ -4030,8 +4031,11 @@ function drawDailyInfo() {
     ['THE REWARD', '#ffd24a'], ['A DAILY CROWN FOR YOUR SAVED HERO, ONE EACH DAY, SHOWN BESIDE ITS LEVEL.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
   L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
   drawCrown(104, 169);
-  text('ENTER: CHOOSE HERO     B: TODAY\'S BOARD     ESC: BACK', W / 2, 252, 8, '#c9a8ff', 'center');
+  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'DAILY BOARD (B)', go: 1 }];
+  for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
+  text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
 }
+let dailyBtns = [];
 function openSelect(two, dly) { sel.daily = !!dly; coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
 function confirmSelect() {
   setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
@@ -4091,7 +4095,7 @@ function drawTitleOverlay() {
   drawDonate(H - 12);
   { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10; langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12); text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
-  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
+  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: DAILY BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {

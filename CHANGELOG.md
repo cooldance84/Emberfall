@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.40.2] - 2026-11-17
+- The leaderboards are separate screens: B on the title screen opens the all-time leatherboard (on this device only), N opens the daily board; the A/D switch is gone. The daily rules page has two buttons (choose hero, daily board), so touch players reach the daily board too
+
 ## [1.40.1] - 2026-11-17
 - Online board: the new Supabase `sb_publishable_...` keys are sent in the apikey header only (the old JWT anon key still goes in both headers)
 
