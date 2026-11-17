@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.39.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.40.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -156,7 +156,7 @@ Press **3** on the title screen (or **T**, or tap the daily line), read the rule
 | **Swift Foes** | every monster is 20% faster |
 | **Treasure Day** | twice the chests, more golden ones |
 
-Each day has its own leaderboard, stored in your browser (so your phone and your PC keep separate boards).
+Each day has its own leaderboard. By default it is stored in your browser (so your phone and your PC keep separate boards); the developer can switch on a shared online board with a free Supabase project, see [docs/ONLINE.md](docs/ONLINE.md).
 
 ## Fair play
 The game runs entirely in your browser, so this is a deterrent, not a lock: its values can't be reached from the browser console, and saves carry a seal. A hand-edited save is set aside (kept under a `_bad` key) and the hero starts fresh. For testing, the developer can open the game with `?max` (and `&stage=N`) on a local file or localhost for a maxed hero; nothing is saved in that mode.

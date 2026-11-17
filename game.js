@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.39.0';
+const VERSION = '1.40.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -850,6 +850,25 @@ function applyDailyRun(o) {
   rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); rpg.eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl]) && o.eq[sl].slot === sl) rpg.eq[sl] = o.eq[sl];
   rpg.elem = ELEMS.includes(o.elem) ? o.elem : null; rpg.et = clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.coins = clamp(o.coins | 0, 0, MAX_COINS); rpg.gold = Math.max(0, o.gold | 0); score = Math.max(0, o.score | 0); cycle = clamp(o.cycle | 0, 0, TRIAL_MAX);
 }
+/* ---- the online daily board (Supabase REST): optional, the game works fully without it; the URL and the public anon key live in online-config.js ---- */
+const ONL = (typeof window !== 'undefined' && window.EMBERFALL_ONLINE) || {};
+const onlineOn = () => !!(ONL.url && ONL.key && typeof fetch === 'function') && !DEV;
+let onlineBoard = { day: '', rows: null, at: 0, err: false, busy: false }, onlineSent = null, onlineSendErr = false;
+function sbFetch(path, opt) { return fetch(String(ONL.url).replace(/\/+$/, '') + '/rest/v1/' + path, Object.assign({ headers: { apikey: ONL.key, Authorization: 'Bearer ' + ONL.key, 'Content-Type': 'application/json' } }, opt)); }
+const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0 });
+function loadOnlineBoard(force) {
+  if (!onlineOn() || onlineBoard.busy) return;
+  if (!force && onlineBoard.day === dayStr() && Date.now() - onlineBoard.at < 30000) return;
+  const day = dayStr(); onlineBoard.busy = true;
+  sbFetch('daily_scores?day=eq.' + day + '&select=name,hero,t,lv,pg,stage,cycle,finished,created_at&order=created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp).slice(0, 10), at: Date.now(), err: false, busy: false }; })
+    .catch(() => { onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
+}
+function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
+  if (!onlineOn()) return; onlineSent = { n: e.n, t: e.t | 0, h: e.h }; onlineSendErr = false;
+  sbFetch('daily_scores', { method: 'POST', headers: { apikey: ONL.key, Authorization: 'Bearer ' + ONL.key, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w }) })
+    .then(r => { if (!r.ok) throw r.status; loadOnlineBoard(true); }).catch(() => { onlineSendErr = true; });
+}
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
@@ -922,7 +941,7 @@ function endRun(won) {
   const b = loadBoard();
   pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won, h: CLS };
   if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); }
-  if (daily ? (b.length < 10 || dailyCmp(pendingRun, b[b.length - 1]) < 0) : (score > 0 && (b.length < 10 || score > b[b.length - 1].s))) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
+  if (daily ? (onlineOn() || b.length < 10 || dailyCmp(pendingRun, b[b.length - 1]) < 0) : (score > 0 && (b.length < 10 || score > b[b.length - 1].s))) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
@@ -945,10 +964,10 @@ function updateName() {
   if (isHit('start')) {
     const n = nameBuf.map(i => LETTERS[i]).join(''); rpg.ini = n;
     const b = loadBoard(), e = Object.assign({ n }, pendingRun); b.push(e); b.sort(daily ? dailyCmp : (a, c) => c.s - a.s); boardHi = b.indexOf(e);
-    saveBoard(b); saveGame(); mode = 'board';
+    saveBoard(b); saveGame(); if (daily) submitOnline(e); mode = 'board';
   }
 }
-function updateBoard() { if (!daily && (isHit('left') || isHit('right'))) { boardView ^= 1; boardHi = -1; SFX.pick(); } if (isHit('start') || isHit('back')) toTitle(); }
+function updateBoard() { if ((daily || boardView) && onlineOn()) loadOnlineBoard(); if (!daily && (isHit('left') || isHit('right'))) { boardView ^= 1; boardHi = -1; SFX.pick(); } if (isHit('start') || isHit('back')) toTitle(); }
 function makeLeather() {
   leatherCv = document.createElement('canvas'); leatherCv.width = 360; leatherCv.height = 242;
   const c = leatherCv.getContext('2d');
@@ -964,9 +983,9 @@ function drawBoardScreen() {
   g.drawImage(leatherCv, 60, 14);
   const C = '#f2d58c';
   if (mode === 'name') {
-    text('NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
-    text('SCORE ' + String(score).padStart(7, '0'), W / 2, 76, 11, '#fff1d0', 'center');
-    text((pendingRun.c > 1 ? trialName(pendingRun.c - 1) + '  ' : '') + 'STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
+    text(daily ? 'DAILY RESULT' : 'NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
+    text(daily ? (pendingRun.w ? 'TIME ' + fmtTime(pendingRun.t) : 'NOT FINISHED  LV ' + pendingRun.lv + '  PG ' + pendingRun.pg) : 'SCORE ' + String(score).padStart(7, '0'), W / 2, 76, 11, '#fff1d0', 'center');
+    text((pendingRun.c > 1 ? trialName(pendingRun.c - 1) + '  ' : '') + 'STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w && !daily ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
     for (let i = 0; i < 3; i++) {
       const x = W / 2 + (i - 1) * 44, sel = i === namePos;
       g.fillStyle = 'rgba(20,8,0,0.55)'; g.fillRect(x - 17, 112, 34, 52);
@@ -982,16 +1001,17 @@ function drawBoardScreen() {
   text(bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
   text(bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
   text('#', 80, 76, 7, '#b8935a'); text('NAME', 104, 76, 7, '#b8935a'); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, '#b8935a', 'right'); text('STAGE', 266, 76, 7, '#b8935a'); text('LV', 322, 76, 7, '#b8935a'); if (bv) text('PG', 356, 76, 7, '#b8935a');
-  const b = loadBoard(bv);
+  const onl = bv && onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr(), b = onl ? onlineBoard.rows : loadBoard(bv);
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
-    if (i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
+    if (onl ? (onlineSent && e && e.n === onlineSent.n && e.t === onlineSent.t && e.h === onlineSent.h && mode === 'board') : i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
     text(String(i + 1).padStart(2, ' '), 78, y, 9, col);
     if (e) { text(e.n, 104, y, 9, col); text(bv ? (e.w ? fmtTime(e.t) : '-') : String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (bv) text(String(e.pg | 0), 356, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
     else text('---', 104, y, 9, col);
   }
   text(bv ? '* = REACHED LV 70 + 100 PARAGON' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (mode === 'board' && !daily) text('A/D: ALL TIME / TODAY', 78, 250, 6, '#8a6a3a');
+  if (bv) { const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...'; text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center'); }
   if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
 }
 

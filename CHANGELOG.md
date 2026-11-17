@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.40.0] - 2026-11-17
+- Optional online daily board through Supabase: a signed daily result is posted to your Supabase project and the daily board shows today's shared rows (shortest time first). Off by default: fill in `online-config.js` (public URL and anon key) and run the SQL in docs/ONLINE.md. Without it the game works as before, with a board per device. The board screen says "ONLINE BOARD" or "THIS DEVICE ONLY"; a failed send leaves the result on the local board
+- The name-entry screen after a daily run shows the time (or the progress) instead of a score
+
 ## [1.39.0] - 2026-11-17
 - Daily challenge is now a race: start a fresh level-1 hero and be the first to reach level 70 + 100 paragon; the shortest play time wins (pauses, shops and story pages do not count). The stages no longer end after five: they keep coming, a tougher round each time, until you reach the goal. The race clock and the goal show on the HUD
 - The daily run is kept on the device for the day (sealed, like the saves) and resumes from the start of your last stage; a lost run or a finished one starts over
