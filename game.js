@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.45.1';
+const VERSION = '1.45.2';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -111,7 +111,7 @@ function initAudio() {
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
-function tone(type, f0, f1, dur, vol) {
+function sfxTone(type, f0, f1, dur, vol) {
   if (!ac || muted || !sfxOn) return;
   const o = ac.createOscillator(), gn = ac.createGain(), t = ac.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
@@ -124,17 +124,17 @@ function duck(depth) {
   const t = ac.currentTime; mDuck.gain.cancelScheduledValues(t); mDuck.gain.setTargetAtTime(depth, t, 0.012); mDuck.gain.setTargetAtTime(1, t + 0.1, 0.14);
 }
 const SFX = {
-  swing: () => tone('square', 420, 140, 0.09, 0.05),
-  hit: () => { duck(0.45); tone('square', 180, 50, 0.12, 0.12); tone('sawtooth', 90, 40, 0.1, 0.07); },
-  big: () => { duck(0.35); tone('sawtooth', 120, 28, 0.35, 0.15); },
-  magic: () => { duck(0.5); tone('sawtooth', 160, 900, 0.45, 0.07); tone('square', 90, 30, 0.5, 0.08); },
-  pick: () => tone('sine', 600, 1000, 0.14, 0.08),
-  land: () => tone('triangle', 90, 40, 0.08, 0.06),
-  die: () => { duck(0.4); tone('sawtooth', 220, 30, 0.5, 0.12); },
-  burn: () => { tone('sawtooth', 300, 90, 0.28, 0.05); tone('square', 520, 160, 0.16, 0.03); },
-  freeze: () => { tone('sine', 1500, 900, 0.3, 0.06); tone('triangle', 2300, 1700, 0.18, 0.04); },
-  zap: () => { duck(0.55); tone('square', 900, 120, 0.12, 0.06); tone('sawtooth', 1400, 200, 0.1, 0.04); },
-  shatter: () => { duck(0.55); tone('triangle', 1800, 300, 0.22, 0.07); tone('square', 700, 120, 0.12, 0.04); }
+  swing: () => sfxTone('square', 420, 140, 0.09, 0.05),
+  hit: () => { duck(0.6); sfxTone('square', 180, 50, 0.12, 0.09); sfxTone('sawtooth', 90, 40, 0.1, 0.05); },
+  big: () => { duck(0.5); sfxTone('sawtooth', 120, 28, 0.35, 0.12); },
+  magic: () => { duck(0.65); sfxTone('sawtooth', 160, 900, 0.45, 0.07); sfxTone('square', 90, 30, 0.5, 0.08); },
+  pick: () => sfxTone('sine', 600, 1000, 0.14, 0.08),
+  land: () => sfxTone('triangle', 90, 40, 0.08, 0.06),
+  die: () => { duck(0.55); sfxTone('sawtooth', 220, 30, 0.5, 0.1); },
+  burn: () => { sfxTone('sawtooth', 300, 90, 0.28, 0.05); sfxTone('square', 520, 160, 0.16, 0.03); },
+  freeze: () => { sfxTone('sine', 1500, 900, 0.3, 0.06); sfxTone('triangle', 2300, 1700, 0.18, 0.04); },
+  zap: () => { duck(0.7); sfxTone('square', 900, 120, 0.12, 0.06); sfxTone('sawtooth', 1400, 200, 0.1, 0.04); },
+  shatter: () => { duck(0.7); sfxTone('triangle', 1800, 300, 0.22, 0.07); sfxTone('square', 700, 120, 0.12, 0.04); }
 };
 
 /* ---------- music: a procedural score, 16 bars per theme (WebAudio, no sound files) ---------- */
@@ -2613,7 +2613,7 @@ function updateMinion(e) {
         } else {
           for (const p of players()) if (!p.dead && Math.abs(p.x - e.x) < 320) shots.push({ type: 'rune', x: p.x + p.vx * 18, y: clamp(p.y + (p.vy || 0) * 18, Y_MIN, Y_MAX), t: 0, delay: 54, r: 24, dmg: k.dmg, pool: stageIdx >= 5 ? 200 : 150 });
           if (stageIdx >= 15 || cycle) shots.push({ type: 'rune', x: clamp(hero.x + rnd(-70, 70), cam + 20, cam + W - 20), y: rnd(Y_MIN, Y_MAX), t: 0, delay: 66, r: 24, dmg: k.dmg, pool: 150 });
-          tone('sawtooth', 180, 420, 0.3, 0.05);
+          sfxTone('sawtooth', 180, 420, 0.3, 0.05);
         }
         e.st = 'eatk'; e.t = 0;
       }
@@ -2689,8 +2689,8 @@ function castDragon() {
 }
 function stepDragon() {
   const d = dragon; d.t++;
-  if (d.t === 6) tone('sawtooth', 55, 30, 1.2, 0.1);
-  if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; tone('square', 220, 40, 0.2, 0.05); }
+  if (d.t === 6) sfxTone('sawtooth', 55, 30, 1.2, 0.1);
+  if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; sfxTone('square', 220, 40, 0.2, 0.05); }
   if (d.t === 62) dragonImpact();
   if (d.t > 84 && d.t < 120 && d.t % 3 === 0) { const E = ELEM[rpg.elem || 'fire']; spawn(cam + W / 2 + rnd(-30, 30), rnd(Y_MIN, Y_MAX), 4, 2, { c: [E.col, E.col2], s0: 0.1, s1: 0.5, l0: 20, l1: 40, up: 2.2, g: -0.02, size: 2, add: true }); } // the glowing trail it leaves behind
   if (d.t >= 128) { d.by.inv = Math.max(d.by.inv, 30); dragon = null; }
@@ -2707,7 +2707,7 @@ function dragonImpact() {
   }
   for (const c of chests) if (!c.open && c.x > cam - 10 && c.x < cam + W + 10) { c.hp = 1; openChest(c); } // the wrath smashes every chest on screen open
   shake = 22; freeze = 8; flashA = 1;
-  SFX.big(); tone('sawtooth', 70, 20, 0.9, 0.14);
+  SFX.big(); sfxTone('sawtooth', 70, 20, 0.9, 0.14);
   const ER = ELEM[rpg.elem || 'fire'];
   for (let i = 0; i < 3; i++) parts.push({ ring: true, rgb: ER.rgb, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
   for (let i = 0; i < 16 + d.v * 4; i++) { const a = rnd(0, 7);
@@ -3233,7 +3233,7 @@ function updateBoss(e) {
     if (e.atk === 'meteor' && e.t === 8) {
       const n = p2 ? 9 : 6;
       for (let i = 0; i < n; i++) shots.push({ type: 'meteor', x: i === 0 ? hero.x : clamp(hero.x + rnd(-130, 130), cam + 20, cam + W - 20), y: i === 0 ? hero.y : rnd(Y_MIN, Y_MAX), t: 0, delay: 40 + i * 6, dmg: 22 });
-      tone('sawtooth', 400, 90, 0.5, 0.06);
+      sfxTone('sawtooth', 400, 90, 0.5, 0.06);
     }
     if (e.t >= ((WINDUP[e.atk] || 20) * (p2 ? 0.8 : 1) | 0)) { e.st = 'eatk'; e.t = 0; e.hits.clear(); SFX.swing(); }
   } else if (e.st === 'eatk') bossAttack(e, dx, p2);
@@ -3272,7 +3272,7 @@ function bossAttack(e, dx, p2) {
       if (t === 1) {
         const n = p2 ? 5 : 3;
         for (let i = 0; i < n; i++) shots.push({ type: 'orb', x: e.x + e.face * 30, y: clamp(e.y + (i - (n - 1) / 2) * 12, Y_MIN, Y_MAX), z: 22, vx: e.face * (2.0 + (i % 2) * 0.5), t: 0, dmg: 12, life: 220 });
-        spawn(e.x + e.face * 30, e.y, 22, 10, { c: ['#7aff9a', '#e8fff0'], add: true, l0: 8, l1: 16 }); tone('sawtooth', 300, 700, 0.18, 0.05);
+        spawn(e.x + e.face * 30, e.y, 22, 10, { c: ['#7aff9a', '#e8fff0'], add: true, l0: 8, l1: 16 }); sfxTone('sawtooth', 300, 700, 0.18, 0.05);
       }
       if (t >= 14) end(p2 ? 45 : 80);
       break;
@@ -4940,11 +4940,11 @@ function render() {
 function victoryFx() { // fanfare, fireworks and confetti above the cheering hero
   const t = endTimer;
   if (t === 1) { flashA = 0.7; SFX.big(); shake = 6; }
-  [[4, 523], [14, 659], [24, 784], [36, 1047]].forEach(([at, f]) => { if (t === at) { tone('square', f, f, 0.32, 0.05); tone('triangle', f / 2, f / 2, 0.4, 0.07); } });
-  if (t === 48) { SFX.magic(); [523, 659, 784, 1047].forEach(f => tone('square', f, f, 1.0, 0.035)); }
+  [[4, 523], [14, 659], [24, 784], [36, 1047]].forEach(([at, f]) => { if (t === at) { sfxTone('square', f, f, 0.32, 0.05); sfxTone('triangle', f / 2, f / 2, 0.4, 0.07); } });
+  if (t === 48) { SFX.magic(); [523, 659, 784, 1047].forEach(f => sfxTone('square', f, f, 1.0, 0.035)); }
   if (t > 8 && t % 15 === 0) { // a firework: a ring of sparks high above the ground
     const cx = cam + rnd(50, W - 50), z = rnd(110, 190), cols = [['#ffd24a', '#fff1b0'], ['#ff6a3a', '#ffb43a'], ['#8ad8ff', '#ffffff'], ['#ff8ad8', '#ffe0f4'], ['#9aff8a', '#e8ffe0']][Math.random() * 5 | 0];
-    SFX.pick(); tone('sawtooth', 900, 200, 0.25, 0.03);
+    SFX.pick(); sfxTone('sawtooth', 900, 200, 0.25, 0.03);
     for (let k = 0; k < 46; k++) { const a = k / 46 * Math.PI * 2 + rnd(-0.05, 0.05), sp = rnd(1.2, 2.8); parts.push({ x: cx, y: 214, z, vx: Math.cos(a) * sp, vy: 0, vz: Math.sin(a) * sp, life: rnd(40, 70), max: 70, g: 0.035, c: cols[k % 2], size: k % 3 ? 2 : 3, add: true }); }
   }
   if (t % 2 === 0) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: 215, vx: rnd(-0.4, 0.4), vy: 0, vz: -rnd(0.5, 1.1), life: rnd(190, 260), max: 260, g: 0, c: ['#ffd24a', '#ff6a3a', '#8ad8ff', '#ff8ad8', '#9aff8a', '#ffffff'][Math.random() * 6 | 0], size: 2, add: false });

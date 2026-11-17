@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.45.2] - 2026-11-18
+- Fixed: the sound effects were silent. Two functions were both called `tone()`: the sound effect synth and the sprite colour shader; the later one replaced the first, so every blow, spell and pickup called the colour function and made no sound. The synth is now `sfxTone()`. The effects come back at their original volumes, and the music ducks a little less under them.
+- Tests: every sound effect must create a sound, and no two top-level functions may share a name.
+
 ## [1.45.1] - 2026-11-18
 - Audio fixes. The title screen and the menus now have their own slow, drum-free track (D minor, 84 BPM: choir, bells, a soft timpani), so stage 1 no longer sounds like the title screen with the drums added.
 - Blows can be heard again over the music: hits, big hits, spells, lightning, shattering and deaths push the music down for a moment (a ducking stage on the music bus), the hit sounds are a little louder, and the music is a little quieter overall.

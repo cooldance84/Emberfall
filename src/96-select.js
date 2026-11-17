@@ -129,11 +129,11 @@ function render() {
 function victoryFx() { // fanfare, fireworks and confetti above the cheering hero
   const t = endTimer;
   if (t === 1) { flashA = 0.7; SFX.big(); shake = 6; }
-  [[4, 523], [14, 659], [24, 784], [36, 1047]].forEach(([at, f]) => { if (t === at) { tone('square', f, f, 0.32, 0.05); tone('triangle', f / 2, f / 2, 0.4, 0.07); } });
-  if (t === 48) { SFX.magic(); [523, 659, 784, 1047].forEach(f => tone('square', f, f, 1.0, 0.035)); }
+  [[4, 523], [14, 659], [24, 784], [36, 1047]].forEach(([at, f]) => { if (t === at) { sfxTone('square', f, f, 0.32, 0.05); sfxTone('triangle', f / 2, f / 2, 0.4, 0.07); } });
+  if (t === 48) { SFX.magic(); [523, 659, 784, 1047].forEach(f => sfxTone('square', f, f, 1.0, 0.035)); }
   if (t > 8 && t % 15 === 0) { // a firework: a ring of sparks high above the ground
     const cx = cam + rnd(50, W - 50), z = rnd(110, 190), cols = [['#ffd24a', '#fff1b0'], ['#ff6a3a', '#ffb43a'], ['#8ad8ff', '#ffffff'], ['#ff8ad8', '#ffe0f4'], ['#9aff8a', '#e8ffe0']][Math.random() * 5 | 0];
-    SFX.pick(); tone('sawtooth', 900, 200, 0.25, 0.03);
+    SFX.pick(); sfxTone('sawtooth', 900, 200, 0.25, 0.03);
     for (let k = 0; k < 46; k++) { const a = k / 46 * Math.PI * 2 + rnd(-0.05, 0.05), sp = rnd(1.2, 2.8); parts.push({ x: cx, y: 214, z, vx: Math.cos(a) * sp, vy: 0, vz: Math.sin(a) * sp, life: rnd(40, 70), max: 70, g: 0.035, c: cols[k % 2], size: k % 3 ? 2 : 3, add: true }); }
   }
   if (t % 2 === 0) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: 215, vx: rnd(-0.4, 0.4), vy: 0, vz: -rnd(0.5, 1.1), life: rnd(190, 260), max: 260, g: 0, c: ['#ffd24a', '#ff6a3a', '#8ad8ff', '#ff8ad8', '#9aff8a', '#ffffff'][Math.random() * 6 | 0], size: 2, add: false });

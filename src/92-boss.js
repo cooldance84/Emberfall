@@ -44,7 +44,7 @@ function updateBoss(e) {
     if (e.atk === 'meteor' && e.t === 8) {
       const n = p2 ? 9 : 6;
       for (let i = 0; i < n; i++) shots.push({ type: 'meteor', x: i === 0 ? hero.x : clamp(hero.x + rnd(-130, 130), cam + 20, cam + W - 20), y: i === 0 ? hero.y : rnd(Y_MIN, Y_MAX), t: 0, delay: 40 + i * 6, dmg: 22 });
-      tone('sawtooth', 400, 90, 0.5, 0.06);
+      sfxTone('sawtooth', 400, 90, 0.5, 0.06);
     }
     if (e.t >= ((WINDUP[e.atk] || 20) * (p2 ? 0.8 : 1) | 0)) { e.st = 'eatk'; e.t = 0; e.hits.clear(); SFX.swing(); }
   } else if (e.st === 'eatk') bossAttack(e, dx, p2);
@@ -83,7 +83,7 @@ function bossAttack(e, dx, p2) {
       if (t === 1) {
         const n = p2 ? 5 : 3;
         for (let i = 0; i < n; i++) shots.push({ type: 'orb', x: e.x + e.face * 30, y: clamp(e.y + (i - (n - 1) / 2) * 12, Y_MIN, Y_MAX), z: 22, vx: e.face * (2.0 + (i % 2) * 0.5), t: 0, dmg: 12, life: 220 });
-        spawn(e.x + e.face * 30, e.y, 22, 10, { c: ['#7aff9a', '#e8fff0'], add: true, l0: 8, l1: 16 }); tone('sawtooth', 300, 700, 0.18, 0.05);
+        spawn(e.x + e.face * 30, e.y, 22, 10, { c: ['#7aff9a', '#e8fff0'], add: true, l0: 8, l1: 16 }); sfxTone('sawtooth', 300, 700, 0.18, 0.05);
       }
       if (t >= 14) end(p2 ? 45 : 80);
       break;

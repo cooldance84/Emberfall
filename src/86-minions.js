@@ -97,7 +97,7 @@ function updateMinion(e) {
         } else {
           for (const p of players()) if (!p.dead && Math.abs(p.x - e.x) < 320) shots.push({ type: 'rune', x: p.x + p.vx * 18, y: clamp(p.y + (p.vy || 0) * 18, Y_MIN, Y_MAX), t: 0, delay: 54, r: 24, dmg: k.dmg, pool: stageIdx >= 5 ? 200 : 150 });
           if (stageIdx >= 15 || cycle) shots.push({ type: 'rune', x: clamp(hero.x + rnd(-70, 70), cam + 20, cam + W - 20), y: rnd(Y_MIN, Y_MAX), t: 0, delay: 66, r: 24, dmg: k.dmg, pool: 150 });
-          tone('sawtooth', 180, 420, 0.3, 0.05);
+          sfxTone('sawtooth', 180, 420, 0.3, 0.05);
         }
         e.st = 'eatk'; e.t = 0;
       }

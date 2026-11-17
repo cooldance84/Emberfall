@@ -5,7 +5,7 @@ function initAudio() {
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
-function tone(type, f0, f1, dur, vol) {
+function sfxTone(type, f0, f1, dur, vol) {
   if (!ac || muted || !sfxOn) return;
   const o = ac.createOscillator(), gn = ac.createGain(), t = ac.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
@@ -18,16 +18,16 @@ function duck(depth) {
   const t = ac.currentTime; mDuck.gain.cancelScheduledValues(t); mDuck.gain.setTargetAtTime(depth, t, 0.012); mDuck.gain.setTargetAtTime(1, t + 0.1, 0.14);
 }
 const SFX = {
-  swing: () => tone('square', 420, 140, 0.09, 0.05),
-  hit: () => { duck(0.45); tone('square', 180, 50, 0.12, 0.12); tone('sawtooth', 90, 40, 0.1, 0.07); },
-  big: () => { duck(0.35); tone('sawtooth', 120, 28, 0.35, 0.15); },
-  magic: () => { duck(0.5); tone('sawtooth', 160, 900, 0.45, 0.07); tone('square', 90, 30, 0.5, 0.08); },
-  pick: () => tone('sine', 600, 1000, 0.14, 0.08),
-  land: () => tone('triangle', 90, 40, 0.08, 0.06),
-  die: () => { duck(0.4); tone('sawtooth', 220, 30, 0.5, 0.12); },
-  burn: () => { tone('sawtooth', 300, 90, 0.28, 0.05); tone('square', 520, 160, 0.16, 0.03); },
-  freeze: () => { tone('sine', 1500, 900, 0.3, 0.06); tone('triangle', 2300, 1700, 0.18, 0.04); },
-  zap: () => { duck(0.55); tone('square', 900, 120, 0.12, 0.06); tone('sawtooth', 1400, 200, 0.1, 0.04); },
-  shatter: () => { duck(0.55); tone('triangle', 1800, 300, 0.22, 0.07); tone('square', 700, 120, 0.12, 0.04); }
+  swing: () => sfxTone('square', 420, 140, 0.09, 0.05),
+  hit: () => { duck(0.6); sfxTone('square', 180, 50, 0.12, 0.09); sfxTone('sawtooth', 90, 40, 0.1, 0.05); },
+  big: () => { duck(0.5); sfxTone('sawtooth', 120, 28, 0.35, 0.12); },
+  magic: () => { duck(0.65); sfxTone('sawtooth', 160, 900, 0.45, 0.07); sfxTone('square', 90, 30, 0.5, 0.08); },
+  pick: () => sfxTone('sine', 600, 1000, 0.14, 0.08),
+  land: () => sfxTone('triangle', 90, 40, 0.08, 0.06),
+  die: () => { duck(0.55); sfxTone('sawtooth', 220, 30, 0.5, 0.1); },
+  burn: () => { sfxTone('sawtooth', 300, 90, 0.28, 0.05); sfxTone('square', 520, 160, 0.16, 0.03); },
+  freeze: () => { sfxTone('sine', 1500, 900, 0.3, 0.06); sfxTone('triangle', 2300, 1700, 0.18, 0.04); },
+  zap: () => { duck(0.7); sfxTone('square', 900, 120, 0.12, 0.06); sfxTone('sawtooth', 1400, 200, 0.1, 0.04); },
+  shatter: () => { duck(0.7); sfxTone('triangle', 1800, 300, 0.22, 0.07); sfxTone('square', 700, 120, 0.12, 0.04); }
 };
 

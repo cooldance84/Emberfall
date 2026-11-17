@@ -47,8 +47,8 @@ function castDragon() {
 }
 function stepDragon() {
   const d = dragon; d.t++;
-  if (d.t === 6) tone('sawtooth', 55, 30, 1.2, 0.1);
-  if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; tone('square', 220, 40, 0.2, 0.05); }
+  if (d.t === 6) sfxTone('sawtooth', 55, 30, 1.2, 0.1);
+  if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; sfxTone('square', 220, 40, 0.2, 0.05); }
   if (d.t === 62) dragonImpact();
   if (d.t > 84 && d.t < 120 && d.t % 3 === 0) { const E = ELEM[rpg.elem || 'fire']; spawn(cam + W / 2 + rnd(-30, 30), rnd(Y_MIN, Y_MAX), 4, 2, { c: [E.col, E.col2], s0: 0.1, s1: 0.5, l0: 20, l1: 40, up: 2.2, g: -0.02, size: 2, add: true }); } // the glowing trail it leaves behind
   if (d.t >= 128) { d.by.inv = Math.max(d.by.inv, 30); dragon = null; }
@@ -65,7 +65,7 @@ function dragonImpact() {
   }
   for (const c of chests) if (!c.open && c.x > cam - 10 && c.x < cam + W + 10) { c.hp = 1; openChest(c); } // the wrath smashes every chest on screen open
   shake = 22; freeze = 8; flashA = 1;
-  SFX.big(); tone('sawtooth', 70, 20, 0.9, 0.14);
+  SFX.big(); sfxTone('sawtooth', 70, 20, 0.9, 0.14);
   const ER = ELEM[rpg.elem || 'fire'];
   for (let i = 0; i < 3; i++) parts.push({ ring: true, rgb: ER.rgb, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
   for (let i = 0; i < 16 + d.v * 4; i++) { const a = rnd(0, 7);
