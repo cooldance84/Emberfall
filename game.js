@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.40.0';
+const VERSION = '1.40.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -854,7 +854,8 @@ function applyDailyRun(o) {
 const ONL = (typeof window !== 'undefined' && window.EMBERFALL_ONLINE) || {};
 const onlineOn = () => !!(ONL.url && ONL.key && typeof fetch === 'function') && !DEV;
 let onlineBoard = { day: '', rows: null, at: 0, err: false, busy: false }, onlineSent = null, onlineSendErr = false;
-function sbFetch(path, opt) { return fetch(String(ONL.url).replace(/\/+$/, '') + '/rest/v1/' + path, Object.assign({ headers: { apikey: ONL.key, Authorization: 'Bearer ' + ONL.key, 'Content-Type': 'application/json' } }, opt)); }
+const sbHeaders = extra => { const h = { apikey: ONL.key, 'Content-Type': 'application/json' }; if (!/^sb_/.test(ONL.key)) h.Authorization = 'Bearer ' + ONL.key; return Object.assign(h, extra); }; // the new sb_publishable_ keys go in apikey only; the old JWT anon key goes in both
+function sbFetch(path, opt) { return fetch(String(ONL.url).replace(/\/+$/, '') + '/rest/v1/' + path, Object.assign({ headers: sbHeaders() }, opt)); }
 const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0 });
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
@@ -866,7 +867,7 @@ function loadOnlineBoard(force) {
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
   if (!onlineOn()) return; onlineSent = { n: e.n, t: e.t | 0, h: e.h }; onlineSendErr = false;
-  sbFetch('daily_scores', { method: 'POST', headers: { apikey: ONL.key, Authorization: 'Bearer ' + ONL.key, 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify({ day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w }) })
+  sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify({ day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w }) })
     .then(r => { if (!r.ok) throw r.status; loadOnlineBoard(true); }).catch(() => { onlineSendErr = true; });
 }
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };

@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.40.1] - 2026-11-17
+- Online board: the new Supabase `sb_publishable_...` keys are sent in the apikey header only (the old JWT anon key still goes in both headers)
+
 ## [1.40.0] - 2026-11-17
 - Optional online daily board through Supabase: a signed daily result is posted to your Supabase project and the daily board shows today's shared rows (shortest time first). Off by default: fill in `online-config.js` (public URL and anon key) and run the SQL in docs/ONLINE.md. Without it the game works as before, with a board per device. The board screen says "ONLINE BOARD" or "THIS DEVICE ONLY"; a failed send leaves the result on the local board
 - The name-entry screen after a daily run shows the time (or the progress) instead of a score

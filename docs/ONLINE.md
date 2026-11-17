@@ -8,7 +8,7 @@ How it works: when a player signs a daily result, the game posts it to a table i
 
 1. Create a project at https://supabase.com (free plan is enough). Pick any region.
 2. Open **SQL Editor > New query**, paste the whole block below and press **Run**.
-3. Open **Project Settings > API**. Copy the **Project URL** and the **anon public** key.
+3. Open **Project Settings > API**. Copy the **Project URL** (`https://<project id>.supabase.co`) and the **anon public** key. In the newer dashboard it is called **Publishable key** (`sb_publishable_...`, under **API Keys**); never use the secret or `service_role` key.
 4. Put them into `online-config.js` in this repo (`url` and `key`), commit and push. Do **not** use the `service_role` key anywhere in the game.
 5. Open the game, finish or abandon a daily run, sign the board: the result appears on the board marked "ONLINE BOARD".
 
