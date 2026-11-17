@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.44.1] - 2026-11-17
+- Code organisation, no change in play: the ~120 lines longer than 300 characters are broken at statement boundaries (the text is identical apart from whitespace), and `game.js` is now built from 38 numbered pieces in `src/` by `node build.js` (plain concatenation; `--check` tells whether `game.js` is current). `game.js` stays one committed file, so GitHub Pages, opening `index.html` directly and the tests work as before.
+
 ## [1.44.0] - 2026-11-17
 - New music, still synthesised live with WebAudio (no sound files). Every theme is a 16-bar form with a chord progression instead of a two-bar loop, built on one driving style: an eighth-note sawtooth bass figure through a closing filter, kick on every beat, snare on 2 and 4, hi-hat eighths, a tam-tam build-up (noise swell and snare roll) at the end of every fourth bar with a gong crash after it, and a formant-filtered "choir" (sung vowels with vibrato) over the chords. A shared reverb (ConvolverNode) gives it room.
 - Gate: 120 BPM, D minor, timpani and bells. Marsh: 108 BPM, E Phrygian, half-time drums, dripping, choir throughout, the biggest reverb. Forge: 126 BPM, C Dorian, anvil hits and a sharp synth lead. Throne: 116 BPM, G minor, organ and choir, brass stabs in the last four bars. Sanctum: 138 BPM, A minor, choir from the first bar, bright bells.

@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.44.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.44.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -197,11 +197,17 @@ python3 -m http.server
 
 ```
 index.html   page and canvas
-game.js      the whole game (engine, art, AI, UI, audio)
+game.js      the whole game in one file: built from src/ by build.js (committed, so Pages and file:// work as is)
+src/         the source, in numbered pieces (00-head ... 99-loop), one per section of the game
+build.js     joins src/*.js into game.js
 i18n.js      Hungarian translation tables
 docs/        screenshots used by this README
 CHANGELOG.md release notes
 ```
+
+## Working on the code
+
+Edit the files in `src/`, never `game.js` itself, then run `node build.js` and commit both. `node build.js --check` fails if `game.js` is out of date with `src/`. Each file starts at one of the `/* ---------- section ---------- */` markers, so a feature is easy to find: the online board is `71-online.js`, the music `31-music.js`, the stage themes `41-themes.js`, the boss AI `92-boss.js`, the sprites `95-sprites.js`. The pieces share one closure (the whole game is wrapped in an IIFE in `00-head.js` and closed in `zz-tail.js`), so a file is not a module and the order of the numbers matters.
 
 ## Versioning
 
