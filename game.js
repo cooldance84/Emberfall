@@ -1,9 +1,10 @@
 'use strict';
+(function () { // everything lives in this closure, so none of it can be reached or changed from the browser console
 /* EMBERFALL — an original side-scrolling brawler.
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.36.9';
+const VERSION = '1.37.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -527,6 +528,22 @@ function makeFighter(kind, x, y) {
 
 /* ---------- RPG: levels, loot, equipment, saves, leaderboard ---------- */
 const MAX_LV = 70, SAVE_KEY = 'emberfall_save_v1', BOARD_KEY = 'emberfall_board_v1', BAG_MAX = 16;
+/* ---------- fair play: saves carry a seal, so a hand-edited save is noticed (a deterrent, not a lock: the game runs on your device) ---------- */
+const sigOf = str => { let h = 0x811c9dc5; const t = 'ashen|' + str; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); };
+const seal = o => { const body = JSON.stringify(o); return JSON.stringify(Object.assign({}, o, { s: sigOf(body) })); };
+function checkSeal(raw) { // the save when it is intact, null when empty or broken, false when its seal does not match
+  if (!raw) return null; let o; try { o = JSON.parse(raw); } catch (e) { return null; }
+  if (!o || typeof o !== 'object' || !(o.v >= 3)) return o; // saves made before sealing stay valid and get sealed on the next save
+  const s = o.s; delete o.s; return s === sigOf(JSON.stringify(o)) ? o : false;
+}
+function unseal(raw, key) { // a save that does not match its seal is set aside (kept under *_bad) and treated as empty
+  const o = checkSeal(raw); if (o !== false) return o;
+  try { localStorage.setItem(key + '_bad', raw); localStorage.removeItem(key); } catch (e) { } tamperT = 420; return null;
+}
+let tamperT = 0;
+const DEV = (() => { try { return typeof location !== 'undefined' && /[?&]max(&|=|$)/.test(location.search) && (!location.hostname || location.hostname === 'localhost' || location.hostname === '127.0.0.1' || localStorage.getItem('ef_dev') === 'ember'); } catch (e) { return false; } })(); // test mode: ?max (and &stage=N), only on your own machine; nothing is saved
+const devStage = () => { try { const m = /[?&]stage=(\d+)/.exec(location.search); return DEV && m ? clamp((+m[1] || 1) - 1, 0, STAGES.length - 1) : 0; } catch (e) { return 0; } };
+function devMax() { if (!DEV) return; rpg.lvl = MAX_LV; rpg.xp = 0; rpg.pg = PG_MAX; rpg.pxp = 0; rpg.tr = TRIAL_MAX; rpg.gold = 999999; rpg.coins = MAX_COINS; if (!rpg.elem) rpg.elem = 'bolt'; rpg.et = 10; for (const sl of SLOTS) { if (!rpg.eq[sl]) rpg.eq[sl] = genItem(4, sl, MAX_LV); rpg.eq[sl].up = MAX_UP; } heroStats(true); }
 const SLOTS = ['weapon', 'helm', 'armor', 'boots', 'ring', 'amulet'];
 const EQ_ORDER = ['helm', 'armor', 'boots', 'weapon', 'ring', 'amulet'];
 const SLOT_NAME = { weapon: 'WEAPON', helm: 'HELM', armor: 'ARMOR', boots: 'BOOTS', ring: 'RING', amulet: 'AMULET' };
@@ -814,7 +831,7 @@ const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + Stri
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
-function saveGame() { if (daily) return; try { localStorage.setItem(saveKey(), JSON.stringify({ v: 2, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
+function saveGame() { if (daily || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -822,7 +839,7 @@ function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic
 }
 function loadGame() {
   try {
-    const o = migrateSave(JSON.parse(localStorage.getItem(saveKey()) || 'null')); loadedCls = CLS;
+    const o = migrateSave(unseal(localStorage.getItem(saveKey()), saveKey())); loadedCls = CLS;
     if (o && o.lvl) {
       rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.elem = ELEMS.includes(o.elem) ? o.elem : null;
       rpg.et = o.et == null ? (rpg.elem ? clamp(Math.floor(rpg.lvl / 10), 0, 7) : 0) : clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.tr = clamp(o.tr | 0, 0, TRIAL_MAX); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0); // older saves keep the tiers they had earned
@@ -833,13 +850,14 @@ function loadGame() {
   } catch (e) { }
 }
 function loadBoard(v) { try { const a = JSON.parse(localStorage.getItem(boardKeyFor(v == null ? (daily ? 1 : 0) : v)) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
-function saveBoard(b) { try { localStorage.setItem(boardKeyFor(daily ? 1 : 0), JSON.stringify(b.slice(0, 10))); } catch (e) { } }
+function saveBoard(b) { if (DEV) return; try { localStorage.setItem(boardKeyFor(daily ? 1 : 0), JSON.stringify(b.slice(0, 10))); } catch (e) { } }
 loadGame();
 /* ---------- the run is cached on this device: resuming a stage costs a continue coin ---------- */
 const runKey = c => 'emberfall_run_v1_' + (c || CLS);
-function saveRun(stage) { if (daily) return; try { localStorage.setItem(runKey(), JSON.stringify({ stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
-function loadRun(c) { try { const o = JSON.parse(localStorage.getItem(runKey(c)) || 'null'); return o && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
+function saveRun(stage) { if (daily || DEV) return; try { localStorage.setItem(runKey(), seal({ v: 3, stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
+function loadRun(c) { try { const o = unseal(localStorage.getItem(runKey(c)), runKey(c)); return o && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
 function clearRun() { if (daily) return; try { localStorage.removeItem(runKey()); } catch (e) { } }
+try { for (const c of CLS_ORDER) { unseal(localStorage.getItem(saveKey(c)), saveKey(c)); unseal(localStorage.getItem(runKey(c)), runKey(c)); } } catch (e) { } // at start-up every hero's save and run cache are checked, so a changed one is caught on the title screen
 let resumeSel = 0, runInfo = null;
 function resumeRun() {
   const o = runInfo; coop = sel.coop; cycle = o.cycle | 0; resetGame(); rpg.coins = Math.max(0, (o.coins | 0) - 1); rpg.gold = o.gold | 0; score = o.score | 0; shop = null;
@@ -864,7 +882,7 @@ function drawResume() {
   opt(1, 'NEW CAMPAIGN  (THE OLD RUN IS LOST)', true);
   text('ENTER: CHOOSE    ESC: BACK', W / 2, 250, 8, '#8a7a9a', 'center');
 }
-function peekSave(c) { try { const o = migrateSave(JSON.parse(localStorage.getItem(saveKey(c)) || 'null')) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
+function peekSave(c) { try { const o = migrateSave(checkSeal(localStorage.getItem(saveKey(c)))) || {}; const eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl])) eq[sl] = o.eq[sl]; return { lvl: clamp((o.lvl | 0) || 1, 1, MAX_LV), eq }; } catch (e) { return { lvl: 1, eq: {} }; } }
 function setClass(c) {
   if (!CLASSES[c]) c = 'nolan'; if (c === CLS && loadedCls === c) return;
   if (loadedCls) saveGame(); CLS = c; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; loadGame(); saveSettings();
@@ -2116,8 +2134,8 @@ function beginStage(i) {
 }
 function startCampaign(two) {
   clearRun();
-  coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3; rpg.gold = 0; shop = null;
-  openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(0), 0);
+  coop = !!two; cycle = 0; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 3; rpg.gold = 0; shop = null; devMax();
+  openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(devStage()), 0);
 }
 function nextCycle() {
   cycle++; rpg.coins = Math.min(MAX_COINS, rpg.coins + 1);
@@ -3738,6 +3756,8 @@ function drawSelect() {
 }
 function drawTitleOverlay() {
   g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(0, 0, W, H);
+  if (tamperT > 0) { tamperT--; text('SAVE DATA WAS MODIFIED - STARTING FRESH', W / 2, 20, 8, '#ff6a6a', 'center'); }
+  if (DEV) text('TEST MODE - NOTHING IS SAVED', W / 2, 262, 8, '#7aff9a', 'center');
   const y = 96 + Math.sin(tickN * 0.04) * 3;
   g.font = 'bold 54px "Courier New",monospace'; g.textAlign = 'center';
   g.fillStyle = '#2a0e08'; g.fillText('EMBERFALL', W / 2 + 3, y + 3);
@@ -3935,3 +3955,4 @@ if (typeof document !== 'undefined' && screen && screen.getContext) {
     requestAnimationFrame(frame);
   })(last);
 }
+})();

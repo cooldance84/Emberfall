@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.37.0] - 2026-11-17
+- Fair play: the whole game now runs inside a closed block, so its values (level, gold, coins, items) can no longer be reached or changed from the browser console.
+- Saves and the continue-coin run cache carry a seal. A hand-edited save is noticed at start-up, set aside (kept under a `_bad` key, never deleted) and the hero starts fresh with a warning on the title screen. Saves made before this version still load and are sealed on their next save.
+- Test mode for the developer: open the game with `?max` (and `&stage=N`) on your own machine (a local file, localhost, or after setting `ef_dev` to `ember` in this browser's storage) for a maxed hero. Nothing is saved or put on the leaderboard in test mode, and the title screen says so.
+- Note: the game runs on the player's device, so this is a deterrent, not a lock.
+
 ## [1.36.9] - 2026-11-17
 - Foes no longer stand over a chasm. Reinforcements arriving at the screen edge start beside a chasm or barricade instead of on it, and any grounded foe that ends up inside a chasm is set on the nearer lip. Chasers still hop across as before.
 
