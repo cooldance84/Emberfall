@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.45.0';
+const VERSION = '1.45.1';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -118,22 +118,27 @@ function tone(type, f0, f1, dur, vol) {
   gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
   o.connect(gn); gn.connect(ac.destination); o.start(t); o.stop(t + dur);
 }
+/* heavy sounds push the music down for a moment, so the blows stay audible over the drums */
+function duck(depth) {
+  if (!ac || !mDuck || muted || !sfxOn || !mDuck.gain.cancelScheduledValues) return;
+  const t = ac.currentTime; mDuck.gain.cancelScheduledValues(t); mDuck.gain.setTargetAtTime(depth, t, 0.012); mDuck.gain.setTargetAtTime(1, t + 0.1, 0.14);
+}
 const SFX = {
   swing: () => tone('square', 420, 140, 0.09, 0.05),
-  hit: () => { tone('square', 180, 50, 0.12, 0.09); tone('sawtooth', 90, 40, 0.1, 0.05); },
-  big: () => { tone('sawtooth', 120, 28, 0.35, 0.12); },
-  magic: () => { tone('sawtooth', 160, 900, 0.45, 0.07); tone('square', 90, 30, 0.5, 0.08); },
+  hit: () => { duck(0.45); tone('square', 180, 50, 0.12, 0.12); tone('sawtooth', 90, 40, 0.1, 0.07); },
+  big: () => { duck(0.35); tone('sawtooth', 120, 28, 0.35, 0.15); },
+  magic: () => { duck(0.5); tone('sawtooth', 160, 900, 0.45, 0.07); tone('square', 90, 30, 0.5, 0.08); },
   pick: () => tone('sine', 600, 1000, 0.14, 0.08),
   land: () => tone('triangle', 90, 40, 0.08, 0.06),
-  die: () => tone('sawtooth', 220, 30, 0.5, 0.1),
+  die: () => { duck(0.4); tone('sawtooth', 220, 30, 0.5, 0.12); },
   burn: () => { tone('sawtooth', 300, 90, 0.28, 0.05); tone('square', 520, 160, 0.16, 0.03); },
   freeze: () => { tone('sine', 1500, 900, 0.3, 0.06); tone('triangle', 2300, 1700, 0.18, 0.04); },
-  zap: () => { tone('square', 900, 120, 0.12, 0.06); tone('sawtooth', 1400, 200, 0.1, 0.04); },
-  shatter: () => { tone('triangle', 1800, 300, 0.22, 0.07); tone('square', 700, 120, 0.12, 0.04); }
+  zap: () => { duck(0.55); tone('square', 900, 120, 0.12, 0.06); tone('sawtooth', 1400, 200, 0.1, 0.04); },
+  shatter: () => { duck(0.55); tone('triangle', 1800, 300, 0.22, 0.07); tone('square', 700, 120, 0.12, 0.04); }
 };
 
 /* ---------- music: a procedural score, 16 bars per theme (WebAudio, no sound files) ---------- */
-let mGain = null, mRevIn = null, noiseBuf = null, mNext = 0, mStep = 0, mTrack = -1, mLvl = 0, mWant = 0, mLow = 0;
+let mGain = null, mDuck = null, mRevIn = null, noiseBuf = null, mNext = 0, mStep = 0, mTrack = -1, mLvl = 0, mWant = 0, mLow = 0;
 /* A track = a 16-bar form (8 eighth-note steps a bar). prog: chord root (scale degree) per bar; bass: 8-step figure,
    chord-relative scale degrees (null = rest); lead: 8-step melody figure; choir: [first bar, lowest intensity]; rev: reverb amount.
    Intensity: 0 = empty stage (bass + pad), 1 = a wave is on (drums too), 2 = boss (everything). */
@@ -155,16 +160,19 @@ const MUS = [
     lead: [0, 2, 4, 7, 4, 2, 4, 9], leadFrom: 0, choir: [0, 0], vow: [0, 1, 0, 2] },
   { name: 'boss', root: 73.42, sc: [0, 2, 3, 5, 7, 8, 10], bpm: 132, rev: 0.5, half: false,                       // D minor, choir from bar 4, chord stabs from bar 9
     prog: [0, 0, 5, 6, 0, 0, 3, 4, 5, 6, 0, 0, 3, 4, 5, 6], bass: [0, 0, 0, 7, 0, 0, 4, 7], pad: 'sawtooth', bv: 1.25,
-    choir: [3, 2], vow: [0, 3, 1, 0], stab: 8 }
+    choir: [3, 2], vow: [0, 3, 1, 0], stab: 8 },
+  { name: 'title', root: 73.42, sc: [0, 2, 3, 5, 7, 8, 10], bpm: 84, rev: 1.0, half: true, menu: true,           // the menus: D minor, slow, no drums: choir, bells, a low timpani
+    prog: [0, 2, 5, 6, 0, 2, 3, 4, 5, 3, 0, 6, 5, 3, 4, 0], bass: [0, null, 4, null, 7, null, 4, null], pad: 'triangle',
+    lead: [0, null, 2, null, 4, null, 7, null], leadFrom: 0, choir: [0, 0], vow: [0, 1, 2, 1] }
 ];
-const MUS_BOSS = 5;
+const MUS_BOSS = 5, MUS_TITLE = 6;
 const VOWELS = [[800, 1150, 2900], [450, 800, 2830], [325, 700, 2700], [530, 1840, 2480]]; // ah, oh, oo, eh
 const degFreq = (M, d, oct) => M.root * Math.pow(2, (M.sc[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct)) / 12);
 const chordOf = (M, r, oct) => [degFreq(M, r, oct), degFreq(M, r + 2, oct), degFreq(M, r + 4, oct)];
 function mChain() {
-  mGain = ac.createGain(); mGain.gain.value = 0.8;
-  let dst = ac.destination;
-  if (ac.createDynamicsCompressor) { try { const cp = ac.createDynamicsCompressor(); cp.connect(ac.destination); dst = cp; } catch (e) { } }
+  mGain = ac.createGain(); mGain.gain.value = 0.7; mDuck = ac.createGain(); mDuck.gain.value = 1; mDuck.connect(ac.destination);
+  let dst = mDuck;
+  if (ac.createDynamicsCompressor) { try { const cp = ac.createDynamicsCompressor(); cp.connect(mDuck); dst = cp; } catch (e) { } }
   mGain.connect(dst);
   if (ac.createConvolver) { try {                       // one shared hall: decaying, slightly dark noise, different on each ear
     const n = Math.floor(ac.sampleRate * 2.8), ir = ac.createBuffer(2, n, ac.sampleRate);
@@ -256,6 +264,11 @@ function mPlayStep(M, step, t, sd, lv) {
     if (q4 === 0 && lv > 0) mGong(t, bar === 0 ? 0.07 : 0.045);   // the tam-tam crash that answers the build-up
   }
   if (M.name === 'marsh' && (lv >= 0) && mHash(step * 7 + 3) < 0.2) mDrip(degFreq(M, [4, 7, 9, 11, 14][(mHash(step) * 5) | 0], 2), t, 0.05);
+  if (M.menu) {                                          // no drums in the menus: bells over the choir, one soft timpani a bar
+    if (i === 0) mTimp(t, degFreq(M, r, 1), 0.1);
+    if (M.lead[i] !== null) mBell(degFreq(M, r + M.lead[i], 2), t, 0.045, sd * 4, false);
+    return;
+  }
   if (lv < 1) return;
   // drums: kick on every quarter, snare on 2 and 4, hi-hat eighths (half-time in the marsh)
   const build = q4 === 3 && i >= 4;
@@ -290,8 +303,9 @@ function mSchedule(M, until) {
 function musicTick() {
   if (!ac || !mGain || !musicOn || muted || ac.state !== 'running') return;
   const boss = mode === 'play' && !!bossRef && !bossRef.dead;
-  const th = mode === 'gameover' ? -1 : mode === 'title' ? 0 : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
-  mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.3 : boss ? 0.92 : 0.8, ac.currentTime, 0.1);
+  const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'board' || mode === 'name' || mode === 'cloud';
+  const th = mode === 'gameover' ? -1 : menu ? MUS_TITLE : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
+  mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7, ac.currentTime, 0.1);
   if (th < 0) return;
   if (mode !== 'pause' && mode !== 'inv') mWant = boss ? 2 : mode === 'story' ? 0 : mode === 'play' ? (enemies.some(e => !e.dead && e.kind !== 'imp') ? 1 : 0) : 1;
   const trk = boss ? MUS_BOSS : th;

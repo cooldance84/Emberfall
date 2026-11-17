@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.45.1] - 2026-11-18
+- Audio fixes. The title screen and the menus now have their own slow, drum-free track (D minor, 84 BPM: choir, bells, a soft timpani), so stage 1 no longer sounds like the title screen with the drums added.
+- Blows can be heard again over the music: hits, big hits, spells, lightning, shattering and deaths push the music down for a moment (a ducking stage on the music bus), the hit sounds are a little louder, and the music is a little quieter overall.
+- Test fix: the chest test could fail one run in ten because a chest takes two or three blows; it now hits until it opens.
+
 ## [1.45.0] - 2026-11-18
 - The Hungarian translation is removed: the game is English only. Its translation rules called a function that did not exist outside the game's closure, which stopped the game with a black screen (and froze it when H was pressed on the title screen) as soon as Hungarian was selected. `i18n.js`, the language box (H) on the title screen, the LANGUAGE item of the pause menu and the saved language setting are gone; the cloud-save button moved to the corner. The translation stays in the git history (it was last present in v1.44.2).
 
