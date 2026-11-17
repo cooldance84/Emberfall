@@ -948,7 +948,7 @@ function drawHUD() {
 }
 
 const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
-let donateBox = null, langBox = null, dailyBox = null, cloudBox = null;
+let donateBox = null, dailyBox = null, cloudBox = null;
 function drawDonate(y) {
   const t = tr('LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D');
   g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
@@ -964,11 +964,10 @@ screen.addEventListener('pointerup', e => {
   if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !langBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
   if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
-  if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
 screen.addEventListener('pointermove', e => {
@@ -976,5 +975,4 @@ screen.addEventListener('pointermove', e => {
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
 });
-addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 'title') setLang(LANG === 'hu' ? 'en' : 'hu'); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });

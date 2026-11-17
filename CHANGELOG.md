@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.45.0] - 2026-11-18
+- The Hungarian translation is removed: the game is English only. Its translation rules called a function that did not exist outside the game's closure, which stopped the game with a black screen (and froze it when H was pressed on the title screen) as soon as Hungarian was selected. `i18n.js`, the language box (H) on the title screen, the LANGUAGE item of the pause menu and the saved language setting are gone; the cloud-save button moved to the corner. The translation stays in the git history (it was last present in v1.44.2).
+
 ## [1.44.2] - 2026-11-18
 - An error in the game no longer ends in a silent black screen: it is printed in a red box at the top of the page (with the version and the place of the error), and a failing frame no longer stops the main loop. Nothing changes when all is well.
 

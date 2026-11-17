@@ -17,8 +17,7 @@ function initTouch() {
   btn('SKILL', 'TSkill', 182, 40, 54); btn('SWAP', 'TSwap', 188, 104, 42);
   btn('II', 'TPause', 12, null, 40); btn('GEAR', 'TInv', 60, null, 40); btn('OK', 'TStart', 108, null, 40);
   for (const d of all) if (d.dataset.k === 'II' || d.dataset.k === 'GEAR' || d.dataset.k === 'OK') { d.style.bottom = 'auto'; d.style.top = '8px'; d.style.fontSize = '10px'; }
-  window.refreshTouchLabels = () => { for (const d of all) if (d.dataset && d.dataset.k) d.textContent = LANG === 'hu' && typeof HU_TOUCH !== 'undefined' && HU_TOUCH[d.dataset.k] ? HU_TOUCH[d.dataset.k] : d.dataset.k; };
-  refreshTouchLabels();
+  for (const d of all) if (d.dataset && d.dataset.k) d.textContent = d.dataset.k;
   // virtual stick
   const stick = mk('tb', 'left:22px;bottom:40px;width:128px;height:128px'), knob = document.createElement('div');
   knob.style.cssText = 'width:52px;height:52px;border-radius:50%;background:rgba(255,220,160,.45);position:absolute;left:38px;top:38px';

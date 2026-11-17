@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.44.2';
+const VERSION = '1.45.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -81,7 +81,6 @@ const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), he
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
 let crtOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
-let LANG = 'en';
 /* ---------- three heroes: Nolan (STR warrior), Panni (INT sorceress), Luca (DEX rogue) ---------- */
 const CLASSES = {
   nolan: { name: 'NOLAN', stat: 'STR', kind: 'hero', hp0: 136, hpl: 4, crit: 5, cdmg: 150, mul: 0.025, role: 'WARRIOR', col: '#9fd0ff', desc: ['STRENGTH: MORE HEALTH, HEAVY SWORD', '3-HIT COMBO, THE LAST HIT KNOCKS DOWN'] },
@@ -98,12 +97,11 @@ function heroize(t) { // story text follows the chosen hero
   return t.replace(/Nolan's Last Dawn/g, "Nolan's Last Dawn").replace(/Nolané/g, CLS === 'luca' ? 'Lucáé' : 'Pannié').replace(/Nolan/g, n).replace(/NOLAN/g, cls().name)
     .replace(/the sword/g, CLS === 'panni' ? 'the staff' : 'the daggers').replace(/a sword/g, CLS === 'panni' ? 'a staff' : 'twin daggers').replace(/kardot/g, CLS === 'panni' ? 'varázsbotot' : 'tőröket');
 }
-function tr(s) { return (LANG === 'hu' && typeof huTranslate === 'function' && typeof s === 'string') ? huTranslate(s) : s; }
-function setLang(l) { LANG = l; saveSettings(); if (typeof refreshTouchLabels === 'function') refreshTouchLabels(); }
+function tr(s) { return s; } // the game is English only (kept as a hook so every string still goes through one place)
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false;
-  crtOn = o.crt !== false; if (o.lang === 'hu' || o.lang === 'en') LANG = o.lang; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls;
+  crtOn = o.crt !== false; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls;
   } } catch (e) { } }
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, lang: LANG, cls: CLS })); } catch (e) { } }
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, cls: CLS })); } catch (e) { } }
 loadSettings();
 
 /* ---------- audio (tiny synth) ---------- */
@@ -2710,7 +2708,7 @@ function dragonImpact() {
 
 /* ---------- campaign flow: story screens, stages ---------- */
 /* ---------- pause menu ---------- */
-const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'LANGUAGE', 'SKILLS', 'CONTROLS', 'ELEMENTS', 'QUIT TO TITLE'];
+const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'SKILLS', 'CONTROLS', 'ELEMENTS', 'QUIT TO TITLE'];
 let pauseI = 0, pausePg = 0;
 function openPause() { mode = 'pause'; pauseI = 0; pausePg = 0; SFX.pick(); }
 function updatePause() {
@@ -2724,11 +2722,10 @@ function updatePause() {
   else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
   else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
-  else if (pauseI === 4) { setLang(LANG === 'hu' ? 'en' : 'hu'); SFX.pick(); }
-  else if (pauseI === 5) pausePg = 2;
-  else if (pauseI === 6) pausePg = 1;
-  else if (pauseI === 7) pausePg = 3;
-  else if (pauseI === 8) { saveGame(); toTitle(); }
+  else if (pauseI === 4) pausePg = 2;
+  else if (pauseI === 5) pausePg = 1;
+  else if (pauseI === 6) pausePg = 3;
+  else if (pauseI === 7) { saveGame(); toTitle(); }
 }
 function drawPause() {
   g.fillStyle = 'rgba(4,2,10,0.72)'; g.fillRect(0, 0, W, H);
@@ -2761,7 +2758,6 @@ function drawPause() {
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
-    if (i === 4) text(LANG === 'hu' ? 'MAGYAR' : 'ENGLISH', W / 2 + 86, y, 10, '#8cc4ff', 'right');
   });
   text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }
@@ -4771,7 +4767,7 @@ function drawHUD() {
 }
 
 const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
-let donateBox = null, langBox = null, dailyBox = null, cloudBox = null;
+let donateBox = null, dailyBox = null, cloudBox = null;
 function drawDonate(y) {
   const t = tr('LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D');
   g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
@@ -4787,11 +4783,10 @@ screen.addEventListener('pointerup', e => {
   if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !langBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
   if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
-  if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
 screen.addEventListener('pointermove', e => {
@@ -4799,7 +4794,6 @@ screen.addEventListener('pointermove', e => {
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
 });
-addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 'title') setLang(LANG === 'hu' ? 'en' : 'hu'); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 /* ---------- hero select ---------- */
 let selBoxes = [];
@@ -4883,18 +4877,15 @@ function drawTitleOverlay() {
     text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
   }
   drawDonate(H - 12);
-  { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10;
-    langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12);
-    text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
-  if (onlineOn()) { const ct = '[C] ' + (LANG === 'hu' ? 'FELHŐ-MENTÉS' : 'CLOUD SAVE'); g.font = '8px "Courier New",monospace'; const cw = g.measureText(ct).width + 10;
-    cloudBox = { x: langBox.x + langBox.w + 6, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
+  if (onlineOn()) { const ct = '[C] CLOUD SAVE'; g.font = '8px "Courier New",monospace'; const cw = g.measureText(ct).width + 10;
+    cloudBox = { x: 4, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: DAILY BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; langBox = null; dailyBox = null; cloudBox = null;
+  donateBox = null; dailyBox = null; cloudBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -5044,8 +5035,7 @@ function initTouch() {
   btn('SKILL', 'TSkill', 182, 40, 54); btn('SWAP', 'TSwap', 188, 104, 42);
   btn('II', 'TPause', 12, null, 40); btn('GEAR', 'TInv', 60, null, 40); btn('OK', 'TStart', 108, null, 40);
   for (const d of all) if (d.dataset.k === 'II' || d.dataset.k === 'GEAR' || d.dataset.k === 'OK') { d.style.bottom = 'auto'; d.style.top = '8px'; d.style.fontSize = '10px'; }
-  window.refreshTouchLabels = () => { for (const d of all) if (d.dataset && d.dataset.k) d.textContent = LANG === 'hu' && typeof HU_TOUCH !== 'undefined' && HU_TOUCH[d.dataset.k] ? HU_TOUCH[d.dataset.k] : d.dataset.k; };
-  refreshTouchLabels();
+  for (const d of all) if (d.dataset && d.dataset.k) d.textContent = d.dataset.k;
   // virtual stick
   const stick = mk('tb', 'left:22px;bottom:40px;width:128px;height:128px'), knob = document.createElement('div');
   knob.style.cssText = 'width:52px;height:52px;border-radius:50%;background:rgba(255,220,160,.45);position:absolute;left:38px;top:38px';

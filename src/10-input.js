@@ -58,4 +58,3 @@ const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), he
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
 let crtOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
-let LANG = 'en';

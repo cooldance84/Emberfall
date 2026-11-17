@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.44.2-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.45.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -53,7 +53,6 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 
 ## Features
 
-- **English and Hungarian (magyar):** pick the language on the title screen (click the box or press H) or in the pause menu. English is the default, and your choice is remembered. Translations live in `i18n.js`.
 - **Your gear shows on the hero:** each rarity changes the look of the helm or hood (iron, visored, gold, crown of flame), the armour (steel, blue, gold with spikes, obsidian with ember cracks), the boots, the amulet gem and the blade or staff (rusty, steel, glowing blue, golden, flaming). Set pieces glow set-green.
 - **New monsters in later acts:** frost archers (act II) shoot arrows you can jump over, blaze bombers (act III) run up and explode in a shockwave, and hollow knights (act IV) leap across the screen and crash down with a shockwave.
 - **Articulated bosses:** the Colossus swings a stone back-arm, the Matron reaches with ghostly arms and living hair, the Forgemaster works a tongs arm, and the Cinder King's wings flap on shoulder, elbow, wrist and finger bones.
@@ -200,7 +199,6 @@ index.html   page and canvas
 game.js      the whole game in one file: built from src/ by build.js (committed, so Pages and file:// work as is)
 src/         the source, in numbered pieces (00-head ... 99-loop), one per section of the game
 build.js     joins src/*.js into game.js
-i18n.js      Hungarian translation tables
 docs/        screenshots used by this README
 CHANGELOG.md release notes
 ```

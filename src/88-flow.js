@@ -1,6 +1,6 @@
 /* ---------- campaign flow: story screens, stages ---------- */
 /* ---------- pause menu ---------- */
-const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'LANGUAGE', 'SKILLS', 'CONTROLS', 'ELEMENTS', 'QUIT TO TITLE'];
+const PAUSE_ITEMS = ['RESUME', 'MUSIC', 'SOUND FX', 'CRT FILTER', 'SKILLS', 'CONTROLS', 'ELEMENTS', 'QUIT TO TITLE'];
 let pauseI = 0, pausePg = 0;
 function openPause() { mode = 'pause'; pauseI = 0; pausePg = 0; SFX.pick(); }
 function updatePause() {
@@ -14,11 +14,10 @@ function updatePause() {
   else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
   else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
-  else if (pauseI === 4) { setLang(LANG === 'hu' ? 'en' : 'hu'); SFX.pick(); }
-  else if (pauseI === 5) pausePg = 2;
-  else if (pauseI === 6) pausePg = 1;
-  else if (pauseI === 7) pausePg = 3;
-  else if (pauseI === 8) { saveGame(); toTitle(); }
+  else if (pauseI === 4) pausePg = 2;
+  else if (pauseI === 5) pausePg = 1;
+  else if (pauseI === 6) pausePg = 3;
+  else if (pauseI === 7) { saveGame(); toTitle(); }
 }
 function drawPause() {
   g.fillStyle = 'rgba(4,2,10,0.72)'; g.fillRect(0, 0, W, H);
@@ -51,7 +50,6 @@ function drawPause() {
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
-    if (i === 4) text(LANG === 'hu' ? 'MAGYAR' : 'ENGLISH', W / 2 + 86, y, 10, '#8cc4ff', 'right');
   });
   text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }
