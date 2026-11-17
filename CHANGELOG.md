@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.39.0] - 2026-11-17
+- Daily challenge is now a race: start a fresh level-1 hero and be the first to reach level 70 + 100 paragon; the shortest play time wins (pauses, shops and story pages do not count). The stages no longer end after five: they keep coming, a tougher round each time, until you reach the goal. The race clock and the goal show on the HUD
+- The daily run is kept on the device for the day (sealed, like the saves) and resumes from the start of your last stage; a lost run or a finished one starts over
+- The daily board shows the play time and paragon; finished runs rank by shortest time (equal time: whoever finished first), then the furthest unfinished ones by level and paragon
+- New rules page after pressing 3: today's rule, the goal and the reward. The victory screen is the daily's own (it no longer says the world is saved)
+- Reward: winning the day earns one daily crown (one a day per hero) on your saved hero, shown beside its level in the HUD and on the hero select screen; the real hero's level, gear and save are never touched
+
 ## [1.38.4] - 2026-11-17
 - Items and display redrawn after the "Items and display" board (looks only, no gameplay change): item icons are shaded metal, leather and stone; the frame tells the rarity at a glance: plain (common), blue double frame (magic), gold with rivets (rare), ornate corner irons and a halo (legendary), pulsing inner light and a gem set in the top edge (mythic); set pieces glow green and carry a badge
 - Ember Jar: a glass jar with a cork, a gold rune band and a blue flame inside; an empty jar is dark glass with ash at the bottom; the flame flares up when a jar fills

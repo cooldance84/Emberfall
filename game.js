@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.38.4';
+const VERSION = '1.39.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -817,9 +817,8 @@ function drawFloats() { for (const f of floats) { g.globalAlpha = Math.min(1, (5
 /* ---- persistence: character + leaderboard live in localStorage ---- */
 const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[it.rar] && it.st && typeof it.name === 'string'); if (ok) { it.up = clamp(it.up | 0, 0, MAX_UP); if (it.set && !(SETS[it.set] && it.rar >= 3)) delete it.set; for (const k of ['ea', 'er']) if (it[k] && !(ELEMS.includes(it[k].k) && it[k].v > 0)) delete it[k]; else if (it[k]) it[k].v = Math.min(99, it[k].v | 0); } return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
-/* ---------- daily challenge: five stages, a fresh hero, one rule of the day, its own leaderboard; your real hero and run are never touched ---------- */
+/* ---------- daily challenge: an endless race with a fresh level-1 hero and one rule of the day; the goal is level 70 + 100 paragon, the shortest play time wins; it has its own leaderboard, and only a crown reaches your saved hero ---------- */
 let daily = null, boardView = 0; // boardView 0 = all time, 1 = today's daily
-const DAILY_STAGES = 5;
 const DAILY_MODS = [
   { name: 'GOLD RUSH', info: 'ALL GOLD IS DOUBLED' },
   { name: 'GLASS CANNON', info: 'YOU HIT 50% HARDER, AND TAKE 50% MORE' },
@@ -828,6 +827,29 @@ const DAILY_MODS = [
   { name: 'TREASURE DAY', info: 'TWICE THE CHESTS, MORE GOLDEN ONES' }
 ];
 const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const fmtTime = f => { const t = Math.floor(f / 60), h = Math.floor(t / 3600); return h + ':' + String(Math.floor(t / 60) % 60).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }; // play time h:mm:ss from 60 Hz frames
+const dailyRunKey = c => 'emberfall_daily_run_' + dayStr() + '_' + c;
+const crownKey = c => 'emberfall_crown_' + c; let crownMemo = {};
+function crownsOf(c) { if (crownMemo[c] === undefined) { let n = 0; try { const o = unseal(localStorage.getItem(crownKey(c)), crownKey(c)); n = o ? Math.max(0, o.n | 0) : 0; } catch (e) { } crownMemo[c] = n; } return crownMemo[c]; }
+function grantCrown(c) { // winning the day earns the saved hero one crown (at most one a day per hero)
+  if (DEV) return true;
+  try { const k = crownKey(c), o = unseal(localStorage.getItem(k), k) || { n: 0, d: '' }; if (o.d === dayStr()) return false; localStorage.setItem(k, seal({ v: 3, n: (o.n | 0) + 1, d: dayStr() })); crownMemo[c] = (o.n | 0) + 1; return true; } catch (e) { return false; }
+}
+function dailyCmp(a, b) { // finished runs first (shortest play time wins), then whoever got furthest
+  if (!!a.w !== !!b.w) return a.w ? -1 : 1;
+  if (a.w) return ((a.t | 0) - (b.t | 0)) || ((a.at || 0) - (b.at || 0)); // equal play time: whoever got there first
+  return ((b.lv | 0) - (a.lv | 0)) || ((b.pg | 0) - (a.pg | 0)) || (((b.c | 0) * 100 + (b.st | 0)) - ((a.c | 0) * 100 + (a.st | 0))) || ((a.t | 0) - (b.t | 0));
+}
+function saveDailyRun(stage, over) { // the race is kept on this device for the day: it resumes from the start of the last stage
+  if (!daily || DEV) return;
+  try { localStorage.setItem(dailyRunKey(CLS), seal({ v: 3, d: daily.date, stage, cycle, t: daily.t | 0, over: !!over, done: !!daily.done, lvl: rpg.lvl, xp: rpg.xp, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0, bag: rpg.bag, eq: rpg.eq, elem: rpg.elem, et: rpg.et, eg: rpg.eg, coins: rpg.coins, gold: rpg.gold, score })); } catch (e) { }
+}
+function loadDailyRun(c) { try { const k = dailyRunKey(c), o = unseal(localStorage.getItem(k), k); return o && o.d === dayStr() && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
+function applyDailyRun(o) {
+  rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0);
+  rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); rpg.eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl]) && o.eq[sl].slot === sl) rpg.eq[sl] = o.eq[sl];
+  rpg.elem = ELEMS.includes(o.elem) ? o.elem : null; rpg.et = clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.coins = clamp(o.coins | 0, 0, MAX_COINS); rpg.gold = Math.max(0, o.gold | 0); score = Math.max(0, o.score | 0); cycle = clamp(o.cycle | 0, 0, TRIAL_MAX);
+}
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
@@ -849,12 +871,12 @@ function loadGame() {
     }
   } catch (e) { }
 }
-function loadBoard(v) { try { const a = JSON.parse(localStorage.getItem(boardKeyFor(v == null ? (daily ? 1 : 0) : v)) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').slice(0, 10) : []; } catch (e) { return []; } }
+function loadBoard(v) { try { const bv = v == null ? (daily ? 1 : 0) : v, a = JSON.parse(localStorage.getItem(boardKeyFor(bv)) || '[]'); return Array.isArray(a) ? a.filter(e => e && typeof e.s === 'number').map(e => bv && typeof e.t !== 'number' ? Object.assign({}, e, { w: false, pg: e.pg | 0 }) : e).slice(0, 10) : []; } catch (e) { return []; } }
 function saveBoard(b) { if (DEV) return; try { localStorage.setItem(boardKeyFor(daily ? 1 : 0), JSON.stringify(b.slice(0, 10))); } catch (e) { } }
 loadGame();
 /* ---------- the run is cached on this device: resuming a stage costs a continue coin ---------- */
 const runKey = c => 'emberfall_run_v1_' + (c || CLS);
-function saveRun(stage) { if (daily || DEV) return; try { localStorage.setItem(runKey(), seal({ v: 3, stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
+function saveRun(stage) { if (daily) { saveDailyRun(stage); return; } if (DEV) return; try { localStorage.setItem(runKey(), seal({ v: 3, stage, cycle, coins: rpg.coins, gold: rpg.gold, score, coop, c2: CLS2 })); } catch (e) { } }
 function loadRun(c) { try { const o = unseal(localStorage.getItem(runKey(c)), runKey(c)); return o && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
 function clearRun() { if (daily) return; try { localStorage.removeItem(runKey()); } catch (e) { } }
 try { for (const c of CLS_ORDER) { unseal(localStorage.getItem(saveKey(c)), saveKey(c)); unseal(localStorage.getItem(runKey(c)), runKey(c)); } } catch (e) { } // at start-up every hero's save and run cache are checked, so a changed one is caught on the title screen
@@ -895,18 +917,26 @@ let nameBuf = [0, 0, 0], namePos = 0, pendingRun = null, boardHi = -1, resetArm 
 let inv = { z: 'bag', i: 0, from: 'play' }, invNote = '', invNoteT = 0;
 function endRun(won) {
   clearRun();
-  if (won) score += rpg.coins * 1500 + rpg.gold * 2;
-  saveGame();
+  if (won && !daily) score += rpg.coins * 1500 + rpg.gold * 2;
+  saveGame(); if (daily) saveDailyRun(stageIdx, true);
   const b = loadBoard();
   pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won, h: CLS };
-  if (score > 0 && (b.length < 10 || score > b[b.length - 1].s)) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
+  if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); }
+  if (daily ? (b.length < 10 || dailyCmp(pendingRun, b[b.length - 1]) < 0) : (score > 0 && (b.length < 10 || score > b[b.length - 1].s))) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
 function startDaily() {
-  daily = { date: dayStr(), mod: dayMod() }; coop = false; cycle = 0;
-  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null; heroStats(true);
-  beginStage(0); msg = 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
+  daily = { date: dayStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
+  try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('emberfall_daily_run_') === 0 && k.indexOf('emberfall_daily_run_' + daily.date + '_') !== 0) localStorage.removeItem(k); } } catch (e) { } // runs of earlier days are dropped
+  rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null;
+  const o = loadDailyRun(CLS), live = !!o && !o.over && !o.done; if (live) { applyDailyRun(o); daily.t = Math.max(0, o.t | 0); }
+  heroStats(true);
+  beginStage(live ? o.stage : 0); msg = live ? 'DAILY RACE RESUMED  -  ' + fmtTime(daily.t) : 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
+}
+function dailyWin() { // level 70 and 100 paragon: the race is won
+  daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true);
+  mode = 'victory'; endTimer = 0; TH = THEMES[4];
 }
 function toTitle() { if (daily) { daily = null; boardView = 0; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
 function updateName() {
@@ -914,7 +944,7 @@ function updateName() {
   if (isHit('up')) nameBuf[namePos] = (nameBuf[namePos] + 1) % 26; if (isHit('down')) nameBuf[namePos] = (nameBuf[namePos] + 25) % 26;
   if (isHit('start')) {
     const n = nameBuf.map(i => LETTERS[i]).join(''); rpg.ini = n;
-    const b = loadBoard(), e = Object.assign({ n }, pendingRun); b.push(e); b.sort((a, c) => c.s - a.s); boardHi = b.indexOf(e);
+    const b = loadBoard(), e = Object.assign({ n }, pendingRun); b.push(e); b.sort(daily ? dailyCmp : (a, c) => c.s - a.s); boardHi = b.indexOf(e);
     saveBoard(b); saveGame(); mode = 'board';
   }
 }
@@ -951,17 +981,17 @@ function drawBoardScreen() {
   const bv = daily ? 1 : boardView;
   text(bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
   text(bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
-  text('#', 80, 76, 7, '#b8935a'); text('NAME', 104, 76, 7, '#b8935a'); text('SCORE', 252, 76, 7, '#b8935a', 'right'); text('STAGE', 266, 76, 7, '#b8935a'); text('LV', 322, 76, 7, '#b8935a');
+  text('#', 80, 76, 7, '#b8935a'); text('NAME', 104, 76, 7, '#b8935a'); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, '#b8935a', 'right'); text('STAGE', 266, 76, 7, '#b8935a'); text('LV', 322, 76, 7, '#b8935a'); if (bv) text('PG', 356, 76, 7, '#b8935a');
   const b = loadBoard(bv);
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
     if (i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
     text(String(i + 1).padStart(2, ' '), 78, y, 9, col);
-    if (e) { text(e.n, 104, y, 9, col); text(String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
+    if (e) { text(e.n, 104, y, 9, col); text(bv ? (e.w ? fmtTime(e.t) : '-') : String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (bv) text(String(e.pg | 0), 356, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
     else text('---', 104, y, 9, col);
   }
-  text(bv ? '* = FINISHED ALL 5 STAGES' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (mode === 'board' && !daily) text('A/D: ALL TIME / TODAY', 78, 250, 6, '#8a6a3a');
+  text(bv ? '* = REACHED LV 70 + 100 PARAGON' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (mode === 'board' && !daily) text('A/D: ALL TIME / TODAY', 78, 250, 6, '#8a6a3a');
   if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
 }
 
@@ -2190,7 +2220,7 @@ function startCampaign(two) {
   openStory('THE ASHEN VOW', 'A TALE OF EMBERFALL', STORY.intro, () => beginStage(devStage()), 0);
 }
 function nextCycle() {
-  cycle++; rpg.coins = Math.min(MAX_COINS, rpg.coins + 1);
+  cycle = daily ? Math.min(TRIAL_MAX, cycle + 1) : cycle + 1; rpg.coins = Math.min(MAX_COINS, rpg.coins + 1);
   for (const p of players()) { p.dead = false; p.fade = 0; p.hp = p.maxhp; p.mana = Math.max(p.mana, 60); }
   openStory('THE ASH RETURNS', trialName(cycle), STORY.loop, () => beginStage(0), 0);
 }
@@ -2444,7 +2474,7 @@ function stageCleared() {
 }
 function afterClear(skipBonus) {
   const S = STAGES[stageIdx];
-  if (daily && stageIdx >= DAILY_STAGES - 1) { score += 5000; mode = 'victory'; endTimer = 0; TH = THEMES[4]; return; }
+  if (daily && stageIdx >= STAGES.length - 1) { nextCycle(); return; } // the race goes on: the next, tougher round
   if (skipBonus !== true && !daily && BONUS_AFTER(stageIdx)) { beginBonus(() => afterClear(true)); return; } // a short gold run after every act boss
   if (stageIdx < STAGES.length - 1) saveRun(stageIdx + 1);
   if (stageIdx < STAGES.length - 1) openStory(`STAGE ${stageIdx + 1} CLEARED`, S.name, S.clear, () => beginStage(stageIdx + 1), STAGES[stageIdx + 1].theme, actOf(stageIdx + 1));
@@ -2941,10 +2971,11 @@ function step() {
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardHi = -1; mode = 'board'; return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
-    else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openSelect(false, true); return; }
+    else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
+  if (mode === 'dailyinfo') { updateDailyInfo(); updateParts(); cam += 0.3; return; }
   if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
   if (mode === 'resume') { updateResume(); updateParts(); cam += 0.3; return; }
   if (mode === 'story') { updateStory(); return; }
@@ -2968,6 +2999,7 @@ function step() {
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
+  if (daily && !daily.done) { daily.t++; if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
   for (const p of players()) withHero(p, () => updateHero(p));
   enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
@@ -3889,6 +3921,11 @@ function drawElemIcon(el, x, y) { // 7x7 pixel glyphs: flame, snowflake, bolt
   else if (el === 'frost') { g.fillStyle = c; g.fillRect(x + 3, y, 1, 7); g.fillRect(x, y + 3, 7, 1); g.fillStyle = w; g.fillRect(x + 1, y + 1, 1, 1); g.fillRect(x + 5, y + 1, 1, 1); g.fillRect(x + 1, y + 5, 1, 1); g.fillRect(x + 5, y + 5, 1, 1); }
   else { g.fillStyle = c; g.fillRect(x + 3, y, 3, 1); g.fillRect(x + 2, y + 1, 2, 1); g.fillRect(x + 1, y + 2, 3, 1); g.fillRect(x + 2, y + 3, 4, 1); g.fillRect(x + 3, y + 4, 2, 1); g.fillRect(x + 2, y + 5, 2, 1); g.fillStyle = w; g.fillRect(x + 3, y + 2, 1, 1); }
 }
+function drawCrown(x, y) { // a 9x7 pixel crown
+  g.fillStyle = '#0a0610'; g.fillRect(x - 1, y - 1, 11, 9); g.fillStyle = '#ffd24a';
+  g.fillRect(x, y + 1, 2, 3); g.fillRect(x + 3, y, 3, 4); g.fillRect(x + 7, y + 1, 2, 3); g.fillRect(x, y + 4, 9, 3);
+  g.fillStyle = '#fff1b0'; g.fillRect(x, y + 4, 9, 1); g.fillStyle = '#ff4a6a'; g.fillRect(x + 4, y + 5, 1, 1); g.fillStyle = '#8a5a10'; g.fillRect(x, y + 6, 9, 1);
+}
 function drawElemTags(e, x, y, right) { // weak (green up-arrow) and resistant (red down-arrow) elements of a monster, shown beside its health bar
   const t = ELEM_RES[e.kind]; if (!t) return; let i = 0;
   for (const el of ELEMS) {
@@ -3901,6 +3938,8 @@ function drawHUD() {
   if (clearT > 0) { text(clearT > LOOT_T - 150 ? 'STAGE CLEAR' : 'LOOT TIME  -  GRAB THE DROPS', W / 2, 200, 11, '#ffd24a', 'center'); text('ENTER: CONTINUE TO THE MARKET   ' + Math.ceil(clearT / 60) + 'S', W / 2, 214, 8, '#fff', 'center'); }
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
   lvText(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
+  if (!daily && crownsOf(CLS)) { drawCrown(128, 11); text('x' + crownsOf(CLS), 139, 18, 7, '#ffd24a'); }
+  if (daily) { text('RACE ' + fmtTime(daily.t), W - 12, 72, 8, '#ffd24a', 'right'); text('GOAL: LV ' + MAX_LV + ' + PG ' + PG_MAX, W - 12, 82, 7, '#c9a86a', 'right'); }
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   if (rpg.lvl >= MAX_LV) bar(12, 40, 110, 2, rpg.pg >= PG_MAX ? 1 : rpg.pxp, rpg.pg >= PG_MAX ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); // at the cap the bar fills toward the next paragon point
   else bar(12, 40, 110, 2, rpg.xp, xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
@@ -3937,10 +3976,11 @@ function drawDonate(y) {
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
+  if (mode === 'dailyinfo') { openSelect(false, true); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (!donateBox && !langBox && !dailyBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
-  if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openSelect(false, true); return; }
+  if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
   if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
@@ -3953,6 +3993,24 @@ addEventListener('keydown', e => { if (e.code === 'KeyH' && langBox && mode === 
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 /* ---------- hero select ---------- */
 let selBoxes = [];
+function openDailyInfo() { mode = 'dailyinfo'; SFX.pick(); }
+function updateDailyInfo() {
+  if (isHit('back')) { mode = 'title'; return; }
+  if (pressed.KeyB) { boardView = 1; boardHi = -1; mode = 'board'; return; }
+  if (isHit('start') || isHit('atk')) openSelect(false, true);
+}
+function drawDailyInfo() {
+  g.fillStyle = 'rgba(4,2,10,0.7)'; g.fillRect(0, 0, W, H);
+  const M = DAILY_MODS[dayMod()];
+  text('DAILY CHALLENGE', W / 2, 30, 16, '#ffb43a', 'center');
+  text(dayStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
+  const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['THE STAGES KEEP COMING, TOUGHER EVERY ROUND, UNTIL YOU DO IT.', '#e8e0f0'],
+    ['YOU HAVE 1 CONTINUE COIN. WITHOUT IT, A DEFEAT ENDS THE RUN.', '#e8e0f0'], ['TODAY\'S RUN STAYS ON THIS DEVICE: COME BACK AND GO ON FROM YOUR LAST STAGE.', '#e8e0f0'],
+    ['THE REWARD', '#ffd24a'], ['A DAILY CROWN FOR YOUR SAVED HERO, ONE EACH DAY, SHOWN BESIDE ITS LEVEL.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
+  L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
+  drawCrown(104, 169);
+  text('ENTER: CHOOSE HERO     B: TODAY\'S BOARD     ESC: BACK', W / 2, 252, 8, '#c9a8ff', 'center');
+}
 function openSelect(two, dly) { sel.daily = !!dly; coop = !!two; sel.coop = coop; sel.a = Math.max(0, CLS_ORDER.indexOf(CLS)); sel.b = Math.max(0, CLS_ORDER.indexOf(CLS2)); if (coop && sel.b === sel.a) sel.b = (sel.a + 1) % 3; mode = 'select'; SFX.pick(); }
 function confirmSelect() {
   setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
@@ -3985,7 +4043,7 @@ function drawSelect() {
     g.save(); g.translate(0, 0); drawHuman(f, cx, y0 + 112); g.restore();
     text(C.name, cx, y0 + 132, 14, C.col, 'center');
     text(C.role + '  -  ' + C.stat, cx, y0 + 144, 8, '#e8e0f0', 'center');
-    text('LV ' + sv.lvl, cx, y0 + 156, 8, '#ffd24a', 'center');
+    text('LV ' + sv.lvl, cx, y0 + 156, 8, '#ffd24a', 'center'); if (crownsOf(c)) { drawCrown(cx + 26, y0 + 150); text('x' + crownsOf(c), cx + 38, y0 + 156, 8, '#ffd24a'); }
     text(C.desc[0], cx, y0 + 172, 6, '#b8a8c8', 'center'); text(C.desc[1], cx, y0 + 182, 6, '#b8a8c8', 'center');
     if (on1) text(sel.coop ? 'P1' : '>', x0 + 10, y0 + 14, 9, C.col, 'center');
     if (on2) text('P2', x0 + 130, y0 + 14, 9, '#8affb0', 'center');
@@ -4042,6 +4100,7 @@ function render() {
   if (dragon) drawDragonCast();
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
+  else if (mode === 'dailyinfo') drawDailyInfo();
   else if (mode === 'select') drawSelect();
   else if (mode === 'resume') drawResume();
   else drawHUD();
@@ -4080,9 +4139,15 @@ function drawVictory() {
   g.globalAlpha = fade(0); const bob = Math.sin(t * 0.07) * 2;
   text('CONGRATULATIONS!', W2 + 1, 74 + bob + 2, 26, '#7a3a08', 'center'); text('CONGRATULATIONS!', W2, 74 + bob, 26, (t >> 3) & 1 ? '#ffe27a' : '#ffd24a', 'center');
   g.globalAlpha = fade(16); text(rank, W2, 98, 12, '#ff9a4a', 'center');
+  if (daily) {
+    g.globalAlpha = fade(30); text('THE DAILY RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
+    g.globalAlpha = fade(48); text('TIME ' + fmtTime(daily.t), W2, 150, 13, '#fff1b0', 'center');
+    g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A DAILY CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
+  } else {
   g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
   g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');
   g.globalAlpha = fade(60); text('UNSPENT COINS ' + rpg.coins + ' x 1500 WHEN YOU FINISH', W2, 163, 8, '#d9b98a', 'center');
+  }
   if (cycle >= 1 && cycle <= 3 && !daily) text('FORGE LEVEL +' + (7 + cycle) + ' UNLOCKED', W2, 175, 9, '#ffb46a', 'center');
   g.globalAlpha = 1;
   if (t > 90) { if ((t >> 5) & 1 || t > 200) { if (daily) text('ENTER: SIGN THE LEATHERBOARD', W2, 192, 9, '#fff', 'center'); else { text('ENTER: BEGIN ' + trialName(cycle + 1) + '  (+1 COIN, TOUGHER FOES)', W2, 192, 9, '#fff', 'center'); text('ESC: FINISH AND SIGN THE LEATHERBOARD', W2, 205, 8, '#b8a8c8', 'center'); } } }

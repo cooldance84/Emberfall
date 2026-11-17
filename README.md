@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.38.4-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.39.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -68,7 +68,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Gear sets:** Vowbound (crit), Bulwark (life and resist) and Emberheart (strength, element power, extra damage to afflicted foes). Wear 2 or 4 pieces for bonuses, and mix sets freely. Set pieces drop from item level 50 and are always better than a mythic of the same level; bosses drop them more often at level 70.
 - **Treasure chests, shrines and combos:** chests hide gold on the road. Now and then a **shrine** stands by the road (one is guaranteed every fourth stage); strike it for a random blessing the whole party shares (haste, fury, warding, wisdom, fortune or elemental surge), and a rare golden shrine grants a few seconds of invulnerability. Killing foes in quick succession builds a **kill combo** with bonus XP that breaks when you get hit.
 - **Bonus stage:** after the act bosses a Goblin Treasury opens: fast goblins, loot chests and ten seconds of raining gold, with time to gather the loot afterwards.
-- **Endgame:** after the final Ember Wyrm a grand finale awaits, and then **Ember Trials I to X** raise monster life and damage step by step, with better rewards and the extra forge levels. The **daily challenge** (press 3 on the title screen) is a fresh level-1 hero, a rule of the day and its own leaderboard, and it stays separate from your real hero. See below.
+- **Endgame:** after the final Ember Wyrm a grand finale awaits, and then **Ember Trials I to X** raise monster life and damage step by step, with better rewards and the extra forge levels. The **daily challenge** (press 3 on the title screen) is a race with a fresh level-1 hero and a rule of the day: be first to reach level 70 + 100 paragon, the shortest play time wins. Only a crown reaches your saved hero. See below.
 - **Loot by stage:** five rarities: common (white), magic (blue), rare (yellow), legendary (orange) and mythic (crimson). Stage 1 drops only white items, stage 2 adds magic, stage 3 adds rare and legendary, and mythic appears from stage 4.
 - **The Blacksmith:** after the market at the end of every stage, forge all your gear up to **+7** for gold (**+8 to +10** unlock as you clear Ember Trials). Each level adds 10% to the item's stats and +2 to your main stat; from +4 a forge can fail and eat the gold. The forge level shows in the top left corner of every item.
 - **3 continue coins** per run, and you can buy more in the Ember Market (up to 9; each one past the third costs more). Unspent coins are worth 1,500 points each when you win.
@@ -146,7 +146,7 @@ Every figure was redrawn from design boards. The principles: a strong silhouette
 ![New boss and wyrmling art](docs/screenshots/art-bosses.jpg)
 
 ## Daily challenge
-Press **3** on the title screen (or **T**, or tap the daily line), pick a hero and play five stages with a fresh level-1 hero, one continue coin and no gold. Your real hero and save are never touched. One of five rules applies each day, in a fixed rotation that repeats every five days and changes at your device's midnight:
+Press **3** on the title screen (or **T**, or tap the daily line), read the rules page, pick a hero and race with a fresh level-1 hero, one continue coin and no gold. **The goal is level 70 + 100 paragon: the shortest play time wins** (pauses, shops and story pages do not count). The stages keep coming, tougher every round, until you get there. Your run is kept on the device for the day and resumes from the start of your last stage, and the daily board shows the time (equal times: whoever finished first). Winning earns your saved hero one **daily crown** a day, shown beside its level; your real hero's level, gear and save are never touched. One of five rules applies each day, in a fixed rotation that repeats every five days and changes at your device's midnight:
 
 | Rule | Effect |
 |---|---|
@@ -156,7 +156,7 @@ Press **3** on the title screen (or **T**, or tap the daily line), pick a hero a
 | **Swift Foes** | every monster is 20% faster |
 | **Treasure Day** | twice the chests, more golden ones |
 
-Each day has its own leaderboard, stored in your browser (so your phone and your PC keep separate boards). Finishing gives +5,000 points.
+Each day has its own leaderboard, stored in your browser (so your phone and your PC keep separate boards).
 
 ## Fair play
 The game runs entirely in your browser, so this is a deterrent, not a lock: its values can't be reached from the browser console, and saves carry a seal. A hand-edited save is set aside (kept under a `_bad` key) and the hero starts fresh. For testing, the developer can open the game with `?max` (and `&stage=N`) on a local file or localhost for a maxed hero; nothing is saved in that mode.
