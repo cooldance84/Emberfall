@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.44.0] - 2026-11-17
+- New music, still synthesised live with WebAudio (no sound files). Every theme is a 16-bar form with a chord progression instead of a two-bar loop, built on one driving style: an eighth-note sawtooth bass figure through a closing filter, kick on every beat, snare on 2 and 4, hi-hat eighths, a tam-tam build-up (noise swell and snare roll) at the end of every fourth bar with a gong crash after it, and a formant-filtered "choir" (sung vowels with vibrato) over the chords. A shared reverb (ConvolverNode) gives it room.
+- Gate: 120 BPM, D minor, timpani and bells. Marsh: 108 BPM, E Phrygian, half-time drums, dripping, choir throughout, the biggest reverb. Forge: 126 BPM, C Dorian, anvil hits and a sharp synth lead. Throne: 116 BPM, G minor, organ and choir, brass stabs in the last four bars. Sanctum: 138 BPM, A minor, choir from the first bar, bright bells.
+- Boss: its own track at 132 BPM, D minor; the choir comes in at bar 4 and chord stabs at bar 9. This replaces the old speed-up of the stage music.
+- Layers follow the fight: an empty stage plays only bass and pad, a wave adds the drums and the theme's instruments (it calms down two bars after the last foe), the boss plays everything.
+- Master compressor, so the dense layers cannot clip. Tests: `music.test.js`.
+
 ## [1.43.0] - 2026-11-17
 - The other stages, redrawn: each of the five themes now has its own floor and foreground. Sunken Marsh: a leaning half-sunken cathedral tower with green window light, dead trees, will-o'-the-wisps, a boardwalk over the mud, puddles that hold the moon, hanging moss and reeds in front. Ember Forge: a giant furnace with a barred face, smoking chimneys, scaffolding and a great gear in the middle layer, riveted iron, a glowing lava channel at the back, steaming grates, a chain with a hook and a pipe in front. Obsidian Throne: a red moon, a spiked throne on a stair, glossy obsidian that holds the (now pink) torch light, a red carpet with gold edges, a pillar in front. Heart-Ember Sanctum: the Heart-Ember floating above the dome, gilded arches, marble with a gold seal, drifting light motes, an arch in front.
 - Acts II-VII keep the five themes and change the distant landmark and the colours: II Shattered Bridge (broken stone bridge, blue mist), III Ashen Wastes (ash dunes, burnt trees), IV Withered Wilds (giant dry trees, thorn vines), V Gilded Dunes (a buried giant stone head, a huge sun), VI Eclipse Gate (a black sun with a ring of light, a glowing gate), VII World-Forge (a forge-mountain with rivers of lava, the first flame on its peak).
