@@ -4,7 +4,16 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.44.1';
+const VERSION = '1.44.2';
+/* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
+function crash(msg) {
+  try {
+    let el = document.getElementById('emberfall-err');
+    if (!el) { el = document.createElement('pre'); el.id = 'emberfall-err'; el.style.cssText = 'position:fixed;left:0;right:0;top:0;margin:0;padding:8px;background:#400;color:#fff;font:12px monospace;white-space:pre-wrap;z-index:9;max-height:60%;overflow:auto'; document.body.appendChild(el); }
+    if (el.textContent.length < 2500 && el.textContent.indexOf(msg) < 0) el.textContent += 'v' + VERSION + ' ' + msg + '\n';
+  } catch (e) { }
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('error', e => crash((e.message || 'error') + ' (' + (e.lineno || '?') + ':' + (e.colno || '?') + ')'));
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -5062,8 +5071,10 @@ if (typeof document !== 'undefined' && screen && screen.getContext) {
   let last = performance.now(), acc = 0;
   (function frame(now) {
     acc += Math.min(100, now - last); last = now;
-    while (acc >= 1000 / 60) { step(); for (const k in pressed) delete pressed[k]; acc -= 1000 / 60; }
-    render(); present();
+    try {
+      while (acc >= 1000 / 60) { step(); for (const k in pressed) delete pressed[k]; acc -= 1000 / 60; }
+      render(); present();
+    } catch (e) { acc = 0; crash(String(e && e.stack || e).split('\n').slice(0, 3).join(' | ')); }
     requestAnimationFrame(frame);
   })(last);
 }

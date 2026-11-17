@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.44.2] - 2026-11-18
+- An error in the game no longer ends in a silent black screen: it is printed in a red box at the top of the page (with the version and the place of the error), and a failing frame no longer stops the main loop. Nothing changes when all is well.
+
 ## [1.44.1] - 2026-11-17
 - Code organisation, no change in play: the ~120 lines longer than 300 characters are broken at statement boundaries (the text is identical apart from whitespace), and `game.js` is now built from 38 numbered pieces in `src/` by `node build.js` (plain concatenation; `--check` tells whether `game.js` is current). `game.js` stays one committed file, so GitHub Pages, opening `index.html` directly and the tests work as before.
 
