@@ -19,6 +19,11 @@ Press Enter (or 2 for co-op) and pick your hero. Each one keeps their own level 
 
 In co-op the second player picks a hero too and shares the first player's level and gear.
 
+Each hero reads at a glance, even at 40 pixels tall:
+- **Nolan** wears a closed steel helm with a gold stripe and a red plume that trails behind him, broad pauldrons, a gold crest and a red cloak.
+- **Panni** has a pointed purple hood, a flared robe with a gold hem, a staff with a glowing orb and runes drifting around her free hand.
+- **Luca** crouches under a deep green hood, a dark mask with glowing eyes and a long scarf that streams behind him, with a dagger in reverse grip at rest.
+
 ![Hero select](docs/screenshots/heroes.jpg)
 
 ## The story
@@ -49,12 +54,12 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 ## Features
 
 - **English and Hungarian (magyar):** pick the language on the title screen (click the box or press H) or in the pause menu. English is the default, and your choice is remembered. Translations live in `i18n.js`.
-- **Your gear shows on Nolan:** no armour means a leather tunic; each rarity changes the look of the helm (iron cap, visored helm, plumed gold helm, crown of flame), armour (steel, blue, gold with spikes, obsidian with ember cracks), boots, amulet gem and blade (rusty, steel, glowing blue, golden, flaming).
+- **Your gear shows on the hero:** each rarity changes the look of the helm or hood (iron, visored, gold, crown of flame), the armour (steel, blue, gold with spikes, obsidian with ember cracks), the boots, the amulet gem and the blade or staff (rusty, steel, glowing blue, golden, flaming). Set pieces glow set-green.
 - **New monsters in later acts:** frost archers (act II) shoot arrows you can jump over, blaze bombers (act III) run up and explode in a shockwave, and hollow knights (act IV) leap across the screen and crash down with a shockwave.
 - **Articulated bosses:** the Colossus swings a stone back-arm, the Matron reaches with ghostly arms and living hair, the Forgemaster works a tongs arm, and the Cinder King's wings flap on shoulder, elbow, wrist and finger bones.
 - **Casters that make you think:** the **Ash Warder** (from stage 2) hides inside an arcane barrier and is untouchable until you shatter it. Light hits barely crack it, heavy blows (third combo hit, jump attack, skills) break it fast, and a broken barrier knocks the warder down. Some foes (from stage 2) also arrive already wrapped in a barrier, so shatter it before you go for them. The **Flame Caller** (from stage 3) marks the ground under you with runes that explode and leave burning pools, so keep moving.
 - **Chasms and barricades:** from stage 1 the road is cut by chasms you must jump over and rubble barricades you have to vault. Falling in costs 60% of your health (and kills you if you are already hurt); knocking a monster into a chasm finishes it off.
-- **Sharper fights:** monsters move faster and attack more often, **elite** monsters (gold glow, more health and damage, extra loot) turn up from stage 3, and **ambushes** send fresh foes in from both sides when a wave is nearly beaten.
+- **Sharper fights:** monsters move faster and attack more often, **elite** monsters (a golden rim light, more health and damage, extra loot) turn up from stage 3, and **ambushes** send fresh foes in from both sides when a wave is nearly beaten. Once a foe has stepped onto the screen it stays on it: nothing can be shoved or walk off the edges (thieves and goblins can still escape).
 - **Tougher bosses:** more health and poise, quicker attacks, and they call in escorts when they enrage.
 - **Wyrmling mounts:** a rare enemy (at most one per wave) arrives on a small dragon. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
 - **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen. Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
@@ -63,7 +68,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Gear sets:** Vowbound (crit), Bulwark (life and resist) and Emberheart (strength, element power, extra damage to afflicted foes). Wear 2 or 4 pieces for bonuses, and mix sets freely. Set pieces drop from item level 50 and are always better than a mythic of the same level; bosses drop them more often at level 70.
 - **Treasure chests, shrines and combos:** chests hide gold on the road. Now and then a **shrine** stands by the road (one is guaranteed every fourth stage); strike it for a random blessing the whole party shares (haste, fury, warding, wisdom, fortune or elemental surge), and a rare golden shrine grants a few seconds of invulnerability. Killing foes in quick succession builds a **kill combo** with bonus XP that breaks when you get hit.
 - **Bonus stage:** after the act bosses a Goblin Treasury opens: fast goblins, loot chests and ten seconds of raining gold, with time to gather the loot afterwards.
-- **Endgame:** after the final Ember Wyrm a grand finale awaits, and then **Ember Trials I to X** raise monster life and damage step by step, with better rewards and the extra forge levels. The **daily challenge** (a fresh level-1 hero, a rule of the day and its own leaderboard) stays separate from your real hero.
+- **Endgame:** after the final Ember Wyrm a grand finale awaits, and then **Ember Trials I to X** raise monster life and damage step by step, with better rewards and the extra forge levels. The **daily challenge** (press 3 on the title screen) is a fresh level-1 hero, a rule of the day and its own leaderboard, and it stays separate from your real hero. See below.
 - **Loot by stage:** five rarities: common (white), magic (blue), rare (yellow), legendary (orange) and mythic (crimson). Stage 1 drops only white items, stage 2 adds magic, stage 3 adds rare and legendary, and mythic appears from stage 4.
 - **The Blacksmith:** after the market at the end of every stage, forge all your gear up to **+7** for gold (**+8 to +10** unlock as you clear Ember Trials). Each level adds 10% to the item's stats and +2 to your main stat; from +4 a forge can fail and eat the gold. The forge level shows in the top left corner of every item.
 - **3 continue coins** per run, and you can buy more in the Ember Market (up to 9; each one past the third costs more). Unspent coins are worth 1,500 points each when you win.
@@ -84,8 +89,6 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Boss limbs](docs/screenshots/boss-limbs.jpg) | ![Casters and a chasm](docs/screenshots/casters-chasm.jpg) |
 | ![Shrines by the road](docs/screenshots/shrines.jpg) | ![A shrine blessing](docs/screenshots/shrine-blessing.jpg) |
 | ![Element tiers I to X](docs/screenshots/element-tiers.jpg) | ![Set gear glows green](docs/screenshots/set-gear-green.jpg) |
-| ![New hero art](docs/screenshots/art-heroes.jpg) | ![New monster art](docs/screenshots/art-monsters.jpg) |
-| ![New boss and wyrmling art](docs/screenshots/art-bosses.jpg) | |
 
 ## The campaign: seven acts, thirty-five stages
 The story runs through **35 stages in seven acts**, and Nolan (or Panni, or Luca) has to recover **seven Heart-Embers**. Each act ends with an Ember Wyrm; the old bosses return stronger (Colossus II up to Wyrm VII) in new places such as the Drowned Cathedral, the Withered Wilds, the Gilded Dunes, the Eclipse Gate and the World-Forge. Levelling is paced to the whole story: **level 70 arrives around stage 33** if you clear everything. After the last stage the Ashen Cycles keep going for as long as you like.
@@ -129,6 +132,34 @@ Wyrmlings come in three kinds, and a thrown-off rider can grab a loose one with 
 You can fire while jumping. Any hit throws you off, but the wyrmling waits for you. Get thrown a second time, or wear it out, and it bolts for good.
 
 ![Mounts](docs/screenshots/mounts.jpg)
+
+## A new look (v1.38)
+Every figure was redrawn from design boards. The principles: a strong silhouette, 3-4 tone colour ramps with cool shadows and warm lights, outlines in a dark shade of the figure's own colour instead of black, a thin **elemental rim light** on the back edge (the hero's fire, frost or lightning; gold for elites; a boss's own power) and secondary motion (breathing, a lagging plume, scarf and robe).
+
+| | |
+|---|---|
+| ![New hero art](docs/screenshots/art-heroes.jpg) | ![New monster art](docs/screenshots/art-monsters.jpg) |
+
+- **Foes by role:** the **Marauder** (the melee foe) is hunched and olive-skinned with a fur collar, tusks, red eyes and a spiked club it raises before a swing; the **Ash Warder** is a faceless blue hood inside a hexagonal barrier that cracks as it wears down; the **Flame Caller** wears a horned skull mask and its blast marker is a dashed ring; **wyrmlings** have belly scales, a spiked back, a gold-striped saddle and sparks drifting from the snout. Colour tells the type: earth tones for brawlers, cold blue for casters, the foe's own element for elementals.
+- **Bosses:** an obsidian **Cinder King** with flame wings, a **Colossus** with a tiny one-eyed head and turquoise runes, a pale **Mire Matron** with a thorn crown and ghostly clawed arms, a **Forgemaster** with goggles and a braided red beard. Each boss glows brighter before a big hit, an armour plate bursts off at half health, and its life bar takes the boss's own colour.
+
+![New boss and wyrmling art](docs/screenshots/art-bosses.jpg)
+
+## Daily challenge
+Press **3** on the title screen (or **T**, or tap the daily line), pick a hero and play five stages with a fresh level-1 hero, one continue coin and no gold. Your real hero and save are never touched. One of five rules applies each day, in a fixed rotation that repeats every five days and changes at your device's midnight:
+
+| Rule | Effect |
+|---|---|
+| **Gold Rush** | all gold is doubled |
+| **Glass Cannon** | you hit 50% harder and take 50% more damage |
+| **Iron Foes** | foes have 50% more life and pay 50% more XP and gold |
+| **Swift Foes** | every monster is 20% faster |
+| **Treasure Day** | twice the chests, more golden ones |
+
+Each day has its own leaderboard, stored in your browser (so your phone and your PC keep separate boards). Finishing gives +5,000 points.
+
+## Fair play
+The game runs entirely in your browser, so this is a deterrent, not a lock: its values can't be reached from the browser console, and saves carry a seal. A hand-edited save is set aside (kept under a `_bad` key) and the hero starts fresh. For testing, the developer can open the game with `?max` (and `&stage=N`) on a local file or localhost for a maxed hero; nothing is saved in that mode.
 
 ## Support the game
 If you enjoyed Emberfall, donations are very welcome and go towards its further development: **[paypal.me/cooldance84](https://www.paypal.com/paypalme/cooldance84)**. The game also shows a clickable donate button on the title and end screens (or press D there).
