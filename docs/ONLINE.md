@@ -50,9 +50,43 @@ values (current_date, 'KTZ', 'nolan', 72000, 70, 100, 35, 3, true);
 
 `current_date` is the server's (UTC) day; the game uses the player's local date, so late in the evening use that date instead.
 
+## Cloud save (optional, v1.41)
+
+The cloud save keeps your heroes in one more table. Nobody can read or write the table directly: only two functions are open, and both need the whole 12-character sync code, which only the player's devices know. Paste this into the SQL editor (the SQL itself, not the file name) and run it once:
+
+```sql
+create table if not exists public.cloud_saves (
+  code text primary key check (code ~ '^[A-HJ-NP-Z2-9]{12}$'),
+  data jsonb not null check (octet_length(data::text) <= 100000),
+  updated_at timestamptz not null default now()
+);
+alter table public.cloud_saves enable row level security; -- no policies: the table itself is closed
+revoke all on public.cloud_saves from anon, authenticated;
+
+create or replace function public.cloud_get(p_code text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select data from public.cloud_saves where code = p_code
+$$;
+
+create or replace function public.cloud_put(p_code text, p_data jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into public.cloud_saves (code, data, updated_at) values (p_code, p_data, now())
+  on conflict (code) do update set data = excluded.data, updated_at = now();
+  return true;
+end $$;
+
+revoke all on function public.cloud_get(text), public.cloud_put(text, jsonb) from public;
+grant execute on function public.cloud_get(text), public.cloud_put(text, jsonb) to anon;
+```
+
+How it is used: on the first device press **C** on the title screen, then UPLOAD (a code is made and shown). On the second device press ENTER CODE, type the code, then DOWNLOAD. Typing `NEW` instead of a code makes a fresh one. Each overwrite needs a second press, and the screen shows the level of every hero on this device and in the cloud first.
+
 ## Limits, honestly
 
 - The result is reported by the player's own device, so it can be faked: anyone can send a request with the public key. The rules above only stop nonsense (bad names, impossible levels, absurd times, old days). They cannot prove a race was played.
 - Rows are never edited or deleted by players. You can clean the table in the Supabase dashboard (Table Editor).
 - The all-time board stays on each device; only the daily board is online.
 - A player in another time zone can be on a different "day" for a few hours; the server accepts the day before and after today.
+- Cloud save: whoever knows a sync code can read and replace that save, so the code is the password. It has 60 bits of randomness, so it cannot be guessed, but do not post it. To retire a leaked code, delete its row in the Table Editor (`cloud_saves`), then type `NEW` in ENTER CODE for a fresh code and upload again.
+- Anyone with the public key can also write junk rows into `cloud_saves` (each at most 100 KB); clean them in the Table Editor if it ever happens. The seal on the saves is a deterrent only: a hand-made save can still be put into the cloud under a fresh code.

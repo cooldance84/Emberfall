@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.41.0] - 2026-11-17
+- Cloud save through the same Supabase project: **C** on the title screen opens a screen where UPLOAD sends your heroes (and their crown counts) under a private 12-character sync code, and DOWNLOAD brings them to another device after ENTER CODE (typing NEW there makes a fresh code). Both directions show this device and the cloud side by side and need a second press to overwrite. A save whose seal does not match is never uploaded, and crowns only ever grow. The table is closed; only the `cloud_put` / `cloud_get` functions are open, and they need the whole code. Touch buttons are kept to the middle of the screen so the on-screen stick does not cover them.
+- Daily race pace line: the HUD shows `TO BEAT <name> <time>` (the fastest finished run online), turning to `BEHIND ...` once your time has passed it, or `NO ONE HAS FINISHED YET`. The board is refreshed every 30 seconds during the run.
+- The daily rules page button now reads `DAILY BOARD (N)` and N works there as well as B.
+- Tests: `cloud-save.test.js` (29 checks, mocked Supabase functions), pace checks in `online-board.test.js`.
+
 ## [1.40.2] - 2026-11-17
 - The leaderboards are separate screens: B on the title screen opens the all-time leatherboard (on this device only), N opens the daily board; the A/D switch is gone. The daily rules page has two buttons (choose hero, daily board), so touch players reach the daily board too
 

@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.40.2-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.41.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -75,6 +75,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Runs are saved on your device:** close the game mid-campaign and pick the same hero later to continue the stage for **one continue coin**, or start over. With no coins left, the run is over.
 - **Monsters grow with the story:** every act adds a layer of monster health (+20%, +45%, +75%), and a hero far above the stage's level meets monsters of their own level.
 - **Leatherboard:** top 10 scores with initials (**B** on the title screen), kept on this device. The daily challenge has its own, separate board (**N** on the title screen, or the button on the daily rules page). Your character, gear, settings and the boards are saved in your browser.
+- **Cloud save:** with the online features on, **C** on the title screen (or the button beside the language switch) uploads your heroes under a private sync code and downloads them on another device, so the phone and the PC can share them. Every overwrite asks for a second press, a hand-edited save is never uploaded, and the crown count only ever grows. In the daily race a pace line shows the fastest finished time to beat.
 - **2-player co-op:** press **2** on the title screen.
 - **Procedural music** for each stage, a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.

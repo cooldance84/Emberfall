@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.40.2';
+const VERSION = '1.41.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -870,6 +870,110 @@ function submitOnline(e) { // sent when a daily result is signed; a failure leav
   sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify({ day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w }) })
     .then(r => { if (!r.ok) throw r.status; loadOnlineBoard(true); }).catch(() => { onlineSendErr = true; });
 }
+/* ---- cloud save (Supabase RPC, v1.41): the heroes' sealed saves go up under a private sync code and come down on another device. The table is closed; only the two functions cloud_put / cloud_get are open, and they need the full 12-character code ---- */
+const CLOUD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_KEY = 'emberfall_cloud_code', SYNC_KEY = 'emberfall_cloud_sync';
+const cloudNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const cloudValid = s => /^[A-HJ-NP-Z2-9]{12}$/.test(s);
+const cloudFmt = s => s ? s.replace(/(.{4})(?=.)/g, '$1-') : '';
+function cloudNewCode() { const a = new Uint8Array(12); try { crypto.getRandomValues(a); } catch (e) { for (let i = 0; i < 12; i++) a[i] = Math.random() * 256; } let s = ''; for (let i = 0; i < 12; i++) s += CLOUD_ALPHA[a[i] & 31]; return s; } // 256 is a multiple of 32, so every letter is equally likely
+const cloudCode = () => { try { return cloudNorm(localStorage.getItem(CODE_KEY)); } catch (e) { return ''; } };
+let cloud = { busy: false, msg: '', err: false, info: null, fetched: false, armed: '', armT: 0 }, cloudBtns = [];
+const cloudMsg = (m, err) => { cloud.msg = m; cloud.err = !!err; };
+const cloudSum = raw => { if (typeof raw !== 'string' || raw.length > 60000) return null; const o = checkSeal(raw); return o && o.lvl ? { lvl: clamp(o.lvl | 0, 1, MAX_LV), pg: clamp(o.pg | 0, 0, PG_MAX) } : null; }; // a tampered save (seal mismatch) counts as nothing, so it never travels
+const cloudCrown = raw => { if (typeof raw !== 'string' || raw.length > 2000) return 0; const o = checkSeal(raw); return o && o.n > 0 ? Math.min(99999, o.n | 0) : 0; };
+function cloudLocal() { // what this device holds
+  const heroes = {}, crowns = {};
+  for (const c of CLS_ORDER) { try { const raw = localStorage.getItem(saveKey(c)); if (cloudSum(raw)) heroes[c] = raw; const cr = localStorage.getItem(crownKey(c)); if (cloudCrown(cr)) crowns[c] = cr; } catch (e) { } }
+  return { heroes, crowns };
+}
+function cloudRpc(fn, body) { return sbFetch('rpc/' + fn, { method: 'POST', body: JSON.stringify(body) }).then(r => r.ok ? r.json() : Promise.reject(r.status)); }
+function cloudAct(kind) { // 'up' or 'down': the first press shows what is where, the second one does it (a first upload into an empty cloud goes at once)
+  if (!onlineOn() || cloud.busy) return;
+  if (cloud.armed === kind && cloud.armT > 0) { if (kind === 'up') cloudPut(); else cloudApply(); return; }
+  let code = cloudCode();
+  if (!code) {
+    if (kind === 'down') { cloudMsg('ENTER YOUR SYNC CODE FIRST', true); return; }
+    code = cloudNewCode(); try { localStorage.setItem(CODE_KEY, code); } catch (e) { cloudMsg('THIS DEVICE CANNOT STORE THE CODE', true); return; }
+  }
+  cloud.busy = true; cloud.armed = ''; cloudMsg('ASKING THE CLOUD...', false);
+  cloudRpc('cloud_get', { p_code: code }).then(d => {
+    cloud.busy = false; cloud.fetched = true; cloud.info = d && typeof d === 'object' && d.heroes && typeof d.heroes === 'object' ? d : null; cloudMsg('', false);
+    if (!cloud.info) { if (kind === 'down') cloudMsg('NOTHING IN THE CLOUD FOR THIS CODE', true); else cloudPut(); return; }
+    cloud.armed = kind; cloud.armT = 900;
+  }).catch(() => { cloud.busy = false; cloudMsg('CANNOT REACH THE CLOUD', true); });
+}
+function cloudPut() {
+  const code = cloudCode(), L = cloudLocal(), C = cloud.info || { heroes: {}, crowns: {} }; cloud.armed = '';
+  if (!code || !Object.keys(L.heroes).length) { cloudMsg('NO HERO TO SEND YET', true); return; }
+  const heroes = Object.assign({}, C.heroes), crowns = Object.assign({}, C.crowns); // heroes this device does not have stay in the cloud
+  for (const c in L.heroes) heroes[c] = L.heroes[c];
+  for (const c in L.crowns) if (cloudCrown(L.crowns[c]) >= cloudCrown(crowns[c])) crowns[c] = L.crowns[c]; // crowns only ever grow
+  const at = Date.now(), data = { v: 1, at, heroes, crowns }; cloud.busy = true; cloudMsg('SAVING...', false);
+  cloudRpc('cloud_put', { p_code: code, p_data: data }).then(() => { cloud.busy = false; cloud.info = data; cloud.fetched = true; try { localStorage.setItem(SYNC_KEY, String(at)); } catch (e) { } cloudMsg('SAVED TO THE CLOUD', false); })
+    .catch(() => { cloud.busy = false; cloudMsg('COULD NOT SAVE TO THE CLOUD', true); });
+}
+function cloudApply() {
+  const C = cloud.info; cloud.armed = ''; if (!C || !C.heroes) { cloudMsg('NOTHING TO LOAD', true); return; }
+  let n = 0;
+  for (const c of CLS_ORDER) {
+    try {
+      const raw = C.heroes[c]; if (cloudSum(raw)) { localStorage.setItem(saveKey(c), raw); n++; }
+      const cr = C.crowns && C.crowns[c]; if (cloudCrown(cr) > cloudCrown(localStorage.getItem(crownKey(c)))) localStorage.setItem(crownKey(c), cr);
+    } catch (e) { }
+  }
+  if (!n) { cloudMsg('NOTHING TO LOAD', true); return; }
+  crownMemo = {}; PS = null; loadGame(); heroStats(true);
+  try { localStorage.setItem(SYNC_KEY, String(C.at | 0)); } catch (e) { }
+  cloudMsg('HEROES LOADED FROM THE CLOUD', false);
+}
+function cloudEnterCode() {
+  let s = null; try { if (typeof prompt === 'function') s = prompt(tr('SYNC CODE FROM YOUR OTHER DEVICE (OR NEW FOR A FRESH ONE)'), cloudFmt(cloudCode())); } catch (e) { }
+  if (s == null) return; s = cloudNorm(s); if (s === 'NEW') s = cloudNewCode(); // typing NEW makes a fresh code
+  if (!cloudValid(s)) { cloudMsg('THAT IS NOT A SYNC CODE', true); return; }
+  try { localStorage.setItem(CODE_KEY, s); } catch (e) { cloudMsg('THIS DEVICE CANNOT STORE THE CODE', true); return; }
+  cloud.info = null; cloud.fetched = false; cloud.armed = ''; cloudMsg('CODE SET - UPLOAD OR DOWNLOAD NOW', false);
+}
+function openCloud() { cloud.armed = ''; cloud.armT = 0; cloud.info = null; cloud.fetched = false; cloudMsg('', false); mode = 'cloud'; SFX.pick(); }
+function updateCloud() {
+  if (cloud.armT > 0 && --cloud.armT === 0) cloud.armed = '';
+  if (isHit('back')) { mode = 'title'; return; }
+  if (pressed.Digit1 || pressed.Numpad1) cloudAct('up');
+  else if (pressed.Digit2 || pressed.Numpad2) cloudAct('down');
+  else if (pressed.Digit3 || pressed.Numpad3) cloudEnterCode();
+  else if (isHit('start') && cloud.armed) cloudAct(cloud.armed);
+}
+function cloudClick(x, y) { const b = cloudBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (!b) return; if (b.k === 'up' || b.k === 'down') cloudAct(b.k); else if (b.k === 'code') cloudEnterCode(); else mode = 'title'; }
+const fmtAt = ms => { const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+function drawCloud() {
+  g.fillStyle = 'rgba(4,2,10,0.8)'; g.fillRect(0, 0, W, H);
+  text('CLOUD SAVE', W / 2, 26, 16, '#8cc4ff', 'center');
+  text('TAKE YOUR HEROES FROM YOUR PHONE TO YOUR PC AND BACK', W / 2, 40, 8, '#c9d8f0', 'center');
+  const on = onlineOn(), code = cloudCode(), L = cloudLocal(), C = cloud.info;
+  if (!on) text('THE ONLINE FEATURES ARE NOT SET UP', W / 2, 130, 9, '#ff9a6a', 'center');
+  else {
+    text('YOUR SYNC CODE', W / 2, 58, 8, '#c9a86a', 'center');
+    text(code ? cloudFmt(code) : '---- ---- ----', W / 2, 76, 14, code ? '#ffd24a' : '#6a5a80', 'center');
+    text('KEEP IT SECRET: ANYONE WITH THE CODE CAN LOAD YOUR HEROES', W / 2, 88, 7, '#8a7a9a', 'center');
+    text('HERO', 110, 108, 8, '#8a7a9a'); text('THIS DEVICE', 215, 108, 8, '#8a7a9a'); text('CLOUD', 340, 108, 8, '#8a7a9a');
+    CLS_ORDER.forEach((c, i) => {
+      const y = 123 + i * 14, a = cloudSum(L.heroes[c]), b = C ? cloudSum(C.heroes && C.heroes[c]) : null, sm = s => s ? 'LV ' + s.lvl + '  PG ' + s.pg : '-';
+      text(CLASSES[c].name, 110, y, 9, CLASSES[c].col); text(sm(a), 215, y, 9, a ? '#fff1d0' : '#6a5a80'); text(cloud.fetched ? sm(b) : '?', 340, y, 9, b ? '#8cc4ff' : '#6a5a80');
+    });
+    if (cloud.fetched && C && C.at) text('CLOUD COPY FROM ' + fmtAt(C.at), W / 2, 172, 7, '#8a7a9a', 'center');
+    if (cloud.armed === 'up') text('THIS REPLACES THE CLOUD COPY. PRESS UPLOAD AGAIN TO CONFIRM.', W / 2, 190, 8, '#ffd24a', 'center');
+    else if (cloud.armed === 'down') text('THIS REPLACES THE HEROES ON THIS DEVICE. PRESS DOWNLOAD AGAIN.', W / 2, 190, 8, '#ffd24a', 'center');
+    else if (cloud.msg) text(cloud.msg, W / 2, 190, 8, cloud.err ? '#ff8a6a' : '#9ad08a', 'center');
+    else text('FIRST DEVICE: UPLOAD.  OTHER DEVICE: ENTER THE CODE, THEN DOWNLOAD.', W / 2, 190, 7, '#8a7a9a', 'center');
+  }
+  { const tc = !!window.touchActive, defs = tc ? [['UPLOAD', 'up', 66], ['DOWNLOAD', 'down', 80], ['CODE', 'code', 56], ['BACK', 'back', 56]] : [['UPLOAD (1)', 'up', 100], ['DOWNLOAD (2)', 'down', 108], ['ENTER CODE (3)', 'code', 124], ['BACK (ESC)', 'back', 92]]; // on a phone the stick and the buttons sit at the screen edges, so the row stays in the middle
+    let tw = 6 * (defs.length - 1); for (const d of defs) tw += d[2]; let bx = (tc ? 205 : W / 2) - tw / 2; cloudBtns = defs.map(d => { const b = { x: Math.round(bx), y: 206, w: d[2], h: 16, t: d[0], k: d[1] }; bx += d[2] + 6; return b; }); }
+  for (const b of cloudBtns) { const dis = !on && b.k !== 'back'; g.fillStyle = 'rgba(30,24,60,0.9)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = dis ? '#4a4a5a' : b.k === 'back' ? '#8a7a9a' : '#8cc4ff'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, dis ? '#6a6a7a' : '#fff', 'center'); }
+  if (cloud.busy) text('...', W / 2, 250, 9, '#8cc4ff', 'center');
+}
+function paceInfo() { // the day's fastest finish on the online board, the time to beat; { none: true } when the board is loaded and nobody has finished, null when there is no board to look at
+  if (!onlineOn() || onlineBoard.day !== dayStr() || !onlineBoard.rows) return null;
+  const w = onlineBoard.rows.find(r => r.w); return w ? { n: w.n, t: w.t } : { none: true };
+}
 const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
@@ -951,7 +1055,7 @@ function startDaily() {
   try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('emberfall_daily_run_') === 0 && k.indexOf('emberfall_daily_run_' + daily.date + '_') !== 0) localStorage.removeItem(k); } } catch (e) { } // runs of earlier days are dropped
   rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null;
   const o = loadDailyRun(CLS), live = !!o && !o.over && !o.done; if (live) { applyDailyRun(o); daily.t = Math.max(0, o.t | 0); }
-  heroStats(true);
+  heroStats(true); loadOnlineBoard();
   beginStage(live ? o.stage : 0); msg = live ? 'DAILY RACE RESUMED  -  ' + fmtTime(daily.t) : 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function dailyWin() { // level 70 and 100 paragon: the race is won
@@ -2992,12 +3096,14 @@ function step() {
     else if (isHit('inv')) { openInv('title'); return; }
     else if (pressed.KeyB) { boardView = 0; boardHi = -1; mode = 'board'; return; }
     else if (pressed.KeyN) { boardView = 1; boardHi = -1; mode = 'board'; return; }
+    else if (pressed.KeyC) { openCloud(); return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
   if (mode === 'dailyinfo') { updateDailyInfo(); updateParts(); cam += 0.3; return; }
+  if (mode === 'cloud') { updateCloud(); updateParts(); cam += 0.3; return; }
   if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
   if (mode === 'resume') { updateResume(); updateParts(); cam += 0.3; return; }
   if (mode === 'story') { updateStory(); return; }
@@ -3021,7 +3127,7 @@ function step() {
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
-  if (daily && !daily.done) { daily.t++; if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
+  if (daily && !daily.done) { daily.t++; if (tickN % 1800 === 0) loadOnlineBoard(); if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
   for (const p of players()) withHero(p, () => updateHero(p));
   enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
@@ -3961,7 +4067,10 @@ function drawHUD() {
   text('GOLD ' + rpg.gold, W - 12, 62, 8, '#ffd24a', 'right');
   lvText(cls().name + '  LV ' + rpg.lvl, 12, 18, 11, cls().col);
   if (!daily && crownsOf(CLS)) { drawCrown(128, 11); text('x' + crownsOf(CLS), 139, 18, 7, '#ffd24a'); }
-  if (daily) { text('RACE ' + fmtTime(daily.t), W - 12, 72, 8, '#ffd24a', 'right'); text('GOAL: LV ' + MAX_LV + ' + PG ' + PG_MAX, W - 12, 82, 7, '#c9a86a', 'right'); }
+  if (daily) {
+    text('RACE ' + fmtTime(daily.t), W - 12, 72, 8, '#ffd24a', 'right'); text('GOAL: LV ' + MAX_LV + ' + PG ' + PG_MAX, W - 12, 82, 7, '#c9a86a', 'right');
+    if (!daily.done) { const p = paceInfo(); if (p && p.none) text('NO ONE HAS FINISHED YET', W - 12, 92, 7, '#8a7a9a', 'right'); else if (p) { const late = daily.t > p.t; text((late ? 'BEHIND ' : 'TO BEAT ') + p.n + ' ' + fmtTime(p.t), W - 12, 92, 7, late ? '#ff8a6a' : '#9ad08a', 'right'); } } // the pace line: the best finished time online
+  }
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   if (rpg.lvl >= MAX_LV) bar(12, 40, 110, 2, rpg.pg >= PG_MAX ? 1 : rpg.pxp, rpg.pg >= PG_MAX ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); // at the cap the bar fills toward the next paragon point
   else bar(12, 40, 110, 2, rpg.xp, xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
@@ -3987,7 +4096,7 @@ function drawHUD() {
 }
 
 const DONATE_URL = 'https://www.paypal.com/paypalme/cooldance84';
-let donateBox = null, langBox = null, dailyBox = null;
+let donateBox = null, langBox = null, dailyBox = null, cloudBox = null;
 function drawDonate(y) {
   const t = tr('LIKED IT? DONATE TO KEEP EMBERFALL GROWING  -  CLICK OR PRESS D');
   g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 12;
@@ -3999,10 +4108,12 @@ function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } c
 screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
   if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (b && b.go) { boardView = 1; boardHi = -1; mode = 'board'; } else openSelect(false, true); return; }
+  if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !langBox && !dailyBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !langBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
+  if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
   if (langBox && x >= langBox.x && x <= langBox.x + langBox.w && y >= langBox.y && y <= langBox.y + langBox.h) { setLang(LANG === 'hu' ? 'en' : 'hu'); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
@@ -4018,7 +4129,7 @@ let selBoxes = [];
 function openDailyInfo() { mode = 'dailyinfo'; SFX.pick(); }
 function updateDailyInfo() {
   if (isHit('back')) { mode = 'title'; return; }
-  if (pressed.KeyB) { boardView = 1; boardHi = -1; mode = 'board'; return; }
+  if (pressed.KeyB || pressed.KeyN) { boardView = 1; boardHi = -1; mode = 'board'; return; }
   if (isHit('start') || isHit('atk')) openSelect(false, true);
 }
 function drawDailyInfo() {
@@ -4031,7 +4142,7 @@ function drawDailyInfo() {
     ['THE REWARD', '#ffd24a'], ['A DAILY CROWN FOR YOUR SAVED HERO, ONE EACH DAY, SHOWN BESIDE ITS LEVEL.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
   L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
   drawCrown(104, 169);
-  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'DAILY BOARD (B)', go: 1 }];
+  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'DAILY BOARD (N)', go: 1 }];
   for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
   text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
 }
@@ -4094,12 +4205,13 @@ function drawTitleOverlay() {
   }
   drawDonate(H - 12);
   { const lt = '[H] ' + (LANG === 'hu' ? 'NYELV: MAGYAR' : 'LANGUAGE: ENGLISH'); g.font = '8px "Courier New",monospace'; const lw = g.measureText(lt).width + 10; langBox = { x: 4, y: 3, w: lw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(4, 3, lw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(4.5, 3.5, lw - 1, 12); text(lt, 4 + lw / 2, 13, 8, '#8cc4ff', 'center'); }
+  if (onlineOn()) { const ct = '[C] ' + (LANG === 'hu' ? 'FELHŐ-MENTÉS' : 'CLOUD SAVE'); g.font = '8px "Courier New",monospace'; const cw = g.measureText(ct).width + 10; cloudBox = { x: langBox.x + langBox.w + 6, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: DAILY BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; langBox = null; dailyBox = null;
+  donateBox = null; langBox = null; dailyBox = null; cloudBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -4126,6 +4238,7 @@ function render() {
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
   else if (mode === 'dailyinfo') drawDailyInfo();
+  else if (mode === 'cloud') drawCloud();
   else if (mode === 'select') drawSelect();
   else if (mode === 'resume') drawResume();
   else drawHUD();
