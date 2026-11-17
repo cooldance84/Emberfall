@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.38.4] - 2026-11-17
+- Items and display redrawn after the "Items and display" board (looks only, no gameplay change): item icons are shaded metal, leather and stone; the frame tells the rarity at a glance: plain (common), blue double frame (magic), gold with rivets (rare), ornate corner irons and a halo (legendary), pulsing inner light and a gem set in the top edge (mythic); set pieces glow green and carry a badge
+- Ember Jar: a glass jar with a cork, a gold rune band and a blue flame inside; an empty jar is dark glass with ash at the bottom; the flame flares up when a jar fills
+- Health, mana and XP bars get a lighter stripe along the top
+- On the floor: the light column grows with the rarity (taller, wider, sparks climbing it, a ring on the ground from rare up), item names have a dark outline in the rarity colour; food is a roast drumstick with the bone; chests have iron straps and a lock plate, the gold chest a gem on the lid; the continue coins are small piles of gold with a glint
+
 ## [1.38.3] - 2026-11-17
 - Dragon's Wrath: the giant dragon head was redrawn after the new design board: an angular skull in two reds, swept-back bone horns and cheek spikes, a golden brow wedge with a glowing Ember Jar ember, slanted eyes under a dark brow, lava cracks, and an open jaw with fangs and a glowing throat. The throat light, the cracks and the eyes take the colour of your element (fire, frost or lightning)
 - The strike now plays in four beats: a shadow grows on the floor, the head comes down while the glow builds (the jaw barely open), the impact (jaw gaping, rings, flung stones), and the retreat that leaves a glowing trail and rising embers. A dashed ring of fire, frost or lightning marks the floor throughout. Damage and timing are unchanged

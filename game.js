@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.38.3';
+const VERSION = '1.38.4';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -966,16 +966,38 @@ function drawBoardScreen() {
 }
 
 /* ---- inventory (Diablo-style paper doll + backpack) ---- */
-function drawIcon(c, slot, x, y, sc, col) {
+function drawIcon(c, slot, x, y, sc, col) { // shaded metal, leather and stone; col is the accent (trim, gem, crest)
   c.save(); c.translate(x, y); c.scale(sc, sc);
-  const dk = '#0b0610', mt = '#aab0c0', mt2 = '#6a7080';
-  const P = (pts, f) => { c.fillStyle = f; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.closePath(); c.fill(); c.strokeStyle = dk; c.lineWidth = 0.8; c.stroke(); };
-  if (slot === 'weapon') { P([13, 1, 15, 3, 7, 11, 5, 9], mt); P([3, 8, 8, 13, 7, 14, 2, 9], col); P([4, 12, 2, 14, 1, 13, 3, 11], '#7a4a22'); }
-  else if (slot === 'helm') { P([2, 13, 2, 8, 4, 4, 8, 2, 12, 4, 14, 8, 14, 13], mt); P([4, 8, 12, 8, 12, 10, 4, 10], dk); P([7, 2, 9, 2, 9, 7, 7, 7], col); }
-  else if (slot === 'armor') { P([1, 5, 4, 2, 6, 2, 8, 4, 10, 2, 12, 2, 15, 5, 12, 7, 12, 14, 4, 14, 4, 7], mt); P([6, 7, 10, 7, 10, 12, 6, 12], col); }
-  else if (slot === 'boots') { P([3, 2, 7, 2, 7, 9, 12, 10, 12, 13, 3, 13], mt); P([3, 11, 12, 11, 12, 13, 3, 13], col); }
-  else if (slot === 'ring') { c.strokeStyle = col; c.lineWidth = 2.5; c.beginPath(); c.arc(8, 10, 4.5, 0, 7); c.stroke(); P([6, 2, 10, 2, 11, 5, 8, 7, 5, 5], col); }
-  else { c.strokeStyle = mt2; c.lineWidth = 1; c.beginPath(); c.moveTo(3, 1); c.lineTo(8, 9); c.lineTo(13, 1); c.stroke(); P([8, 8, 11, 11, 8, 15, 5, 11], col); }
+  const dk = '#0b0610', M = ['#3e4558', '#6a7288', '#9aa4bc', '#dde5f6'], LE = ['#3a2210', '#6a4220', '#8e5e30', '#b07c44'];
+  const cd = mixHex(col, '#000000', 0.45), cl = mixHex(col, '#ffffff', 0.5), cm = mixHex(col, '#ffffff', 0.22);
+  const P = (pts, f, st) => { c.fillStyle = f; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.closePath(); c.fill(); if (st !== false) { c.strokeStyle = dk; c.lineWidth = 0.8; c.stroke(); } };
+  const Ln = (x1, y1, x2, y2, w, st) => { c.strokeStyle = st; c.lineWidth = w; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
+  if (slot === 'weapon') {
+    P([13, 1, 15, 3, 7, 11, 5, 9], M[1]); P([13, 1, 14.2, 2.2, 6.2, 10.2, 5, 9], M[3], false); Ln(12.2, 3.6, 7.4, 8.4, 0.6, M[0]); // blade, bright edge, fuller
+    P([3, 8, 8, 13, 7, 14, 2, 9], col); Ln(3.2, 8.2, 8, 13, 0.6, cl); // crossguard
+    P([4, 12, 2, 14, 1, 13, 3, 11], LE[2]); Ln(3.4, 11.4, 2.2, 12.6, 0.5, LE[0]); c.fillStyle = col; c.beginPath(); c.arc(1.4, 14.2, 1.1, 0, 7); c.fill(); // leather grip, pommel stone
+  } else if (slot === 'helm') {
+    P([2, 13, 2, 8, 4, 4, 8, 2, 12, 4, 14, 8, 14, 13], M[1]); P([2, 13, 2, 8, 4, 4, 8, 2, 8, 13], M[2], false); P([3, 8, 4.2, 5, 7, 3, 7, 4.4, 5.2, 6, 4.2, 9], M[3], false);
+    P([4, 8, 12, 8, 12, 10, 4, 10], dk); P([7.2, 8, 8.8, 8, 8.8, 13, 7.2, 13], M[2]);
+    P([7, 0.5, 9, 0.5, 9.4, 5, 6.6, 5], col); Ln(7.4, 1, 7.4, 4.6, 0.6, cl);
+    c.fillStyle = M[3]; c.fillRect(3, 11, 1, 1); c.fillRect(12, 11, 1, 1);
+  } else if (slot === 'armor') {
+    P([1, 5, 4, 2, 6, 2, 8, 4, 10, 2, 12, 2, 15, 5, 12, 7, 12, 14, 4, 14, 4, 7], M[1]); P([1, 5, 4, 2, 6, 2, 8, 4, 8, 14, 4, 14, 4, 7], M[2], false); P([2, 5, 4, 2.8, 5.4, 2.8, 4, 5], M[3], false);
+    P([4, 11, 12, 11, 12, 13, 4, 13], LE[2]); c.fillStyle = col; c.fillRect(7.2, 10.8, 1.8, 2.4); Ln(4, 11.5, 12, 11.5, 0.5, LE[3]);
+    P([8, 5.6, 10.2, 8, 8, 10.4, 5.8, 8], col); P([8, 5.6, 8, 8, 5.8, 8], cl, false); c.fillStyle = M[3]; c.fillRect(2, 5, 1, 1); c.fillRect(13, 5, 1, 1);
+  } else if (slot === 'boots') {
+    P([3, 2, 7, 2, 7, 9, 12, 10, 12, 13, 3, 13], LE[2]); c.fillStyle = LE[3]; c.fillRect(3.5, 4.5, 1, 5); c.fillStyle = LE[1]; c.fillRect(6, 5, 1, 4);
+    P([3, 2, 7, 2, 7, 4.2, 3, 4.2], col); Ln(3.2, 2.4, 6.8, 2.4, 0.5, cl);
+    P([9, 10, 12, 10, 12, 12.2, 9, 12.2], M[2]); P([3, 12, 12, 12, 12, 13.8, 3, 13.8], LE[0]); Ln(4.5, 6, 6.5, 6, 0.5, LE[0]); Ln(4.5, 8, 6.5, 8, 0.5, LE[0]);
+  } else if (slot === 'ring') {
+    c.strokeStyle = dk; c.lineWidth = 3.4; c.beginPath(); c.arc(8, 10, 4.4, 0, 7); c.stroke();
+    c.strokeStyle = '#b8902c'; c.lineWidth = 2.2; c.beginPath(); c.arc(8, 10, 4.4, 0, 7); c.stroke();
+    c.strokeStyle = '#ffe08a'; c.lineWidth = 0.8; c.beginPath(); c.arc(8, 10, 4.4, 3.4, 4.9); c.stroke();
+    P([6, 2.4, 10, 2.4, 11.6, 5, 8, 8.2, 4.4, 5], col); P([6, 2.4, 10, 2.4, 8, 5], cl, false); P([4.4, 5, 6, 2.4, 8, 5], cm, false); P([8, 5, 11.6, 5, 8, 8.2], cd, false);
+  } else {
+    Ln(3, 1, 8, 9, 1.2, dk); Ln(13, 1, 8, 9, 1.2, dk); Ln(3, 1, 8, 9, 0.7, M[2]); Ln(13, 1, 8, 9, 0.7, M[1]); c.fillStyle = M[3]; c.fillRect(5, 4.5, 1, 1); c.fillRect(10.5, 4.5, 1, 1);
+    P([8, 7.4, 12, 11, 8, 15.6, 4, 11], '#c8a040'); P([8, 9, 10.4, 11, 8, 13.8, 5.6, 11], col); P([8, 9, 8, 11, 5.6, 11], cl, false); P([8, 11, 10.4, 11, 8, 13.8], cd, false); Ln(8, 7.6, 11.6, 11, 0.5, '#ffe08a');
+  }
   c.restore();
 }
 function panel(x, y, w, h, title) {
@@ -985,15 +1007,37 @@ function panel(x, y, w, h, title) {
 }
 const SET_GREEN = '#46e06a', SET_GREEN_RGB = '70,224,106';
 const itemCol = it => it.set ? SET_GREEN : RARITY[it.rar].col;
+/* the border says how good the item is: plain, blue double, gold with rivets, ornate corner irons and a halo, pulsing glow with a gem; set pieces glow green */
+function rarFrame(x, y, w, rar, col, rgb, set) {
+  const k = w / 26, u = Math.max(1, Math.round(2 * k)), pu = Math.sin(tickN * 0.1), W2 = x + w / 2;
+  if (rar >= 3 || set) { g.globalCompositeOperation = 'lighter'; const gr = g.createRadialGradient(W2, y + w / 2, 1, W2, y + w / 2, w * 0.62); gr.addColorStop(0, `rgba(${rgb},${0.3 + 0.1 * pu})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(x, y, w, w); g.globalCompositeOperation = 'source-over'; }
+  if (rar >= 4) { g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(${rgb},${0.08 + 0.09 * (pu * 0.5 + 0.5)})`; g.fillRect(x, y, w, w); g.globalCompositeOperation = 'source-over'; }
+  g.lineWidth = 1; g.strokeStyle = col; g.strokeRect(x + 0.5, y + 0.5, w - 1, w - 1);
+  if (rar === 1 || rar >= 4) { const ins = Math.max(2, Math.round(2.5 * k)); g.globalAlpha = rar >= 4 ? 0.45 + 0.35 * (pu * 0.5 + 0.5) : 0.6; g.strokeRect(x + ins + 0.5, y + ins + 0.5, w - 2 * ins - 1, w - 2 * ins - 1); g.globalAlpha = 1; }
+  if (rar === 2) { g.fillStyle = '#fff4b0'; for (const [rx, ry] of [[x + 1, y + 1], [x + w - 1 - u, y + 1], [x + 1, y + w - 1 - u], [x + w - 1 - u, y + w - 1 - u]]) g.fillRect(rx, ry, u, u); }
+  if (rar === 3) {
+    const len = Math.max(3, Math.round(7 * k)), cc = mixHex(col, '#ffffff', 0.35);
+    for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + w, y, -1, 1], [x, y + w, 1, -1], [x + w, y + w, -1, -1]]) {
+      g.fillStyle = '#0a0610'; g.fillRect(sx > 0 ? cx : cx - len, sy > 0 ? cy : cy - u - 1, len, u + 1); g.fillRect(sx > 0 ? cx : cx - u - 1, sy > 0 ? cy : cy - len, u + 1, len);
+      g.fillStyle = cc; g.fillRect(sx > 0 ? cx : cx - len, sy > 0 ? cy : cy - u, len, u); g.fillRect(sx > 0 ? cx : cx - u, sy > 0 ? cy : cy - len, u, len);
+    }
+  }
+  if (rar >= 4) { // a gem set into the top edge
+    const r = Math.max(2.4, 3.6 * k); g.fillStyle = '#0a0610'; g.beginPath(); g.moveTo(W2, y - r - 1.2); g.lineTo(W2 + r + 1.2, y); g.lineTo(W2, y + r + 1.2); g.lineTo(W2 - r - 1.2, y); g.closePath(); g.fill();
+    g.fillStyle = col; g.beginPath(); g.moveTo(W2, y - r); g.lineTo(W2 + r, y); g.lineTo(W2, y + r); g.lineTo(W2 - r, y); g.closePath(); g.fill();
+    g.fillStyle = mixHex(col, '#ffffff', 0.6); g.beginPath(); g.moveTo(W2, y - r); g.lineTo(W2, y); g.lineTo(W2 - r, y); g.closePath(); g.fill();
+  }
+}
 function slotBox(x, y, it, sel, ghost) {
   g.fillStyle = '#0a0710'; g.fillRect(x - 1, y - 1, 28, 28);
   const IC = it ? itemCol(it) : null; // set pieces are green, everything else keeps its rarity colour
   g.fillStyle = it ? `rgba(${it.set ? SET_GREEN_RGB : RARITY[it.rar].rgb},0.2)` : '#1a1422'; g.fillRect(x, y, 26, 26);
-  g.strokeStyle = it ? IC : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25);
+  if (it) rarFrame(x, y, 26, it.rar, IC, it.set ? SET_GREEN_RGB : RARITY[it.rar].rgb, !!it.set);
+  else { g.strokeStyle = '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, 25, 25); }
   if (it) drawIcon(g, it.slot, x + 5, y + 5, 1, IC);
   else if (ghost) { g.globalAlpha = 0.28; drawIcon(g, ghost, x + 5, y + 5, 1, '#6a5a7a'); g.globalAlpha = 1; }
   if (it && it.set) { g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(${SET_GREEN_RGB},${0.07 + Math.sin(tickN * 0.08) * 0.04})`; g.fillRect(x, y, 26, 26); g.globalCompositeOperation = 'source-over'; } // faint pulse on set pieces
-  if (it && it.set) { g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); }
+  if (it && it.set) { g.fillStyle = '#0a0710'; g.fillRect(x + 19, y + 1, 6, 6); g.fillStyle = SETS[it.set].col; g.fillRect(x + 20, y + 2, 4, 4); g.fillStyle = '#0a0710'; g.fillRect(x + 21, y + 3, 2, 2); g.fillStyle = SET_GREEN; g.fillRect(x + 21, y + 3, 1, 1); } // set badge, top right
   if (it && !canWear(it)) { g.fillStyle = 'rgba(170,20,30,0.4)'; g.fillRect(x, y, 26, 26); }
   if (it && it.up > 0) text('+' + it.up, x + 2, y + 8, 7, it.up >= 8 ? '#ff9ae0' : it.up >= 5 ? '#ffb45a' : '#ffd24a'); // forge level, top left (the set mark sits top right)
   if (sel) { g.strokeStyle = (tickN >> 3) & 1 ? '#ffd24a' : '#fff1b0'; g.lineWidth = 2; g.strokeRect(x - 2, y - 2, 30, 30); }
@@ -1096,10 +1140,14 @@ function drawInv() {
   const it = invItem();
   drawTip(it, inv.z === 'bag' && it ? (rpg.eq[it.slot] || null) : undefined, 324, 6);
 }
-function drawCoin(x, y, on) {
-  g.fillStyle = '#0a0610'; g.beginPath(); g.arc(x, y, 6, 0, 7); g.fill();
-  g.fillStyle = on ? '#ffcf3a' : '#2e2434'; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill();
-  if (on) { g.fillStyle = '#fff1a0'; g.fillRect(x - 3, y - 3, 2, 4); g.fillStyle = '#b87a10'; g.fillRect(x + 1, y - 1, 2, 4); }
+function drawCoin(x, y, on) { // a little pile of gold with a glint; an empty slot is a dark dish
+  const disc = (cx, cy, rx, ry, face, edge) => { g.fillStyle = edge; g.beginPath(); g.ellipse(cx, cy + 1.3, rx, ry, 0, 0, 7); g.fill(); g.fillStyle = face; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill(); };
+  if (!on) { g.fillStyle = '#0a0610'; g.beginPath(); g.ellipse(x, y + 2, 6, 3.4, 0, 0, 7); g.fill(); g.fillStyle = '#2e2434'; g.beginPath(); g.ellipse(x, y + 2, 4.6, 2.4, 0, 0, 7); g.fill(); return; }
+  g.fillStyle = '#0a0610'; g.beginPath(); g.ellipse(x, y + 2.6, 7, 4.6, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(x, y - 1, 5, 3.4, 0, 0, 7); g.fill();
+  disc(x - 2.6, y + 2.4, 4, 2.2, '#f0b830', '#a86a0c'); disc(x + 2.6, y + 2.4, 4, 2.2, '#ffcf3a', '#b87a10'); disc(x, y - 0.8, 3.8, 2.1, '#ffd84a', '#b87a10');
+  g.strokeStyle = '#e0a020'; g.lineWidth = 0.6; g.beginPath(); g.ellipse(x, y - 0.8, 2.3, 1.2, 0, 0, 7); g.stroke();
+  g.fillStyle = '#fff1a0'; g.fillRect(x - 3, y - 1.6, 2, 1); g.fillRect(x - 5, y + 1.6, 2, 1);
+  const ph = (tickN + (x * 7 | 0)) % 160; if (ph < 14) { const r = ph < 7 ? ph / 7 : (14 - ph) / 7, L = 1 + 3 * r; g.fillStyle = '#ffffff'; g.fillRect(x - 1 - L, y - 2, L * 2 + 1, 1); g.fillRect(x - 1, y - 2 - L, 1, L * 2 + 1); } // the glint
 }
 
 function newHero() {
@@ -2811,7 +2859,7 @@ function updateItems() {
       if (!withHero(P, () => pickupGear(it.it))) { if (!it.warn) { it.warn = 1; floatText(P.x, P.y - 60, 'PACK FULL', '#ff6a6a', 8); } continue; }
     } else if (it.kind === 'vase') {
       if (it.t < 14 || P.vases >= 3) continue;
-      P.vases++; msg = `EMBER JAR ${P.vases}/3    WRATH +${P.vases * 15}%`; msgT = 100;
+      P.vases++; P.jt = tickN; msg = `EMBER JAR ${P.vases}/3    WRATH +${P.vases * 15}%`; msgT = 100;
     } else P.hp = Math.min(P.maxhp, P.hp + 35);
     it.gone = true; SFX.pick();
     spawn(it.x, it.y, 10, 12, { c: it.kind === 'vase' ? '#8fd0ff' : '#9dffb0', add: true, l0: 14, l1: 24, g: -0.02 });
@@ -3476,12 +3524,23 @@ function drawWildMount(m, sx, sy) {
   if (!m.flee && !hero.mount && Math.abs(m.x - hero.x) < 80 && Math.abs(m.y - hero.y) < 24 && ((tickN >> 4) & 1)) text('K: RIDE', Math.round(sx), Math.round(sy - 52), 8, '#fff1b0', 'center');
 }
 
-function drawJar(x, y, on) {
-  g.fillStyle = '#0a0610'; g.fillRect(x - 5, y - 11, 10, 12);
-  g.fillStyle = on ? '#3a8ae0' : '#26324a'; g.fillRect(x - 4, y - 9, 8, 9);
-  g.fillStyle = on ? '#bfe6ff' : '#3a4866'; g.fillRect(x - 3, y - 8, 2, 6);
-  g.fillStyle = on ? '#e6c97a' : '#5a5030'; g.fillRect(x - 3, y - 12, 6, 3);
-  if (on) { g.globalCompositeOperation = 'lighter'; g.fillStyle = 'rgba(90,170,255,0.22)'; g.fillRect(x - 9, y - 16, 18, 18); g.globalCompositeOperation = 'source-over'; }
+function drawJar(x, y, on, age, sc) { // an Ember Jar: glass with a cork, a gold rune band, a blue flame inside; empty it is dark glass with ash at the bottom
+  sc = sc || 1; age = age == null ? 999 : age;
+  g.save(); g.translate(x, y); g.scale(sc, sc);
+  const fl = age < 22 ? 1 - age / 22 : 0, fk = Math.sin(tickN * 0.35 + x) * 0.8; // a freshly filled jar flares up
+  if (on) { g.globalCompositeOperation = 'lighter'; const gl = g.createRadialGradient(0, -5, 1, 0, -5, 11 + 8 * fl); gl.addColorStop(0, `rgba(90,170,255,${0.32 + 0.4 * fl})`); gl.addColorStop(1, 'rgba(90,170,255,0)'); g.fillStyle = gl; g.fillRect(-22, -28, 44, 44); g.globalCompositeOperation = 'source-over'; }
+  g.fillStyle = '#0a0610'; g.fillRect(-5, -10, 10, 11); g.fillRect(-3, -13, 6, 4); // outline: body and neck
+  g.fillStyle = on ? '#24488e' : '#161c2c'; g.fillRect(-4, -9, 8, 9); g.fillRect(-2, -12, 4, 3);
+  g.fillStyle = on ? '#bfe6ff' : '#3a4866'; g.fillRect(-3, -8, 1, 5); // glass highlight
+  g.fillStyle = on ? '#2a60b0' : '#10161f'; g.fillRect(2, -8, 2, 8); // glass shade
+  g.fillStyle = on ? '#e6c24a' : '#6a5a2c'; g.fillRect(-4, -6, 8, 2); g.fillStyle = on ? '#8a5a10' : '#3a3018'; g.fillRect(-3, -6, 1, 1); g.fillRect(-1, -5, 1, 1); g.fillRect(1, -6, 1, 1); g.fillRect(3, -5, 1, 1); // rune band
+  g.fillStyle = on ? '#a8743a' : '#5a3e20'; g.fillRect(-2, -15, 4, 3); g.fillStyle = on ? '#d09a5a' : '#6a4a28'; g.fillRect(-2, -15, 4, 1); // cork
+  if (on) {
+    const h = 4 + fk + fl * 4; g.fillStyle = '#3a9aff'; g.beginPath(); g.moveTo(-2.4, -0.5); g.quadraticCurveTo(-2.6, -h * 0.6, 0.3, -h - 1); g.quadraticCurveTo(2.2, -h * 0.5, 2.4, -0.5); g.closePath(); g.fill();
+    g.fillStyle = '#e8f8ff'; g.beginPath(); g.moveTo(-1, -0.5); g.quadraticCurveTo(-1, -h * 0.4, 0.2, -h * 0.75); g.quadraticCurveTo(1.2, -h * 0.4, 1, -0.5); g.closePath(); g.fill();
+    if (fl > 0) { g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(255,255,255,${0.5 * fl})`; g.fillRect(-4, -9, 8, 9); g.globalCompositeOperation = 'source-over'; }
+  } else { g.fillStyle = '#5a5662'; g.fillRect(-3, -1.5, 6, 1.5); g.fillRect(-2, -2.5, 3, 1); g.fillStyle = '#8a8692'; g.fillRect(-2, -1.5, 1, 1); g.fillRect(1, -2, 1, 1); }
+  g.restore();
 }
 
 function drawChests() {
@@ -3489,12 +3548,28 @@ function drawChests() {
     const x = Math.round(c.x - cam + (c.shake > 0 ? (c.shake-- % 2 ? 1 : -1) : 0)), y = Math.round(c.y); if (x < -20 || x > W + 20) continue;
     g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 11, 3.5, 0, 0, 7); g.fill();
     const gd = c.type === 'gold', cb = gd ? '#c8a020' : '#7a4a22', ch = gd ? '#ffe066' : '#9a6430', cl = gd ? '#a07a10' : '#6a3c1a';
+    const ir = gd ? '#8a6410' : '#4a5064', ih = gd ? '#d8b040' : '#8a92a8'; // the iron straps (gilded on the gold chest)
     if (gd && !c.open) { g.globalCompositeOperation = 'lighter'; glowDot(g, x, y - 8, 22 + Math.sin(tickN * 0.1) * 2, '255,210,80', 0.35); g.globalCompositeOperation = 'source-over'; }
     g.fillStyle = '#0a0610'; g.fillRect(x - 10, y - 14, 20, 14);
-    g.fillStyle = cb; g.fillRect(x - 9, y - 9, 18, 8); g.fillStyle = ch; g.fillRect(x - 9, y - 9, 18, 2);
-    if (c.open) { g.fillStyle = '#ffd24a'; g.fillRect(x - 7, y - 11, 14, 3); g.fillStyle = cb; g.fillRect(x - 9, y - 19, 18, 4); g.fillStyle = ch; g.fillRect(x - 9, y - 19, 18, 1); }
-    else { g.fillStyle = cl; g.fillRect(x - 9, y - 14, 18, 6); g.fillStyle = ch; g.fillRect(x - 9, y - 14, 18, 1); g.fillStyle = '#c8a040'; g.fillRect(x - 1, y - 11, 3, 5); g.fillRect(x - 9, y - 12, 18, 1); if ((tickN >> 4) % 6 === 0) { g.fillStyle = '#fff1b0'; g.fillRect(x + 5, y - 15, 2, 2); } }
+    g.fillStyle = cb; g.fillRect(x - 9, y - 9, 18, 8); g.fillStyle = ch; g.fillRect(x - 9, y - 9, 18, 2); g.fillStyle = cl; g.fillRect(x - 9, y - 3, 18, 2); // body with plank shading
+    g.fillStyle = ir; g.fillRect(x - 7, y - 9, 3, 8); g.fillRect(x + 4, y - 9, 3, 8); g.fillStyle = ih; g.fillRect(x - 7, y - 9, 1, 8); g.fillRect(x + 4, y - 9, 1, 8); g.fillStyle = '#0a0610'; g.fillRect(x - 6, y - 7, 1, 1); g.fillRect(x + 5, y - 7, 1, 1); g.fillRect(x - 6, y - 4, 1, 1); g.fillRect(x + 5, y - 4, 1, 1); // straps, rivets
+    g.fillStyle = ir; g.fillRect(x - 9, y - 2, 18, 1);
+    if (c.open) {
+      g.fillStyle = '#ffd24a'; g.fillRect(x - 7, y - 11, 14, 3); g.fillStyle = '#fff1b0'; g.fillRect(x - 5, y - 11, 4, 1);
+      g.fillStyle = cb; g.fillRect(x - 9, y - 19, 18, 4); g.fillStyle = ch; g.fillRect(x - 9, y - 19, 18, 1); g.fillStyle = ir; g.fillRect(x - 7, y - 19, 3, 4); g.fillRect(x + 4, y - 19, 3, 4); g.fillStyle = ih; g.fillRect(x - 7, y - 19, 1, 4); g.fillRect(x + 4, y - 19, 1, 4);
+    } else {
+      g.fillStyle = cl; g.fillRect(x - 9, y - 14, 18, 6); g.fillStyle = ch; g.fillRect(x - 9, y - 14, 18, 1); g.fillStyle = cb; g.fillRect(x - 9, y - 13, 18, 2);
+      g.fillStyle = ir; g.fillRect(x - 7, y - 14, 3, 6); g.fillRect(x + 4, y - 14, 3, 6); g.fillStyle = ih; g.fillRect(x - 7, y - 14, 1, 6); g.fillRect(x + 4, y - 14, 1, 6); g.fillRect(x - 9, y - 9, 18, 1);
+      g.fillStyle = '#0a0610'; g.fillRect(x - 3, y - 12, 6, 7); g.fillStyle = '#c8a040'; g.fillRect(x - 2, y - 11, 4, 5); g.fillStyle = '#ffe08a'; g.fillRect(x - 2, y - 11, 4, 1); g.fillStyle = '#0a0610'; g.fillRect(x - 0.5, y - 9, 1, 2); // lock plate and keyhole
+      if (gd) { g.fillStyle = '#0a0610'; g.beginPath(); g.moveTo(x, y - 20); g.lineTo(x + 4, y - 16); g.lineTo(x, y - 12.4); g.lineTo(x - 4, y - 16); g.closePath(); g.fill(); g.fillStyle = '#ff4a6a'; g.beginPath(); g.moveTo(x, y - 19); g.lineTo(x + 3, y - 16); g.lineTo(x, y - 13.4); g.lineTo(x - 3, y - 16); g.closePath(); g.fill(); g.fillStyle = '#ffb0c0'; g.beginPath(); g.moveTo(x, y - 19); g.lineTo(x, y - 16); g.lineTo(x - 3, y - 16); g.closePath(); g.fill(); } // the gem on the gold chest
+      if ((tickN >> 4) % 6 === 0) { g.fillStyle = '#fff1b0'; g.fillRect(x + 5, y - 15, 2, 2); }
+    }
   }
+}
+function textO(s, x, y, size, col, align) { // a name on the floor: dark outline so it reads over any background
+  s = tr(s); g.font = `bold ${size}px "Courier New",monospace`; g.textAlign = align || 'left'; g.fillStyle = '#0a0610';
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [1, 1]]) g.fillText(s, x + dx, y + dy);
+  g.fillStyle = col; g.fillText(s, x, y);
 }
 function drawItems() {
   let li = 0;
@@ -3506,28 +3581,36 @@ function drawItems() {
       g.globalCompositeOperation = 'lighter';
       const gr = g.createRadialGradient(x, yy - 8, 1, x, yy - 8, 18); gr.addColorStop(0, 'rgba(90,170,255,0.5)'); gr.addColorStop(1, 'rgba(90,170,255,0)');
       g.fillStyle = gr; g.fillRect(x - 18, yy - 26, 36, 36); g.globalCompositeOperation = 'source-over';
-      g.fillStyle = '#0a0610'; g.fillRect(x - 6, yy - 15, 12, 15); g.fillStyle = '#3a8ae0'; g.fillRect(x - 5, yy - 13, 10, 12);
-      g.fillStyle = '#bfe6ff'; g.fillRect(x - 4, yy - 12, 2, 8); g.fillStyle = '#2a60b0'; g.fillRect(x + 1, yy - 12, 4, 11);
-      g.fillStyle = '#e6c97a'; g.fillRect(x - 4, yy - 17, 8, 3); g.fillStyle = '#fff0a8'; g.fillRect(x - 4, yy - 17, 8, 1);
+      drawJar(x, yy, true, 999, 1.15);
       continue;
     }
     if (it.kind === 'gear') {
-      const R = it.it.set ? Object.assign({}, RARITY[it.it.rar], { col: SET_GREEN, rgb: SET_GREEN_RGB }) : RARITY[it.it.rar], z = it.z || 0, yy = y - z + Math.sin(it.t * 0.1) * 1.2;
+      const rar = it.it.rar, R = it.it.set ? Object.assign({}, RARITY[rar], { col: SET_GREEN, rgb: SET_GREEN_RGB }) : RARITY[rar], z = it.z || 0, yy = y - z + Math.sin(it.t * 0.1) * 1.2;
       g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 8, 2.5, 0, 0, 7); g.fill();
-      if (it.it.rar > 0) {
-        const bh = 36 + it.it.rar * 14; g.globalCompositeOperation = 'lighter';
-        const gr = g.createLinearGradient(0, y - bh, 0, y); gr.addColorStop(0, `rgba(${R.rgb},0)`); gr.addColorStop(1, `rgba(${R.rgb},0.6)`); g.fillStyle = gr; g.fillRect(x - 3, y - bh, 6, bh);
-        glowDot(g, x, yy - 8, 16 + it.it.rar * 3, R.rgb, 0.45); g.globalCompositeOperation = 'source-over';
+      if (rar > 0) { // the light column grows with the rarity: taller, wider, and sparks climb it
+        const bh = 30 + rar * 16, bw = 3 + rar; g.globalCompositeOperation = 'lighter';
+        const gr = g.createLinearGradient(0, y - bh, 0, y); gr.addColorStop(0, `rgba(${R.rgb},0)`); gr.addColorStop(1, `rgba(${R.rgb},0.6)`); g.fillStyle = gr; g.fillRect(x - bw / 2, y - bh, bw, bh);
+        g.fillStyle = `rgba(255,255,255,${0.1 + 0.05 * rar})`; g.fillRect(x - 0.5, y - bh * 0.8, 1, bh * 0.8);
+        if (rar >= 2) { g.strokeStyle = `rgba(${R.rgb},0.55)`; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y, 6 + rar * 2, (6 + rar * 2) * 0.32, 0, 0, 7); g.stroke(); }
+        for (let i = 0; i < rar - 1; i++) { const sy = (it.t * 0.5 + i * 17) % bh; g.fillStyle = `rgba(${R.rgb},${0.9 - sy / bh})`; g.fillRect(x + Math.sin(sy * 0.3 + i * 2) * (bw / 2 + 1), y - sy, 1, 2); }
+        glowDot(g, x, yy - 8, 16 + rar * 3, R.rgb, 0.45); g.globalCompositeOperation = 'source-over';
       }
-      g.fillStyle = '#0a0610'; g.fillRect(x - 8, yy - 17, 16, 16); g.strokeStyle = R.col; g.lineWidth = 1; g.strokeRect(x - 7.5, yy - 16.5, 15, 15);
+      g.fillStyle = '#0a0610'; g.fillRect(x - 9, yy - 18, 18, 18); g.fillStyle = `rgba(${R.rgb},0.2)`; g.fillRect(x - 8, yy - 17, 16, 16);
+      rarFrame(x - 8, yy - 17, 16, rar, R.col, R.rgb, !!it.it.set);
       drawIcon(g, it.it.slot, x - 7, yy - 16, 0.88, R.col);
-      if (it.it.rar > 0 || (Math.abs(it.x - hero.x) < 70 && Math.abs(it.y - hero.y) < 30)) text(iname(it.it), x, yy - 21 - (li++ % 3) * 9, 7, R.col, 'center');
+      if (rar > 0 || (Math.abs(it.x - hero.x) < 70 && Math.abs(it.y - hero.y) < 30)) textO(iname(it.it), x, yy - 22 - (li++ % 3) * 9, 7, R.col, 'center');
       continue;
     }
+    // food: a roast drumstick with the bone
     const b = Math.sin(it.t * 0.1) * 2;
-    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 7, 2.5, 0, 0, 7); g.fill();
-    g.fillStyle = '#c85a3a'; g.fillRect(x - 5, y - 9 + b, 10, 7); g.fillStyle = '#f0d4b0'; g.fillRect(x + 4, y - 10 + b, 5, 3); g.fillRect(x + 7, y - 12 + b, 3, 3);
-    g.fillStyle = '#e8805a'; g.fillRect(x - 4, y - 9 + b, 6, 2);
+    g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(x, y, 8, 2.5, 0, 0, 7); g.fill();
+    g.save(); g.translate(x, y + b); g.rotate(-0.35);
+    g.fillStyle = '#0a0610'; g.fillRect(2, -6, 9, 3); g.beginPath(); g.arc(11, -6.5, 2.4, 0, 7); g.arc(11, -2.5, 2.4, 0, 7); g.fill(); g.beginPath(); g.ellipse(-3, -6, 7.6, 5.6, 0, 0, 7); g.fill(); // outline
+    g.fillStyle = '#f4ecd8'; g.fillRect(3, -5.5, 8, 2); g.beginPath(); g.arc(11, -6, 1.6, 0, 7); g.arc(11, -3, 1.6, 0, 7); g.fill(); g.fillStyle = '#c8bfa4'; g.fillRect(3, -4, 8, 0.8); // bone, knobbed end
+    g.fillStyle = '#8a3e1c'; g.beginPath(); g.ellipse(-3, -6, 6.6, 4.6, 0, 0, 7); g.fill(); g.fillStyle = '#c0682c'; g.beginPath(); g.ellipse(-3.6, -6.8, 5.2, 3.2, 0, 0, 7); g.fill(); g.fillStyle = '#e0904a'; g.beginPath(); g.ellipse(-4.6, -7.6, 3, 1.5, 0, 0, 7); g.fill(); g.fillStyle = '#ffd090'; g.fillRect(-6.5, -8.6, 2, 1); // meat: shade, glaze, shine
+    g.fillStyle = '#6a2c10'; g.fillRect(-7, -4, 2, 1); g.fillRect(-2, -3, 3, 1);
+    g.restore();
+    if ((it.t + (x | 0)) % 70 < 40) { g.fillStyle = `rgba(255,255,255,${0.25 * (1 - ((it.t + (x | 0)) % 70) / 40)})`; g.fillRect(x - 5 + Math.sin(it.t * 0.2) * 1.5, y - 14 + b - ((it.t + (x | 0)) % 70) * 0.18, 1, 3); } // a wisp of steam
   }
 }
 
@@ -3770,10 +3853,12 @@ function applyLighting() {
 }
 
 function bar(x, y, w, h, v, max, c1, c2) {
+  const fw = Math.max(0, w * v / max) | 0, hex = /^#[0-9a-f]{6}$/i.test(c1);
   g.fillStyle = '#0a0610'; g.fillRect(x - 1, y - 1, w + 2, h + 2);
   g.fillStyle = c2; g.fillRect(x, y, w, h);
-  g.fillStyle = c1; g.fillRect(x, y, Math.max(0, w * v / max) | 0, h);
-  g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x, y, Math.max(0, w * v / max) | 0, 1);
+  g.fillStyle = c1; g.fillRect(x, y, fw, h);
+  g.fillStyle = hex ? mixHex(c1, '#ffffff', 0.5) : 'rgba(255,255,255,0.35)'; g.fillRect(x, y, fw, h >= 5 ? 2 : 1); // a lighter stripe along the top
+  if (h >= 5) { g.fillStyle = hex ? mixHex(c1, '#000000', 0.3) : 'rgba(0,0,0,0.25)'; g.fillRect(x, y + h - 1, fw, 1); }
 }
 function lvText(label, x, y, size, col, align) { // a level line with the blue paragon count after it
   text(label, x, y, size, col, align);
@@ -3821,7 +3906,7 @@ function drawHUD() {
   else bar(12, 40, 110, 2, rpg.xp, xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
   { const S = skillOf(hero); if (S) { text('U: ' + skName(S, hero), 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
-  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 92, i < hero.vases);
+  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 92, i < hero.vases, i === hero.vases - 1 ? tickN - (hero.jt || -999) : 999);
   text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 89, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
   if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 108, 8, T.col); bar(12, 111, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
   if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 128, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 132, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 147, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 158, 7, '#8878a0'); }
