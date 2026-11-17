@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.38.0] - 2026-11-17
+- Art pass on every figure (one version, easy to roll back to 1.37.0 if it is not liked): the heroes, the four foe types, the wyrmlings and the four bosses were redrawn after the new design boards. Hitboxes and gameplay are unchanged.
+- Shared principles: stronger silhouettes, 3-4 tone colour ramps with cool shadows and warm lights, outlines in a dark shade of each figure's own colour instead of black, a thin elemental rim light on the back edge (the hero's element, gold for elites, a boss's own power) and extra secondary motion (breathing, a lagging plume, scarf and robe).
+- Heroes: Nolan has a closed steel helm with a gold stripe and a trailing red plume, big pauldrons and a gold crest; Panni a pointed hood, a flared robe with a gold hem, dark hair and drifting runes around her free hand; Luca a deep green hood, a masked face with glowing eyes, a long streaming scarf, a leather vest with a strap, a crouching stance and reverse-grip daggers at rest.
+- Foes: the Ashen Husk is now a hunched olive Marauder with a fur collar, tusks, red eyes and a spiked club; the Ash Warder a faceless blue hood with a hexagonal barrier that cracks as it wears down; the Flame Caller a horned skull mask and ragged robe with a flaming staff, and its blast marker is a dashed ring; wyrmlings gain belly scales, a spiked back, a gold-striped saddle and sparks from the snout.
+- Bosses: obsidian Cinder King, a Colossus with a tiny one-eyed head and turquoise runes, a pale Mire Matron with a thorn crown, a Forgemaster with goggles and a braided red beard. Each boss glows brighter before a big hit, an armour plate bursts off at half health (with stronger light), and its life bar takes the boss's own colour.
+
 ## [1.37.0] - 2026-11-17
 - Fair play: the whole game now runs inside a closed block, so its values (level, gold, coins, items) can no longer be reached or changed from the browser console.
 - Saves and the continue-coin run cache carry a seal. A hand-edited save is noticed at start-up, set aside (kept under a `_bad` key, never deleted) and the hero starts fresh with a warning on the title screen. Saves made before this version still load and are sealed on their next save.

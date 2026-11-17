@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.37.0';
+const VERSION = '1.38.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -488,25 +488,25 @@ let stageIdx = 0, story = null, bossRef = null, stageCard = 0, clearT = 0, shots
 
 const KINDS = {
   hero: { name: 'NOLAN', cls: 'nolan', jump: 5.4, hp: 140, spd: 1.5, scale: 1, h: 44, skin: '#e0a679', hair: '#c4572b', armor: '#3b6ea8', armor2: '#8cc4ff', cloth: '#7a2630', wlen: 24, wwid: 3, wcol: '#dfe9f5' },
-  panni: { name: 'PANNI', cls: 'panni', look: 'hero', jump: 5.4, hp: 140, spd: 1.45, scale: 1, h: 44, skin: '#f0c09a', hair: '#e8c060', armor: '#4a2a7a', armor2: '#c9a8ff', cloth: '#3a1a6a', wlen: 28, wwid: 2, wcol: '#c9a8ff', wk: 'pstaff' },
+  panni: { name: 'PANNI', cls: 'panni', look: 'hero', jump: 5.4, hp: 140, spd: 1.45, scale: 1, h: 44, skin: '#f0c09a', hair: '#2b1640', armor: '#4a2a7a', armor2: '#c9a8ff', cloth: '#3a1a6a', wlen: 28, wwid: 2, wcol: '#c9a8ff', wk: 'pstaff' },
   luca: { name: 'LUCA', cls: 'luca', look: 'hero', jump: 6.0, hp: 140, spd: 1.8, scale: 1, h: 44, skin: '#d8a070', hair: '#2a1a12', armor: '#2a3a2e', armor2: '#8affb0', cloth: '#1a2a20', wlen: 14, wwid: 2, wcol: '#dfe9f5', wk: 'dagger' },
   imp: { name: 'PILFERER', hp: 20, spd: 1.8, scale: 0.8, h: 36, skin: '#79b04a', hair: '#3a5a22', armor: '#7a5a32', armor2: '#c9962e', cloth: '#4a3320', wlen: 12, wwid: 2, wcol: '#cfd4de', windup: 99, rng: 0, dmg: 0 },
-  h: { name: 'ASHEN HUSK', hp: 44, spd: 0.8, scale: 1, h: 44, skin: '#6e6a74', hair: '#2c2a30', armor: '#4a3a3a', armor2: '#ff7a2a', cloth: '#2b2226', wlen: 22, wwid: 3, wcol: '#a8743c', windup: 22, rng: 28, dmg: 9 },
+  h: { name: 'ASHEN HUSK', hp: 44, spd: 0.8, scale: 1, h: 44, skin: '#7a8a5a', hair: '#3a2a1a', armor: '#6a4a2a', armor2: '#8a6a48', cloth: '#2b2226', wlen: 22, wwid: 3, wcol: '#a8743c', windup: 22, rng: 28, dmg: 9, wk: 'mace' },
   b: { name: 'CINDER BRUTE', hp: 120, spd: 0.55, scale: 1.3, h: 58, skin: '#5a5660', hair: '#1f1c22', armor: '#5a2e2e', armor2: '#ff9a3a', cloth: '#2a1c1c', wlen: 26, wwid: 6, wcol: '#6b6f78', windup: 30, rng: 40, dmg: 18 },
-  boss: { name: 'THE CINDER COLOSSUS', hp: 420, spd: 0.5, scale: 2, h: 88, skin: '#4c4852', hair: '#17141a', armor: '#3a1c1c', armor2: '#ffb04a', cloth: '#221414', wlen: 32, wwid: 8, wcol: '#8a8f99', windup: 38, rng: 62, dmg: 26, poise: 70 },
-  witch: { name: 'THE MIRE MATRON', hp: 400, spd: 0.9, scale: 1.55, h: 70, skin: '#6e9a58', hair: '#2a3a22', armor: '#2a1e3a', armor2: '#7aff9a', cloth: '#1c1428', wlen: 34, wwid: 3, wcol: '#5a4030', windup: 26, rng: 44, dmg: 16, poise: 60 },
-  smith: { name: 'THE FORGEMASTER', hp: 560, spd: 0.45, scale: 2.1, h: 92, skin: '#6a5a52', hair: '#222222', armor: '#4a4e58', armor2: '#ff8a2a', cloth: '#2a2224', wlen: 34, wwid: 10, wcol: '#6a707c', windup: 42, rng: 70, dmg: 28, poise: 110 },
+  boss: { name: 'THE CINDER COLOSSUS', hp: 420, spd: 0.5, scale: 2, h: 88, skin: '#7a746a', hair: '#17141a', armor: '#6e685e', armor2: '#8a847a', cloth: '#4a453c', wlen: 32, wwid: 8, wcol: '#8a8f99', windup: 38, rng: 62, dmg: 26, poise: 70 },
+  witch: { name: 'THE MIRE MATRON', hp: 400, spd: 0.9, scale: 1.55, h: 70, skin: '#cfe8d8', hair: '#2a4436', armor: '#2a3a34', armor2: '#4a8a62', cloth: '#22302a', wlen: 34, wwid: 3, wcol: '#5a4030', windup: 26, rng: 44, dmg: 16, poise: 60 },
+  smith: { name: 'THE FORGEMASTER', hp: 560, spd: 0.45, scale: 2.1, h: 92, skin: '#b8784e', hair: '#d8782a', armor: '#4a3426', armor2: '#6a707c', cloth: '#2a2224', wlen: 34, wwid: 10, wcol: '#6a707c', windup: 42, rng: 70, dmg: 28, poise: 110 },
   wisp: { name: 'BOG WISP', hp: 34, spd: 0.75, scale: 0.95, h: 44, skin: '#9ad8b0', hair: '#2a5a46', armor: '#3a7a64', armor2: '#b8ffd8', cloth: '#1e4a3c', wlen: 14, wwid: 2, wcol: '#b8ffd8', windup: 34, rng: 0, dmg: 12, look: 'h', ai: 'wisp' },
   runner: { name: 'SLAG RUNNER', hp: 56, spd: 1.15, scale: 0.9, h: 40, skin: '#8a5a3a', hair: '#2a1408', armor: '#7a2a14', armor2: '#ffae3a', cloth: '#3a1608', wlen: 16, wwid: 3, wcol: '#ff8a3a', windup: 22, rng: 20, dmg: 15, look: 'h', ai: 'runner' },
   gob: { name: 'LOOT GOBLIN', hp: 1, spd: 1.9, scale: 0.78, h: 34, skin: '#7fbf4a', hair: '#2a3a12', armor: '#6a4a1a', armor2: '#ffd24a', cloth: '#4a3412', wlen: 10, wwid: 3, wcol: '#ffd24a', windup: 99, rng: 0, dmg: 0, look: 'h', ai: 'gob' },
   guard: { name: 'THRONE GUARD', hp: 170, spd: 0.5, scale: 1.25, h: 56, skin: '#6a5a7a', hair: '#120a1c', armor: '#2a1a4a', armor2: '#c87aff', cloth: '#1a1030', wlen: 28, wwid: 6, wcol: '#9a8ab8', windup: 34, rng: 42, dmg: 20, look: 'b', ai: 'guard' },
   wraith: { name: 'EMBER WRAITH', hp: 80, spd: 0.95, scale: 1.05, h: 46, skin: '#f0e0b0', hair: '#fff4c0', armor: '#8a6a30', armor2: '#fffbe0', cloth: '#5a4018', wlen: 26, wwid: 4, wcol: '#fff1b0', windup: 18, rng: 38, dmg: 16, look: 'h', ai: 'wraith' },
-  king: { name: 'THE CINDER KING', hp: 760, spd: 0.9, scale: 1.9, h: 84, skin: '#8a7a86', hair: '#1a1018', armor: '#1a1620', armor2: '#ff6a2a', cloth: '#5a1218', wlen: 38, wwid: 5, wcol: '#2a2430', windup: 20, rng: 58, dmg: 20, poise: 90 },
+  king: { name: 'THE CINDER KING', hp: 760, spd: 0.9, scale: 1.9, h: 84, skin: '#8a7a86', hair: '#1a1018', armor: '#2e2430', armor2: '#ff6a2a', cloth: '#5a1218', wlen: 38, wwid: 5, wcol: '#2a2430', windup: 20, rng: 58, dmg: 20, poise: 90 },
   wyrm: { name: 'THE EMBER WYRM', hp: 1300, spd: 0.75, scale: 2.4, h: 96, skin: '#3a2230', hair: '#1a0c16', armor: '#3a2230', armor2: '#ffb43a', cloth: '#1a0c16', wlen: 0, wwid: 0, wcol: '#000', windup: 30, rng: 90, dmg: 26, poise: 140 },
   archer: { name: 'FROST ARCHER', hp: 60, spd: 0.85, scale: 0.95, h: 44, skin: '#9ab8d8', hair: '#e8f4ff', armor: '#3a5a7a', armor2: '#bfe6ff', cloth: '#243a52', wlen: 22, wwid: 2, wcol: '#bfe6ff', windup: 30, rng: 0, dmg: 13, look: 'h', ai: 'archer', wk: 'bow' },
   bomber: { name: 'BLAZE BOMBER', hp: 40, spd: 1.35, scale: 0.9, h: 40, skin: '#c0623a', hair: '#3a1408', armor: '#6a2a14', armor2: '#ffcf3a', cloth: '#3a1608', wlen: 10, wwid: 2, wcol: '#ff8a3a', windup: 30, rng: 0, dmg: 24, look: 'imp', ai: 'bomber', wk: 'bomb' },
-  warder: { name: 'ASH WARDER', hp: 70, spd: 0.8, scale: 1, h: 46, skin: '#b8a8d8', hair: '#3a2a5a', armor: '#3a2a6a', armor2: '#9ae8ff', cloth: '#22183e', wlen: 30, wwid: 2, wcol: '#9ae8ff', windup: 30, rng: 0, dmg: 12, look: 'h', ai: 'warder', wk: 'staff' },
-  caller: { name: 'FLAME CALLER', hp: 62, spd: 0.85, scale: 1, h: 46, skin: '#d08a5a', hair: '#2a0c06', armor: '#6a1a10', armor2: '#ffb43a', cloth: '#3a0c08', wlen: 30, wwid: 2, wcol: '#ffb43a', windup: 40, rng: 0, dmg: 20, look: 'h', ai: 'caller', wk: 'fstaff' },
+  warder: { name: 'ASH WARDER', hp: 70, spd: 0.8, scale: 1, h: 46, skin: '#3a5c84', hair: '#233a56', armor: '#2e4a6a', armor2: '#9ae8ff', cloth: '#233a56', wlen: 30, wwid: 2, wcol: '#9ae8ff', windup: 30, rng: 0, dmg: 12, look: 'h', ai: 'warder', wk: 'staff' },
+  caller: { name: 'FLAME CALLER', hp: 62, spd: 0.85, scale: 1, h: 46, skin: '#8a5a3a', hair: '#2a0c06', armor: '#4a2a26', armor2: '#8a5a2a', cloth: '#3a1e1c', wlen: 30, wwid: 2, wcol: '#ffb43a', windup: 40, rng: 0, dmg: 20, look: 'h', ai: 'caller', wk: 'fstaff' },
   knight: { name: 'HOLLOW KNIGHT', hp: 210, spd: 0.55, scale: 1.3, h: 58, skin: '#4a4058', hair: '#0c0812', armor: '#2a2438', armor2: '#8a6aff', cloth: '#161020', wlen: 30, wwid: 6, wcol: '#8a8fb0', windup: 36, rng: 46, dmg: 22, look: 'b', ai: 'knight', wk: 'gsword' }
 };
 
@@ -656,9 +656,9 @@ function lookFor(c, eq) { // equipped rarity tints the hero's armor, trim, cape 
   const tier = sl => eq[sl] ? (eq[sl].set ? 5 : [1, 2, 3, 3, 4][eq[sl].rar]) : 0; // look tier: 0 nothing, 1 common, 2 magic, 3 rare/legendary (tinted apart), 4 mythic, 5 set piece (the mythic look in set green)
   o.gt = { helm: tier('helm'), armor: tier('armor'), boots: tier('boots'), weapon: tier('weapon'), ring: tier('ring'), amulet: tier('amulet') };
   if (!o.gt.armor) { // no armour: a plain tunic, robe or leathers
-    if (c === 'panni') { o.armor = '#3a2a6a'; o.armor2 = '#9a7ad8'; o.cloth = '#2a1a5a'; }
-    else if (c === 'luca') { o.armor = '#2e2e28'; o.armor2 = '#6a7a5a'; o.cloth = '#1a2a20'; }
-    else { o.armor = '#6a5238'; o.armor2 = '#a07a4a'; o.cloth = '#5a2a2a'; }
+    if (c === 'panni') { o.armor = '#4b2a7a'; o.armor2 = '#c99bff'; o.cloth = '#3a1f60'; }
+    else if (c === 'luca') { o.armor = '#5a4030'; o.armor2 = '#2f8f5a'; o.cloth = '#1a2a20'; }
+    else { o.armor = '#53698f'; o.armor2 = '#7189b0'; o.cloth = '#7a1622'; }
   }
   if (o.gt.weapon >= 3) o.wlen = base.wlen + 3;
   o.wup = eq.weapon ? eq.weapon.up | 0 : 0;
@@ -2403,7 +2403,7 @@ function afterClear(skipBonus) {
 const WINDUP = { bite: 26, tail: 24, breath: 34, flames: 30, swipe: 22, spit: 28, summon: 46, smash: 40, charge: 36, quake: 34, slash: 18, blink: 24, meteor: 56 };
 function bossPhase2(e) {
   if (!e.p2 && e.hp < e.maxhp * 0.5) {
-    e.p2 = true; e.cool = 30; shake = 12; flashA = 0.4; freeze = 10; msg = 'ENRAGED!'; msgT = 80; sparks(e.x, e.y, e.h * 0.6, true); SFX.big();
+    e.p2 = true; e.cool = 30; shake = 12; flashA = 0.4; freeze = 10; msg = 'ENRAGED!'; msgT = 80; sparks(e.x, e.y, e.h * 0.6, true); SFX.big(); spawn(e.x, e.y, e.h * 0.7, 14, { c: [e.k.armor2, tone(e.k.armor, 2), '#1a1418'], s0: 0.8, s1: 2.6, l0: 30, l1: 58, size: 3, up: 1.8, g: 0.12 }); // a plate of armour bursts off
     const esc = [MINION[stageIdx % 5] || 'h', stageIdx >= 1 || cycle ? 'warder' : 'h']; // the enraged boss calls in escorts
     esc.forEach((t, i) => { const f = makeFighter(t, offGap(i ? cam + W + 30 : cam - 30, i ? 1 : -1), rnd(Y_MIN + 6, Y_MAX - 6)); if (t === 'h' && STAGES[stageIdx].tint) f.k = Object.assign({}, f.k, STAGES[stageIdx].tint); enemies.push(f); });
   }
@@ -2659,7 +2659,7 @@ function drawShots() {
       const tl = s.t < s.delay, p = Math.min(1, s.t / s.delay), fade = tl ? 1 : Math.min(1, (s.delay + s.pool - s.t) / 40);
       g.save(); g.globalCompositeOperation = 'lighter';
       if (tl) {
-        g.strokeStyle = `rgba(255,${120 + (tickN % 6) * 14},40,${0.35 + 0.5 * p})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y, s.r, s.r / 2.4, 0, 0, 7); g.stroke();
+        g.setLineDash([3, 2]); g.strokeStyle = `rgba(255,${120 + (tickN % 6) * 14},40,${0.35 + 0.5 * p})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(x, y, s.r, s.r / 2.4, 0, 0, 7); g.stroke(); g.setLineDash([]); g.strokeStyle = `rgba(255,207,90,${0.2 + 0.5 * p})`; g.lineWidth = 0.7; g.beginPath(); g.ellipse(x, y, s.r * 0.7, s.r * 0.7 / 2.4, 0, 0, 7); g.stroke();
         g.fillStyle = `rgba(255,80,20,${0.08 + 0.22 * p})`; g.beginPath(); g.ellipse(x, y, s.r * p, s.r * p / 2.4, 0, 0, 7); g.fill();
         for (let i = 0; i < 6; i++) { const a = i * 1.047 + tickN * 0.05; g.fillStyle = 'rgba(255,200,90,0.8)'; g.fillRect(Math.round(x + Math.cos(a) * s.r * 0.7) - 1, Math.round(y + Math.sin(a) * s.r * 0.7 / 2.4) - 1, 3, 2); }
       } else {
@@ -3033,6 +3033,25 @@ function shade(hex, a) {
   return _sh[key] = '#' + ((1 << 24) | (r << 16) | (gg << 8) | b | 0).toString(16).slice(1);
 }
 
+/* ---- art pass: tone ramps (cool shadows, warm lights), coloured outlines, elemental rim light ---- */
+const _mx = {};
+function mixHex(a, b, t) { const key = a + b + t; if (_mx[key]) return _mx[key]; const p = parseInt(a.slice(1), 16), q = parseInt(b.slice(1), 16); const r = (p >> 16 & 255) * (1 - t) + (q >> 16 & 255) * t, gg = (p >> 8 & 255) * (1 - t) + (q >> 8 & 255) * t, bb = (p & 255) * (1 - t) + (q & 255) * t; return _mx[key] = '#' + ((1 << 24) | (r << 16) | (gg << 8) | bb | 0).toString(16).slice(1); }
+function tone(c, i) { return i === 0 ? mixHex(shade(c, -0.5), '#101830', 0.22) : i === 1 ? c : i === 2 ? mixHex(shade(c, 0.24), '#fff0d0', 0.08) : mixHex(shade(c, 0.58), '#fff6e0', 0.15); } // 0 shadow, 1 base, 2 light, 3 highlight
+const olOf = c => mixHex(shade(c, -0.78), '#0a0610', 0.35);
+const ELEM_RIM = { fire: '#ff9a4a', frost: '#8fe0ff', bolt: '#ffe66a' };
+const BOSS_COL = { boss: '#6affe0', king: '#ff8a2a', witch: '#6aff9a', smith: '#ff8a2a', wyrm: '#ffb43a' };
+const OUTL = { nolan: '#141826', panni: '#160c22', luca: '#0d1a12', h: '#141a0e', warder: '#0a121c', caller: '#140808', boss: '#1a1814', king: '#0a0608', witch: '#0a1410', smith: '#140c08' };
+const BOSS_GLOW = { boss: [[3, -43, '106,255,224'], [0, -33, '106,255,224']], king: [[0, -28, '255,170,60']], witch: [[2, -46, '106,255,154'], [14, -34, '106,255,154']], smith: [[0, -31, '255,138,42'], [21, -30, '255,138,42']] };
+const rimCv = document.createElement('canvas'); rimCv.width = SW; rimCv.height = SH; const rimg = rimCv.getContext('2d');
+let wFlare = 0;
+function rimOf(f) { // a thin light on the figure's back edge: the hero's element, gold for elites, a boss's own power, an elemental foe's element
+  if (f.dead) return null;
+  if (f.pn) return rpg.elem && elemTier() ? ELEM_RIM[rpg.elem] : null;
+  if (f.elite) return '#e8c060';
+  if (BOSSES[f.kind]) return BOSS_COL[f.kind] || null;
+  const e = ENEMY_EL[f.kind]; return e ? ELEM_RIM[e] : null;
+}
+
 function drawWeapon(g, C, kind, len, gt) {
   const R = (x, y, w, h, c) => { g.fillStyle = C(c); g.fillRect(x, y, w, h); };
   const P = (pts, c) => { g.fillStyle = C(c); g.beginPath(); g.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]); g.closePath(); g.fill(); };
@@ -3059,6 +3078,10 @@ function drawWeapon(g, C, kind, len, gt) {
   } else if (kind === 'h') {
     R(-1.5, -len + 4, 3, len + 6, '#6b4a2a'); R(-1.5, -len + 4, 1, len + 6, '#8a6238');
     P([1.5, -len, 10, -len - 5, 11, -len + 9, 1.5, -len + 6], '#8a8f99'); P([1.5, -len + 1, 7, -len - 2, 7, -len + 6, 1.5, -len + 5], '#b9bec8'); R(10, -len - 4, 1.4, 12, '#e8edf5');
+  } else if (kind === 'mace') { // Marauder's spiked club: held high before the swing
+    R(-1.5, -len + 5, 3, len + 5, '#4a3322'); R(-1.5, -len + 5, 1, len + 5, '#6a4a31');
+    R(-5, -len - 6, 10, 11, '#5a3e24'); R(-5, -len - 6, 10, 2, '#8a6a48'); R(2, -len - 6, 3, 11, '#3a2816'); R(-5, -len - 1, 10, 1.4, '#2a2a2e');
+    P([-5, -len - 4, -9, -len - 2, -5, -len], '#c8c8c0'); P([5, -len - 4, 9, -len - 2, 5, -len], '#a0a098'); P([-2, -len - 6, 0, -len - 11, 2, -len - 6], '#d8d8d0'); P([-2, -len + 5, 0, -len + 9, 2, -len + 5], '#a0a098');
   } else if (kind === 'b') {
     R(-2, -len + 2, 4, len + 8, '#5b3f26'); R(-2, -len + 2, 1.3, len + 8, '#7a5634');
     R(-8, -len - 10, 16, 13, '#6b6f78'); R(-8, -len - 10, 16, 3, '#a2a7b2'); R(-8, -len - 1, 16, 4, '#4a4d55'); R(-3, -len - 10, 6, 13, '#80848e');
@@ -3095,6 +3118,7 @@ function drawWeapon(g, C, kind, len, gt) {
     R(-4, -len - 1, 8, 3, fire ? '#6a2a14' : '#4a3a7a');
     g.fillStyle = C(fire ? `rgb(255,${130 + gl * 90 | 0},40)` : `rgb(${130 + gl * 60 | 0},${210 + gl * 40 | 0},255)`); g.beginPath(); g.arc(0, -len - 5, 3.6, 0, 7); g.fill();
     R(-1, -len - 6, 2, 2, '#ffffff');
+    if (fire) { const fh = 7 + gl * 3 + wFlare * 9; P([-3.6, -len - 7, -1.5, -len - 7 - fh * 0.7, 0, -len - 7 - fh, 1.8, -len - 7 - fh * 0.6, 3.6, -len - 7], '#ff7a2a'); P([-2, -len - 7, 0, -len - 7 - fh * 0.62, 2, -len - 7], '#ffd070'); }
   } else if (kind === 'imp') {
     R(-1.5, -3, 3, 6, '#4a3320'); P([-2.5, -3, 2.5, -3, 0, -len - 4], '#cfd4de'); R(-0.5, -len, 1, len - 3, '#ffffff');
   } else {
@@ -3115,18 +3139,19 @@ function drawHuman(f, sx, sy) {
     const ex = (x0 + x1) / 2 + (bx || 0), ey = (y0 + y1) / 2 + (by || 0);
     g.strokeStyle = C(c); g.lineWidth = w; g.lineCap = 'butt'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0, y0); g.lineTo(ex, ey); g.lineTo(x1, y1); g.stroke();
   };
-  const dk = c => shade(c, -0.38), lt = c => shade(c, 0.3);
+  const dk = c => tone(c, 0), lt = c => tone(c, 2), hi = c => tone(c, 3);
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SW, SH); g.globalCompositeOperation = 'source-over';
   g.globalAlpha = (f.ghost != null && !f.dead) ? f.ghost : (kind === 'king' && f.st === 'wind' && f.atk === 'blink') ? 0.3 : (f.dead && f.fade > 8) ? Math.max(0, 1 - (f.fade - 8) / 40) : ((f.inv > 0 && f.inv < 100 && (tickN >> 2) & 1 && f.pn && !f.sk) ? 0.45 : 1);
-  const brth = BOSSES[kind] && !f.dead ? 1 + Math.sin(tickN * 0.06 + f.x) * 0.018 : 1, hov = kind === 'witch' && !f.dead ? -4 - Math.sin(tickN * 0.07) * 3 : 0;
-  g.save(); g.translate(AX, AY + hov); g.scale(f.face * sc, sc * brth);
+  const brth = BOSSES[kind] && !f.dead ? 1 + Math.sin(tickN * 0.06 + f.x) * 0.018 : f.st === 'idle' && !f.dead ? 1 + Math.sin(tickN * 0.07 + f.x) * 0.012 : 1, hov = kind === 'witch' && !f.dead ? -4 - Math.sin(tickN * 0.07) * 3 : 0;
+  const HC = kind === 'hero' ? (k.cls || 'nolan') : '';
+  g.save(); g.translate(AX, AY + hov); g.scale(f.face * sc, sc * brth); if (HC === 'luca' && !f.mount && f.st !== 'down') g.scale(1, 0.95); // the rogue moves in a crouch
   const riding = !!f.mount, winding = f.st === 'wind', walking = f.st === 'walk' && !riding;
   const lay = f.st === 'down' && f.z === 0;
   if (lay) { g.rotate(-Math.PI / 2 * 0.92); g.translate(-4, -2); } else if (f.st === 'down') g.rotate(-0.7);
   const air = f.z > 1 && !lay && !riding, ph = f.anim;
   const la = riding ? 5 : air ? 4 : Math.sin(ph) * 5, lb = riding ? -4 : air ? -3 : -Math.sin(ph) * 5;
   const bob = walking ? Math.abs(Math.sin(ph)) * 1.5 : (f.st === 'idle' ? Math.sin(tickN * 0.07) * 0.6 : 0);
-  const lean = winding ? -2 : f.st === 'atk' ? 2 : 0;
+  const lean = (winding ? -2 : f.st === 'atk' ? 2 : 0) + ((HC === 'luca' && !riding && !lay) ? 1.5 : 0) + ((f.kind === 'h' && !riding && !lay) ? 2 : 0);
   const big = kind === 'b' || !!BOSSES[kind];
   const GT = (kind === 'hero' && k.gt) || {}, hT = GT.helm | 0, aT = GT.armor | 0, bT = GT.boots | 0, wT = GT.weapon | 0, amT = GT.amulet | 0;
   const ik = (x0, y0, x1, y1, l1, l2, dir) => { const dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy) || 0.01, d = Math.min(L, l1 + l2 - 0.05), a = (l1 * l1 - l2 * l2 + d * d) / (2 * d), h = Math.sqrt(Math.max(0, l1 * l1 - a * a)), ux = dx / L, uy = dy / L; return [x0 + ux * a - uy * h * dir, y0 + uy * a + ux * h * dir, x0 + ux * d, y0 + uy * d]; };
@@ -3155,17 +3180,18 @@ function drawHuman(f, sx, sy) {
     P([-8 + lean, -37 - bob, -1 + lean, -37 - bob, -8 + sw, -5, -21 + sw, -3], k.cloth);
     for (let i = 0; i < 6; i++) { const fx = -21 + sw + i * 3.6, fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([fx, -3, fx + 2.4, -3, fx + 1.2, -3 - fh], i % 2 ? '#ff8a2a' : '#ffd070'); }
   }
-  if (kind === 'hero') {
+  if (kind === 'hero' && HC === 'nolan') {
     const sw = Math.sin(tickN * 0.12) * 2 + (walking ? -4 : 0) + (air ? -5 : 0) - (f.st === 'atk' ? 2 : 0);
     P([-6 + lean, -35 - bob, 2 + lean, -35 - bob, -3 + sw, -5, -17 + sw, -3], dk(k.cloth));
     P([-6 + lean, -35 - bob, -1 + lean, -35 - bob, -7 + sw, -6, -16 + sw, -4], k.cloth);
-    R(-17 + sw, -4, 14, 1, lt(k.cloth));
+    R(-17 + sw, -4, 14, 1, lt(k.cloth)); P([-5 + lean, -34 - bob, -3 + lean, -34 - bob, -8 + sw, -6, -11 + sw, -5], lt(k.cloth));
   }
   if (f.vase) { P([-15, -35 - bob, -8, -35 - bob, -7, -27 - bob, -9, -22 - bob, -14, -22 - bob, -16, -27 - bob], '#3a78c8'); R(-14, -37 - bob, 6, 3, '#e6c97a'); R(-14, -33 - bob, 2, 8, '#bfe6ff'); }
   // back arm
   const bax = -6 + lean, bay = -31 - bob, bhx = -7 + Math.sin(ph + 3) * (walking ? 4 : 1), bhy = -17 - bob;
   if (kind !== 'boss') { limb(bax, bay, bhx, bhy, 4, dk(k.skin), -1, 0); limb(bax, bay, (bax + bhx) / 2, (bay + bhy) / 2, 5, dk(k.armor), -1, 0); }
-  if (k.cls === 'luca') { g.save(); g.translate(bhx, bhy); g.rotate(f.st === 'atk' && f.combo % 2 ? -1.4 : 0.7); drawWeapon(g, C, 'dagger', 11, (k.gt && k.gt.weapon) | 0); g.restore(); }
+  if (k.cls === 'luca') { g.save(); g.translate(bhx, bhy); g.rotate(f.st === 'atk' && f.combo % 2 ? -1.4 : (f.st === 'idle' || f.st === 'walk') ? 2.5 : 0.7); drawWeapon(g, C, 'dagger', 11, (k.gt && k.gt.weapon) | 0); g.restore(); }
+  if (HC === 'panni' && !white) { const q = tickN * 0.08, ga0 = g.globalAlpha; g.globalAlpha = ga0 * 0.9; R(bhx - 6 + Math.sin(q) * 3, bhy - 6 + Math.cos(q * 1.3) * 3, 2, 2, '#c99bff'); R(bhx - 3 + Math.cos(q * 0.9) * 4, bhy - 9 + Math.sin(q) * 2, 1, 1, '#bff0ff'); R(bhx + 2 + Math.sin(q * 1.4) * 3, bhy - 5 + Math.cos(q) * 3, 1, 3, '#bff0ff'); R(bhx - 8, bhy - 1 + Math.sin(q * 1.1) * 2, 3, 1, '#c99bff'); g.globalAlpha = ga0; }
   if (BOSSES[kind] && !f.dead) { // articulated boss limbs: two-bone arms with follow-through, tendrils and tongs
     const wt = winding ? clamp(f.t / (k.windup || 30), 0, 1) : 0, at = bAct ? clamp(f.t / 9, 0, 1) : 0, wk = walking ? Math.sin(ph) : 0, lp = (a, b, t) => a + (b - a) * t;
     if (kind === 'boss') { // Colossus: a stone back-arm that rises with the swing and crashes down after it
@@ -3204,15 +3230,32 @@ function drawHuman(f, sx, sy) {
   // tasset / loincloth
   const sw2 = walking ? Math.sin(ph) * 1.5 : 0;
   P([-7 + lean, -19 - bob, 7 + lean, -19 - bob, 6 + sw2, -9, -6 - sw2, -9], dk(k.cloth)); R(-7 + lean, -19 - bob, 14, 2, lt(k.cloth));
+  const robe = (c, fl, zig, rs) => { const pts = [-8 + lean, -23 - bob, 8 + lean, -23 - bob]; if (!zig) pts.push(fl + rs, -1.5, -fl - rs, -1.5); else for (let i = 0; i <= 8; i++) pts.push(fl - i * fl / 4 + rs * (1 - i / 8), i % 2 ? -4 - ((tickN / 8 | 0) + i) % 2 : -0.5); P(pts, c); P([1 + lean, -23 - bob, 8 + lean, -23 - bob, fl + rs, -2, 2 + rs, -2], dk(c)); P([-8 + lean, -23 - bob, -5 + lean, -23 - bob, -fl * 0.6 - rs, -2, -fl - rs, -2], lt(c)); };
+  if (HC === 'panni') { const rs = walking ? Math.sin(ph) * 1.5 : 0, sw3 = Math.sin(tickN * 0.1) * 0.8; robe(k.armor, 14 + sw3, false, rs); R(-14 - rs + sw3, -4, 28 + rs * 2, 2, '#e8c060'); R(-14 - rs + sw3, -4, 28 + rs * 2, 0.8, '#fff0a8'); R(-0.5 + lean, -21 - bob, 1, 18, '#e8c060'); R(-9 - rs, -12, 2, 2, k.armor2); R(7 + rs, -9, 2, 2, k.armor2); }
+  if (f.kind === 'warder') { const rs = walking ? Math.sin(ph) * 1.2 : 0; robe(k.armor, 12, false, rs); for (let i = -5; i < 5; i += 2) R(i * 2.4 + 1, -3, 3, 1, '#6ad8ff'); R(-3 + lean, -21 - bob, 1, 14, 'rgba(200,216,232,0.55)'); R(2 + lean, -21 - bob, 1, 14, 'rgba(200,216,232,0.55)'); R(-12 + lean, -27 - bob, 8, 6, '#6a3a22'); R(-12 + lean, -27 - bob, 8, 1, '#e8c060'); R(-9 + lean, -25 - bob, 3, 1, '#9ae8ff'); }
+  if (f.kind === 'caller') { const rs = walking ? Math.sin(ph) * 1.2 : 0; robe(k.armor, 12, true, rs); R(-7 + lean, -23 - bob, 14, 2, '#8a5a2a'); for (let i = 0; i < 4; i++) R(-5 + i * 3.4 + lean, -21 - bob, 1.6, 2, '#e8dcc0'); }
   if (kind === 'witch') { const rs = walking ? Math.sin(ph) * 1.5 : 0; P([-8 + lean, -22 - bob, 8 + lean, -22 - bob, 11 + rs, -2, -11 - rs, -2], k.armor); P([-8 + lean, -22 - bob, -2 + lean, -22 - bob, -4 - rs, -2, -11 - rs, -2], dk(k.armor)); R(-11 - rs, -4, 22, 2, k.armor2); for (let i = 0; i < 4; i++) R(-8 + i * 5 + rs, -3 - ((i + (tickN / 6 | 0)) % 2), 2, 3, dk(k.armor)); }
   // torso
   P([-9 + lean, -36 - bob, 9 + lean, -36 - bob, 6 + lean, -18 - bob, -6 + lean, -18 - bob], k.armor);
   P([-9 + lean, -36 - bob, 9 + lean, -36 - bob, 8 + lean, -31 - bob, -8 + lean, -31 - bob], lt(k.armor));
   P([2 + lean, -36 - bob, 9 + lean, -36 - bob, 6 + lean, -18 - bob, 3 + lean, -18 - bob], dk(k.armor));
   R(-1 + lean, -33 - bob, 2, 13, k.armor2); R(-5 + lean, -29 - bob, 10, 1, dk(k.armor)); R(-5 + lean, -25 - bob, 10, 1, dk(k.armor));
-  R(-7 + lean, -20 - bob, 14, 3, '#2a1c22'); R(-2 + lean, -20 - bob, 4, 3, '#e6b84a'); R(-2 + lean, -20 - bob, 4, 1, '#fff0a8');
-  if (kind !== 'hero') { // ember cracks
+  R(-7 + lean, -20 - bob, 14, 3, HC === 'panni' ? tone(k.armor2, 1) : HC === 'nolan' ? '#5a3522' : '#2a1c22'); R(-2 + lean, -20 - bob, 4, 3, '#e6b84a'); R(-2 + lean, -20 - bob, 4, 1, '#fff0a8');
+  if (kind === 'boss') { // Colossus: turquoise runes between the stone plates, brighter before a slam
+    const rw = 0.5 + Math.sin(tickN * 0.1) * 0.25 + (winding ? clamp(f.t / (k.windup || 30), 0, 1) * 0.7 : 0) + (f.p2 ? 0.2 : 0), rc = mixHex('#1c6a5a', '#9affee', clamp(rw, 0, 1));
+    R(-5 + lean, -33 - bob, 4, 1, rc); R(-5 + lean, -33 - bob, 1, 4, rc); R(1 + lean, -30 - bob, 4, 1, rc); R(4 + lean, -30 - bob, 1, 4, rc); R(-3 + lean, -26 - bob, 6, 1, rc); R(-1 + lean, -27 - bob, 1, 3, rc);
+    R(-8 + lean, -36 - bob, 4, 2, '#5a7a3a'); R(5 + lean, -36 - bob, 3, 2, '#5a7a3a'); R(-7 + lean, -35 - bob, 1, 1, '#7a9a4a'); R(-4 + lean, -24 - bob, 1, 4, '#2a2620'); R(3 + lean, -22 - bob, 1, 3, '#2a2620');
+  } else if (kind !== 'hero' && kind !== 'witch' && kind !== 'smith') { // ember cracks
     const fl = 0.6 + Math.sin(tickN * 0.2 + f.x) * 0.4; g.globalAlpha *= 1; R(-4 + lean, -30 - bob, 1, 5, `rgb(255,${140 + fl * 80 | 0},40)`); R(3 + lean, -27 - bob, 1, 4, `rgb(255,${130 + fl * 80 | 0},40)`); R(-3 + lean, -25 - bob, 3, 1, '#ff9a3a');
+  }
+  if (f.kind === 'h' && !f.dead) { // Marauder: shaggy fur collar over broad, hunched shoulders
+    P([-11 + lean, -33 - bob, -9 + lean, -39 - bob, -6 + lean, -36 - bob, -3 + lean, -40 - bob, 0 + lean, -36.5 - bob, 3 + lean, -40 - bob, 6 + lean, -36 - bob, 9 + lean, -39 - bob, 11 + lean, -33 - bob], '#8a6a48');
+    P([0 + lean, -36.5 - bob, 3 + lean, -40 - bob, 6 + lean, -36 - bob, 9 + lean, -39 - bob, 11 + lean, -33 - bob, 1 + lean, -33 - bob], '#6a4e30'); R(-9 + lean, -37 - bob, 5, 1, '#b08a5e');
+  }
+  if (kind === 'hero') {
+    if (HC === 'nolan') { P([-4 + lean, -33 - bob, 0 + lean, -29 - bob, 4 + lean, -33 - bob, 4 + lean, -31 - bob, 0 + lean, -27 - bob, -4 + lean, -31 - bob], '#e8c060'); R(-8 + lean, -35 - bob, 1, 12, hi(k.armor)); P([-12 + lean, -38 - bob, -5 + lean, -38 - bob, -5 + lean, -31 - bob, -11 + lean, -32 - bob], k.armor2); R(-12 + lean, -38 - bob, 7, 1.5, hi(k.armor2)); }
+    else if (HC === 'luca') { P([-8 + lean, -35 - bob, -5 + lean, -35 - bob, 8 + lean, -22 - bob, 5 + lean, -22 - bob], '#2a1a10'); R(-1 + lean, -29 - bob, 2.5, 2.5, '#c8c8c8'); R(-7 + lean, -35 - bob, 1, 12, lt(k.armor)); }
+    else { R(-6 + lean, -26 - bob, 12, 1, '#e8c060'); R(-6 + lean, -35 - bob, 1, 9, hi(k.armor)); }
   }
   if (kind === 'hero') {
     if (aT >= 1) { const ac = ['', '#b8a888', '#c8d0dc', '#ffe08a', '#ff6a2a', '#46e06a'][aT]; R(-8 + lean, -36 - bob, 16, 1, ac); if (aT >= 2) R(-5 + lean, -24 - bob, 10, 1, ac); if (aT >= 3) { P([-9 + lean, -36 - bob, -14 + lean, -42 - bob, -6 + lean, -34 - bob], ac); P([9 + lean, -36 - bob, 13 + lean, -41 - bob, 6 + lean, -34 - bob], ac); } }
@@ -3225,39 +3268,52 @@ function drawHuman(f, sx, sy) {
   R(-2 + lean, -39 - bob, 4, 4, dk(k.skin));
   const hx = lean, hy = -bob;
   if (kind === 'hero') {
-    R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -42 + hy, 10, 4, dk(k.skin)); R(2 + hx, -48 + hy, 3, 10, lt(k.skin) === k.skin ? k.skin : shade(k.skin, 0.12));
+    const fs = HC === 'luca' ? '#0b1610' : k.skin;
+    R(-5 + hx, -48 + hy, 10, 10, fs); R(-5 + hx, -42 + hy, 10, 4, dk(fs)); R(2 + hx, -48 + hy, 3, 10, lt(fs) === fs ? fs : shade(fs, 0.12));
     const tail = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0), hc0 = k.cls || 'nolan';
     if (hc0 === 'panni') { // long golden hair under a pointed hat; her helm tier colours the hat
       P([-6 + hx, -49 + hy, -12 + hx + tail, -40 + hy, -13 + hx + tail * 1.4, -27 + hy, -8 + hx + tail, -29 + hy, -5 + hx, -38 + hy], k.hair);
       R(-6 + hx, -49 + hy, 3, 12, k.hair); P([-6 + hx, -48 + hy, 5 + hx, -49 + hy, 6 + hx, -45 + hy, 1 + hx, -47 + hy, -3 + hx, -44 + hy], k.hair);
       R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#3a2a6a'); R(2 + hx, -45 + hy, 4, 1, '#1b1b2a'); R(3 + hx, -41 + hy, 2, 1, '#c86a6a');
-      const hatc = [k.cloth, '#5a4a6a', '#2a4aa8', '#b8862a', '#2a1020', '#10301a'][hT], hatl = ['#ffd24a', '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT];
+      const hatc = [k.armor, '#5a4a6a', '#2a4aa8', '#b8862a', '#2a1020', '#10301a'][hT], hatl = ['#ffd24a', '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT];
       P([-10 + hx, -48 + hy, 10 + hx, -48 + hy, 8 + hx, -51 + hy, -8 + hx, -51 + hy], hatc);
       P([-6 + hx, -50 + hy, 6 + hx, -50 + hy, 1 + hx - tail * 0.3, -60 + hy, -6 + hx + tail * 0.8, -65 + hy, -3 + hx, -58 + hy], hatc);
-      R(-6 + hx, -52 + hy, 12, 1.5, hatl); R(-6 + hx + tail * 0.8, -66 + hy, 2, 2, hatl);
+      R(-6 + hx, -52 + hy, 12, 1.5, hatl); R(-6 + hx + tail * 0.8, -66 + hy, 2, 2, hatl); P([2 + hx, -50 + hy, 7 + hx, -49 + hy, 8 + hx, -51 + hy, 2 + hx, -51 + hy], dk(hatc)); R(-8 + hx, -50 + hy, 2, 1, lt(hatc));
       if (hT >= 4) for (let i = -1; i <= 1; i++) { const fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([i * 3 + hx - 1, -52 + hy, i * 3 + hx + 1, -52 + hy, i * 3 + hx, -52 - fh + hy], i ? (hT >= 5 ? '#46e06a' : '#ff8a2a') : (hT >= 5 ? '#b8ffc8' : '#ffd070')); }
-    } else if (hc0 === 'luca') { // hooded rogue with a face scarf; the helm tier colours the hood
-      const hd = [k.cloth, '#3a3a40', '#22407a', '#7a5a1a', '#3a0e1e', '#0e2a16'][hT], hl2 = ['#4a6a52', '#8a8f99', '#5a9cff', '#ffd870', '#ff4a6a', '#46e06a'][hT];
-      P([-7 + hx, -48 + hy, -13 + hx + tail, -45 + hy, -12 + hx + tail * 1.3, -39 + hy, -6 + hx, -42 + hy], hd);
+    } else if (hc0 === 'luca') { // hooded rogue: deep green hood, dark masked face with glowing eyes, a long scarf that streams behind; the helm tier colours the hood
+      const hd = [tone('#26774b', 1), '#3a3a40', '#22407a', '#7a5a1a', '#3a0e1e', '#0e2a16'][hT], hl2 = ['#4a8a62', '#8a8f99', '#5a9cff', '#ffd870', '#ff4a6a', '#46e06a'][hT];
+      let qx = -5 + hx, qy = -39 + hy; const spd = walking ? 1 : 0.5 + (air ? 1 : 0); g.lineCap = 'round';
+      for (let i = 0; i < 8; i++) { const nx = qx - 3.4 - spd * 0.7, ny = qy + 0.6 + Math.sin(tickN * 0.16 - i * 0.7) * (1 + i * 0.3) * (0.6 + spd * 0.4); g.strokeStyle = C(i % 2 ? '#2f8f5a' : '#3aa066'); g.lineWidth = 3.4 - i * 0.2; g.beginPath(); g.moveTo(qx, qy); g.lineTo(nx, ny); g.stroke(); qx = nx; qy = ny; }
+      P([-7 + hx, -48 + hy, -13 + hx + tail, -45 + hy, -12 + hx + tail * 1.3, -39 + hy, -6 + hx, -42 + hy], dk(hd));
       P([-7 + hx, -40 + hy, -7 + hx, -51 + hy, -3 + hx, -55 + hy, 4 + hx, -55 + hy, 7 + hx, -50 + hy, 6 + hx, -46 + hy, 1 + hx, -48 + hy, -3 + hx, -46 + hy, -3 + hx, -40 + hy], hd);
-      R(-3 + hx, -54 + hy, 6, 1, hl2); R(1 + hx, -42 + hy, 6, 3, dk(hd)); R(1 + hx, -42 + hy, 6, 1, hl2);
-      R(2 + hx, -45 + hy, 3, 2, '#fff'); R(3 + hx, -45 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, '#1b1b2a');
+      P([2 + hx, -55 + hy, 7 + hx, -50 + hy, 6 + hx, -46 + hy, 1 + hx, -48 + hy], dk(hd)); R(-6 + hx, -52 + hy, 1.5, 9, lt(hd));
+      R(-3 + hx, -54 + hy, 6, 1, hl2); R(1 + hx, -42 + hy, 6, 3, '#2f8f5a'); R(1 + hx, -42 + hy, 6, 1, hl2); R(5 + hx, -42 + hy, 2, 3, dk('#2f8f5a'));
+      R(1 + hx, -47 + hy, 6, 4, 'rgba(138,255,192,0.3)'); R(2 + hx, -45.5 + hy, 2.6, 1.6, '#d6ffe4'); R(5.2 + hx, -45.5 + hy, 1.8, 1.6, '#d6ffe4');
       if (hT >= 4) { const fl = 0.5 + Math.sin(tickN * 0.3) * 0.5; R(3 + hx, -45 + hy, 2, 1, flm(hT, 120 + fl * 100 | 0)); }
-    } else {
-    P([-6 + hx, -47 + hy, 6 + hx, -47 + hy, 7 + hx, -52 + hy, 3 + hx, -55 + hy, 0 + hx, -52 + hy, -4 + hx, -56 + hy, -7 + hx, -51 + hy], k.hair);
-    P([-6 + hx, -47 + hy, -7 + hx, -42 + hy, -4 + hx, -42 + hy, -4 + hx, -47 + hy], dk(k.hair));
-    P([-6 + hx, -48 + hy, -13 + hx + tail, -46 + hy, -17 + hx + tail * 1.5, -40 + hy, -9 + hx + tail, -44 + hy], k.hair);
-    R(-5 + hx, -48 + hy, 10, 2, '#c9962e'); // headband
-    R(2 + hx, -44 + hy, 3, 2, '#fff'); R(3 + hx, -44 + hy, 2, 2, '#1b1b2a'); R(1 + hx, -46 + hy, 4, 1, dk(k.hair)); R(4 + hx, -42 + hy, 2, 1, dk(k.skin));
+    } else { // Nolan: a closed helm with a gold stripe and a red plume that trails behind him; the helm tier recolours the steel
+      const pl = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0) - (air ? 2 : 0), hcl = hT ? [null, '#8a8f99', '#4a7ac8', '#d4a62e', '#2a1620', '#10301a'][hT] : '#7189b0', hll = hT ? [null, '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT] : '#c9d8ee', plc = k.hair !== '#c4572b' ? k.hair : '#c8303e';
+      let qx = -1 + hx, qy = -55 + hy; g.lineCap = 'round';
+      for (let i = 0; i < 5; i++) { const nx = qx - 3.4 + pl * 0.25, ny = qy - 1.6 + i * 1.7 + Math.sin(tickN * 0.15 - i * 0.8) * 0.9; g.strokeStyle = C(i % 2 ? plc : lt(plc)); g.lineWidth = 4.2 - i * 0.6; g.beginPath(); g.moveTo(qx, qy); g.lineTo(nx, ny); g.stroke(); qx = nx; qy = ny; }
+      P([-6.5 + hx, -38 + hy, -6.5 + hx, -51 + hy, -3 + hx, -55.5 + hy, 3 + hx, -55.5 + hy, 6.5 + hx, -51 + hy, 6.5 + hx, -38 + hy, 3 + hx, -36 + hy, -3 + hx, -36 + hy], hcl);
+      P([1.5 + hx, -55.5 + hy, 6.5 + hx, -51 + hy, 6.5 + hx, -38 + hy, 3 + hx, -36 + hy, 1.5 + hx, -36 + hy], dk(hcl));
+      R(-5.5 + hx, -53 + hy, 1.6, 13, hll); R(-6 + hx, -48.5 + hy, 12.5, 1.2, dk(hcl)); R(-0.4 + hx, -55.5 + hy, 1.6, 19.5, '#e8c060');
+      R(0 + hx, -46.5 + hy, 6.5, 2.2, '#0e0a10'); R(3.4 + hx, -46.2 + hy, 2.2, 1.4, '#ffcf7a'); R(-3 + hx, -41.5 + hy, 9, 1, dk(hcl)); R(4 + hx, -43 + hy, 1, 1, dk(hcl));
+      if (hT >= 4) for (let i = -2; i <= 2; i++) { const fh = 4 + Math.abs(Math.sin(tickN * 0.3 + i)) * 5; P([i * 2.5 + hx - 1.2, -55.5 + hy, i * 2.5 + hx + 1.2, -55.5 + hy, i * 2.5 + hx, -55.5 - fh + hy], i % 2 ? (hT >= 5 ? '#46e06a' : '#ff8a2a') : (hT >= 5 ? '#b8ffc8' : '#ffd070')); }
     }
-    if (hT && hc0 === 'nolan') { // helm by rarity: iron cap, visored helm, crested gold helm, crown of living flame
-      const hc = [null, '#8a8f99', '#4a7ac8', '#d4a62e', '#2a1620', '#10301a'][hT], hl = [null, '#c0c6d0', '#8cc4ff', '#fff0a8', '#ff6a2a', '#46e06a'][hT];
-      P([-6 + hx, -45 + hy, -6 + hx, -51 + hy, -3 + hx, -55 + hy, 3 + hx, -55 + hy, 6 + hx, -51 + hy, 6 + hx, -45 + hy, 4 + hx, -47 + hy, -4 + hx, -47 + hy], hc);
-      R(-5 + hx, -53 + hy, 9, 1.5, hl); R(-6 + hx, -48 + hy, 12, 1.5, dk(hc));
-      if (hT >= 2) { R(3 + hx, -47 + hy, 2, 5, hc); R(-1 + hx, -53 + hy, 2, 2, hl); }
-      if (hT === 3) { const pl = Math.sin(tickN * 0.15) * 2 - (walking ? 2 : 0); P([-3 + hx, -55 + hy, -10 + hx + pl, -59 + hy, -17 + hx + pl * 1.5, -52 + hy, -8 + hx, -52 + hy], '#c8302a'); }
-      if (hT >= 4) for (let i = -2; i <= 2; i++) { const fh = 4 + Math.abs(Math.sin(tickN * 0.3 + i)) * 5; P([i * 2.5 + hx - 1.2, -55 + hy, i * 2.5 + hx + 1.2, -55 + hy, i * 2.5 + hx, -55 - fh + hy], i % 2 ? (hT >= 5 ? '#46e06a' : '#ff8a2a') : (hT >= 5 ? '#b8ffc8' : '#ffd070')); }
-    }
+  } else if (f.kind === 'h') { // Marauder: a small head sunk between broad shoulders, olive skin, red eyes, tusks
+    R(-4 + hx, -46 + hy, 9, 8, k.skin); R(1 + hx, -46 + hy, 4, 8, dk(k.skin)); R(-4 + hx, -46 + hy, 1.5, 7, lt(k.skin)); R(-4 + hx, -46 + hy, 9, 2, dk(k.skin));
+    P([-5 + hx, -45 + hy, 5 + hx, -45 + hy, 6 + hx, -48 + hy, 2 + hx, -49 + hy, -3 + hx, -48 + hy], k.hair);
+    R(-1 + hx, -45.5 + hy, 6, 1, '#1a1a0c'); R(0 + hx, -44 + hy, 2.4, 1.6, '#ff4a3a'); R(3.4 + hx, -44 + hy, 2, 1.6, '#ff4a3a');
+    R(-2 + hx, -40.5 + hy, 8, 2, '#1a1a0c'); P([-1 + hx, -40.5 + hy, 0.5 + hx, -43.5 + hy, 2 + hx, -40.5 + hy], '#f0e6c8'); P([3 + hx, -40.5 + hy, 4.5 + hx, -43.5 + hy, 6 + hx, -40.5 + hy], '#f0e6c8');
+  } else if (f.kind === 'warder') { // Ash Warder: a faceless blue hood, cold cyan eyes
+    P([-7 + hx, -38 + hy, -7 + hx, -50 + hy, -3 + hx, -56 + hy, 3 + hx, -56 + hy, 7 + hx, -50 + hy, 7 + hx, -38 + hy, 3 + hx, -36 + hy, -3 + hx, -36 + hy], '#3a5c84');
+    P([2 + hx, -56 + hy, 7 + hx, -50 + hy, 7 + hx, -38 + hy, 3 + hx, -36 + hy, 2 + hx, -36 + hy], '#2e4a6a'); R(-6 + hx, -52 + hy, 1.5, 11, '#6a8ab0');
+    R(-3 + hx, -51 + hy, 9, 10, '#0a0f18'); R(-1 + hx, -47 + hy, 2.2, 1.6, '#9ae8ff'); R(3 + hx, -47 + hy, 2.2, 1.6, '#9ae8ff'); R(-1.5 + hx, -47.5 + hy, 3.2, 2.6, 'rgba(154,232,255,0.22)'); R(2.5 + hx, -47.5 + hy, 3.2, 2.6, 'rgba(154,232,255,0.22)');
+  } else if (f.kind === 'caller') { // Flame Caller: a horned skull mask over a ragged hood
+    P([-5 + hx, -48 + hy, -9 + hx, -53 + hy, -11 + hx, -61 + hy, -6 + hx, -55 + hy, -3 + hx, -49 + hy], '#c8b890'); P([5 + hx, -48 + hy, 9 + hx, -53 + hy, 11 + hx, -61 + hy, 6 + hx, -55 + hy, 3 + hx, -49 + hy], '#a89870');
+    P([-6 + hx, -40 + hy, -6 + hx, -50 + hy, -2 + hx, -53 + hy, 4 + hx, -53 + hy, 7 + hx, -49 + hy, 7 + hx, -40 + hy, 3 + hx, -37 + hy, -3 + hx, -37 + hy], '#4a2a26');
+    R(-4 + hx, -49 + hy, 9, 10, '#e8dcc0'); R(1 + hx, -49 + hy, 4, 10, '#c8b890'); R(-4 + hx, -49 + hy, 1.5, 9, '#fff4dc');
+    R(-3 + hx, -46 + hy, 3, 3, '#1a0806'); R(1 + hx, -46 + hy, 3, 3, '#1a0806'); R(-2 + hx, -45 + hy, 1.4, 1.4, '#ffb03a'); R(2 + hx, -45 + hy, 1.4, 1.4, '#ffb03a'); R(-1 + hx, -42 + hy, 2, 1.4, '#2a2010'); R(-2 + hx, -40 + hy, 5, 1, '#2a2010'); R(0 + hx, -40 + hy, 1, 1, '#e8dcc0');
   } else if (kind === 'h') {
     R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));
     P([-7 + hx, -47 + hy, 7 + hx, -47 + hy, 7 + hx, -41 + hy, 5 + hx, -49 + hy, -5 + hx, -49 + hy, -7 + hx, -41 + hy], k.hair); R(-6 + hx, -50 + hy, 12, 4, k.hair); R(-6 + hx, -50 + hy, 12, 1, lt(k.hair));
@@ -3268,26 +3324,31 @@ function drawHuman(f, sx, sy) {
     P([-4 + hx, -48 + hy, 0 + hx, -53 + hy, 4 + hx, -48 + hy], k.hair);
     R(0 + hx, -46 + hy, 5, 4, '#ffe27a'); R(3 + hx, -45 + hy, 2, 3, '#1a0a04'); R(-3 + hx, -46 + hy, 3, 3, '#ffe27a');
     R(-1 + hx, -41 + hy, 7, 2, '#2a1408'); R(0 + hx, -41 + hy, 1, 1, '#fff'); R(3 + hx, -41 + hy, 1, 1, '#fff');
-  } else if (kind === 'witch') {
-    R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));
-    P([4 + hx, -45 + hy, 11 + hx, -41 + hy, 5 + hx, -41 + hy], dk(k.skin));
-    R(1 + hx, -46 + hy, 4, 2, '#caffd8'); R(2 + hx, -46 + hy, 2, 2, '#1aa050'); R(-1 + hx, -41 + hy, 6, 1, '#1a0c14'); R(0 + hx, -40 + hy, 1, 1, '#ddd');
+  } else if (kind === 'witch') { // Matron: a pale ghostly face, burning green eyes, a thorn-branch crown
+    const ew = 0.7 + Math.sin(tickN * 0.2) * 0.3 + (winding ? 0.5 : 0), ec = `rgb(106,${180 + clamp(ew, 0, 1) * 75 | 0},154)`;
     P([-5 + hx, -42 + hy, -9 + hx, -34 + hy, -3 + hx, -38 + hy], k.hair); P([-3 + hx, -41 + hy, -6 + hx, -31 + hy, 0 + hx, -37 + hy], k.hair);
-    P([-9 + hx, -47 + hy, 9 + hx, -47 + hy, 5 + hx, -52 + hy, 2 + hx, -66 + hy, -3 + hx, -53 + hy], k.armor);
-    P([-9 + hx, -47 + hy, -3 + hx, -53 + hy, 2 + hx, -66 + hy, -1 + hx, -50 + hy], dk(k.armor));
-    R(-12 + hx, -49 + hy, 24, 3, dk(k.armor)); R(-12 + hx, -49 + hy, 24, 1, lt(k.armor)); R(-6 + hx, -52 + hy, 12, 2, k.armor2);
-  } else if (kind === 'smith') {
-    R(-6 + hx, -49 + hy, 12, 12, '#4a4e58'); R(-6 + hx, -49 + hy, 12, 3, '#7a808c'); R(2 + hx, -49 + hy, 4, 12, '#363a44');
-    R(-5 + hx, -46 + hy, 11, 3, '#0e0806'); const ef = 0.7 + Math.sin(tickN * 0.3) * 0.3; R(-4 + hx, -45 + hy, 9, 1, `rgb(255,${130 + ef * 80 | 0},30)`);
-    R(-7 + hx, -52 + hy, 14, 4, '#5c616c'); R(-7 + hx, -52 + hy, 14, 1, '#9aa1ad'); R(-3 + hx, -58 + hy, 6, 6, '#3a3e48');
-    R(-4 + hx, -40 + hy, 9, 3, '#2a2e36'); R(-4 + hx, -47 + hy, 1, 1, '#c8ccd6'); R(4 + hx, -47 + hy, 1, 1, '#c8ccd6');
+    R(-5 + hx, -48 + hy, 10, 11, k.skin); R(-5 + hx, -42 + hy, 10, 5, dk(k.skin)); R(2 + hx, -48 + hy, 3, 11, lt(k.skin)); R(-5 + hx, -48 + hy, 1.5, 10, hi(k.skin));
+    R(-3 + hx, -46 + hy, 3, 3, '#0a1410'); R(2 + hx, -46 + hy, 3, 3, '#0a1410'); R(-2 + hx, -45.5 + hy, 1.6, 1.8, ec); R(3 + hx, -45.5 + hy, 1.6, 1.8, ec); R(-1 + hx, -40 + hy, 4, 1, '#4a6a5a');
+    P([-6 + hx, -47 + hy, -8 + hx, -55 + hy, -4 + hx, -50 + hy, -4 + hx, -60 + hy, -1 + hx, -51 + hy, 1 + hx, -62 + hy, 3 + hx, -51 + hy, 6 + hx, -59 + hy, 6 + hx, -50 + hy, 9 + hx, -55 + hy, 7 + hx, -47 + hy], '#3a2a22');
+    R(-6 + hx, -48.5 + hy, 13, 2, '#5a4030'); R(-4 + hx, -60 + hy, 1, 1, ec); R(1 + hx, -62 + hy, 1, 1, ec); R(6 + hx, -59 + hy, 1, 1, ec);
+  } else if (kind === 'smith') { // Forgemaster: a grimy face, glowing welding goggles, a braided red beard, a small iron cap
+    const gg2 = 0.7 + Math.sin(tickN * 0.25) * 0.3 + (winding ? 0.4 : 0), gc = `rgb(255,${180 + clamp(gg2, 0, 1) * 50 | 0},60)`;
+    R(-5 + hx, -48 + hy, 11, 11, k.skin); R(2 + hx, -48 + hy, 4, 11, dk(k.skin)); R(-5 + hx, -48 + hy, 1.5, 9, lt(k.skin));
+    R(-7 + hx, -47 + hy, 14, 4, '#2a2420'); R(-5 + hx, -46.5 + hy, 4, 3, gc); R(1 + hx, -46.5 + hy, 4, 3, gc); R(-4 + hx, -46 + hy, 1, 1, '#fff6c0'); R(2 + hx, -46 + hy, 1, 1, '#fff6c0');
+    P([-6 + hx, -42 + hy, 6 + hx, -42 + hy, 5 + hx, -36 + hy, 2 + hx, -31 + hy, 0 + hx, -29 + hy, -2 + hx, -31 + hy, -5 + hx, -36 + hy], k.hair); P([1 + hx, -42 + hy, 6 + hx, -42 + hy, 5 + hx, -36 + hy, 2 + hx, -31 + hy, 0 + hx, -29 + hy, 0 + hx, -40 + hy], dk(k.hair));
+    for (let i = 0; i < 3; i++) R(-1 + hx, -39 + i * 3 + hy, 2, 1, hi(k.hair));
+    R(-6.5 + hx, -53 + hy, 13, 6, '#5a5e68'); R(-6.5 + hx, -53 + hy, 13, 1.5, '#9aa1ad'); R(2 + hx, -53 + hy, 4.5, 6, '#3a3e48'); R(-1 + hx, -57 + hy, 3, 4, '#3a3e48');
   } else if (kind === 'king') {
     R(-5 + hx, -48 + hy, 10, 10, k.skin); R(-5 + hx, -41 + hy, 10, 3, dk(k.skin));
     P([-6 + hx, -47 + hy, 6 + hx, -47 + hy, 6 + hx, -39 + hy, 3 + hx, -37 + hy, -3 + hx, -37 + hy, -6 + hx, -39 + hy], '#1a1620'); R(-5 + hx, -48 + hy, 11, 6, '#1a1620');
     R(1 + hx, -45 + hy, 4, 2, '#ff6a2a'); R(2 + hx, -45 + hy, 2, 1, '#fff1b0'); R(-4 + hx, -45 + hy, 3, 2, '#c8401a');
     R(-6 + hx, -50 + hy, 12, 3, '#c9962e');
     for (let i = -2; i <= 2; i++) { const ch = 6 + (2 - Math.abs(i)) * 2; P([i * 3 + hx - 1.5, -50 + hy, i * 3 + hx + 1.5, -50 + hy, i * 3 + hx, -50 - ch + hy], '#3a3040'); const fh = 3 + Math.abs(Math.sin(tickN * 0.3 + i)) * 4; P([i * 3 + hx - 1.2, -50 - ch + hy, i * 3 + hx + 1.2, -50 - ch + hy, i * 3 + hx, -50 - ch - fh + hy], i % 2 ? '#ff8a2a' : '#ffd070'); }
-  } else { // helmeted: brute & boss
+  } else if (kind === 'boss') { // Colossus: a tiny carved head sunk into huge shoulders, one turquoise eye
+    const ew = 0.6 + Math.sin(tickN * 0.1) * 0.25 + (winding ? clamp(f.t / (k.windup || 30), 0, 1) * 0.8 : 0) + (f.p2 ? 0.2 : 0);
+    R(-4 + hx, -46 + hy, 9, 9, '#8a847a'); R(1 + hx, -46 + hy, 4, 9, '#6e685e'); R(-4 + hx, -47 + hy, 9, 1.5, '#a6a094'); R(-4 + hx, -46 + hy, 1.5, 8, '#a6a094');
+    R(-2 + hx, -43 + hy, 6, 3, '#121010'); R(0 + hx, -42.5 + hy, 2.4, 2.2, mixHex('#1c8a78', '#b8fff0', clamp(ew, 0, 1))); R(-4 + hx, -38 + hy, 9, 1, '#2a2620'); R(3 + hx, -46 + hy, 1, 3, '#2a2620'); R(-4 + hx, -47.5 + hy, 3, 1.5, '#5a7a3a');
+  } else { // helmeted: brute & guard & knight
     const hm = kind === 'boss' ? '#3b3640' : '#5a5660';
     R(-6 + hx, -49 + hy, 12, 12, k.skin); R(-6 + hx, -49 + hy, 12, 12, dk(k.skin));
     P([-7 + hx, -39 + hy, -7 + hx, -50 + hy, -3 + hx, -54 + hy, 3 + hx, -54 + hy, 7 + hx, -50 + hy, 7 + hx, -39 + hy, 4 + hx, -43 + hy, -4 + hx, -43 + hy], hm);
@@ -3316,24 +3377,30 @@ function drawHuman(f, sx, sy) {
   limb(shx, shy, hxp, hyp, big ? 6 : 5, k.skin, -Math.cos(ang) * 2, -Math.sin(ang) * 2);
   limb(shx, shy, (shx + hxp) / 2, (shy + hyp) / 2, big ? 7 : 6, k.armor, 0, 0);
   R(hxp - 2, hyp - 2, 4, 4, C(dk(k.skin)) === '#ffffff' ? '#fff' : k.skin);
-  g.save(); g.translate(hxp, hyp); g.rotate(ang); drawWeapon(g, C, f.k.wk || kind, bl, wT);
+  if (kind === 'boss') { R(hxp - 4.5, hyp - 4.5, 9, 9, k.skin); R(hxp - 4.5, hyp - 4.5, 9, 2, hi(k.skin)); R(hxp - 4.5, hyp + 2, 9, 2.5, dk(k.skin)); R(hxp - 1, hyp - 4, 1, 8, '#2a2620'); }
+  wFlare = winding ? clamp(f.t / (k.windup || 30), 0, 1) : 0;
+  g.save(); g.translate(hxp, hyp); g.rotate(ang + (HC === 'luca' && !winding && !['atk', 'jatk', 'ratk', 'eatk', 'magic'].includes(f.st) ? 2.5 : 0)); drawWeapon(g, C, f.k.wk || kind, bl, wT);
   if (k.wup >= 3 && !white) { const a = 0.08 * (k.wup - 2) + Math.sin(tickN * 0.2) * 0.05; g.globalCompositeOperation = 'lighter'; g.fillStyle = `rgba(255,${200 - k.wup * 10},120,${a})`; g.fillRect(-4, -bl - 6, 8, bl + 4); g.globalCompositeOperation = 'source-over'; }
   g.restore();
   // front pauldron
-  P([shx - 5, shy - 4, shx + 5, shy - 4, shx + 6, shy + 3, shx - 4, shy + 3], k.armor2); R(shx - 5, shy - 4, 11, 1.5, lt(k.armor2)); R(shx - 4, shy + 1, 10, 2, dk(k.armor2));
+  if (!(f.p2 && BOSSES[kind] && kind !== 'witch')) { P([shx - 5, shy - 4, shx + 5, shy - 4, shx + 6, shy + 3, shx - 4, shy + 3], k.armor2); R(shx - 5, shy - 4, 11, 1.5, lt(k.armor2)); R(shx - 4, shy + 1, 10, 2, dk(k.armor2)); }
   if (kind === 'smith') { R(shx - 3, shy - 17, 5, 13, '#3a3e48'); R(shx - 4, shy - 18, 7, 2, '#5c616c'); R(-12 + lean, -52 - bob, 5, 15, '#3a3e48'); R(-13 + lean, -53 - bob, 7, 2, '#5c616c'); }
   if (kind === 'b' || kind === 'boss') { P([shx + 4, shy - 4, shx + 9, shy - 11, shx + 6, shy - 2], '#d8d0c0'); P([-9 + lean, -37 - bob, -14 + lean, -45 - bob, -6 + lean, -34 - bob], '#d8d0c0'); }
   g.restore();
 
   // outline: dark silhouette stamped in 4 directions, then the sprite on top
   sil.setTransform(1, 0, 0, 1, 0, 0); sil.globalCompositeOperation = 'source-over'; sil.clearRect(0, 0, SW, SH); sil.globalAlpha = 1;
-  sil.drawImage(spriteCv, 0, 0); sil.globalCompositeOperation = 'source-in'; sil.fillStyle = '#0b0610'; sil.fillRect(0, 0, SW, SH);
+  sil.drawImage(spriteCv, 0, 0); sil.globalCompositeOperation = 'source-in'; sil.fillStyle = OUTL[HC || f.kind] || olOf(k.armor); sil.fillRect(0, 0, SW, SH);
   const x0 = Math.round(sx) - AX, y0 = Math.round(sy - f.z) - AY;
   for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) MAIN.drawImage(silCv, x0 + dx, y0 + dy);
+  const rim = rimOf(f);
+  if (rim) { rimg.setTransform(1, 0, 0, 1, 0, 0); rimg.globalCompositeOperation = 'source-over'; rimg.globalAlpha = 1; rimg.clearRect(0, 0, SW, SH); rimg.drawImage(spriteCv, 0, 0); rimg.globalCompositeOperation = 'source-in'; rimg.fillStyle = rim; rimg.fillRect(0, 0, SW, SH); MAIN.save(); MAIN.globalAlpha = (BOSSES[f.kind] ? 0.7 : 0.95) * (0.85 + 0.15 * Math.sin(tickN * 0.12 + f.x)); MAIN.drawImage(rimCv, x0 - f.face, y0); MAIN.restore(); }
   MAIN.drawImage(spriteCv, x0, y0);
 
   if (BOSSES[kind] && !f.dead && f.st !== 'down') { // boss secondary motion
     const bx = Math.round(sx), by = Math.round(sy - f.z + hov);
+    const bgl = BOSS_GLOW[kind];
+    if (bgl) { const wt2 = winding ? clamp(f.t / (k.windup || 30), 0, 1) : bAct ? 0.5 : 0, pw = 0.12 + 0.05 * Math.sin(tickN * 0.1) + wt2 * 0.5 + (f.p2 ? 0.12 : 0); MAIN.globalCompositeOperation = 'lighter'; for (const [lx, ly, rgb] of bgl) glowDot(MAIN, bx + lx * f.face * sc, by + ly * sc * brth, (7 + wt2 * 13) * sc * 0.6 + 6, rgb, pw); MAIN.globalCompositeOperation = 'source-over'; }
     if (kind === 'witch') for (let i = 0; i < 4; i++) { const a = tickN * 0.05 + i * 1.57; MAIN.globalCompositeOperation = 'lighter'; MAIN.fillStyle = 'rgba(150,255,190,0.85)'; MAIN.fillRect(bx + Math.cos(a) * 26 * sc, by - 34 * sc + Math.sin(a * 1.4) * 14, 3, 3); MAIN.fillStyle = 'rgba(150,255,190,0.25)'; MAIN.fillRect(bx + Math.cos(a - 0.3) * 26 * sc - 1, by - 34 * sc + Math.sin((a - 0.3) * 1.4) * 14 - 1, 5, 5); MAIN.globalCompositeOperation = 'source-over'; }
     if (kind === 'smith' && tickN % 4 === 0) spawn(f.x - f.face * 8, f.y, 40 * sc, 1, { s0: 0.1, s1: 0.4, c: ['#8a8a92', '#5a5a64', '#ffb43a'], l0: 18, l1: 34, size: 2, up: 1.1, g: -0.01, add: false });
     if (kind === 'boss' && f.st === 'walk' && Math.abs(Math.sin(f.anim)) < 0.08 && tickN % 10 < 2) { dust(f.x, f.y, 5); shake = Math.max(shake, 1.2); }
@@ -3384,8 +3451,13 @@ function drawFighter0(f) {
     if (f.barrier > 0 && !f.dead) {
       const a = 0.25 + 0.35 * f.barrier / (f.bmax || 1) + (f.bflash > 0 ? 0.3 : 0), bx = Math.round(sx), by = Math.round(sy - f.z - f.h * 0.5 - hv), rx = 15 * f.k.scale + 4, ry = f.h * 0.62;
       if (f.bflash > 0) f.bflash--;
-      g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = `rgba(150,230,255,${a})`; g.lineWidth = 1.5; g.beginPath(); g.ellipse(bx, by, rx, ry, 0, 0, 7); g.stroke();
-      g.fillStyle = `rgba(120,160,255,${a * 0.22})`; g.fill(); g.strokeStyle = `rgba(190,150,255,${a * 0.7})`; g.lineWidth = 1; g.beginPath(); g.ellipse(bx, by, rx - 3, ry - 3, Math.sin(tickN * 0.05) * 0.2, 0.4 + tickN * 0.04, 2.2 + tickN * 0.04); g.stroke(); g.restore();
+      g.save(); g.globalCompositeOperation = 'lighter';
+      const hexP = (r1, r2) => { g.beginPath(); for (let i = 0; i < 6; i++) { const t = i * Math.PI / 3 - Math.PI / 2, px = bx + Math.cos(t) * r1, py = by + Math.sin(t) * r2; if (i) g.lineTo(px, py); else g.moveTo(px, py); } g.closePath(); };
+      hexP(rx, ry); g.fillStyle = `rgba(106,216,255,${a * 0.1})`; g.fill(); g.strokeStyle = `rgba(154,232,255,${a})`; g.lineWidth = 1.3; g.stroke();
+      hexP(rx - 4, ry - 4); g.strokeStyle = `rgba(154,232,255,${a * 0.35})`; g.lineWidth = 0.7; g.stroke();
+      const nc = Math.floor((1 - f.barrier / (f.bmax || 1)) * 5 + (f.bflash > 0 ? 1 : 0)); g.strokeStyle = `rgba(255,255,255,${Math.min(1, a * 1.6)})`; g.lineWidth = 0.8;
+      for (let i = 0; i < nc; i++) { const t0 = i * 1.9 + 0.4, ux = Math.cos(t0), uy = Math.sin(t0); g.beginPath(); g.moveTo(bx + ux * rx * 0.96, by + uy * ry * 0.96); g.lineTo(bx + ux * rx * 0.72 - uy * 3, by + uy * ry * 0.72 + ux * 3); g.lineTo(bx + ux * rx * 0.55 + uy * 3, by + uy * ry * 0.55 - ux * 3); g.lineTo(bx + ux * rx * 0.3, by + uy * ry * 0.3); g.stroke(); }
+      g.restore();
     }
     if (ai === 'guard' && !f.dead) { const bx = Math.round(sx + f.face * 15), by = Math.round(sy - 30); g.fillStyle = '#0a0610'; g.fillRect(bx - 5, by - 2, 10, 30); g.fillStyle = '#3a2a5a'; g.fillRect(bx - 4, by - 1, 8, 28); g.fillStyle = '#c87aff'; g.fillRect(bx - 4, by - 1, 8, 2); g.fillRect(bx - 1, by + 4, 2, 18); g.fillStyle = '#6a4a9a'; g.fillRect(bx - 4, by + 24, 8, 3); }
   }
@@ -3463,7 +3535,7 @@ function drawDragon(sx, sy, o) {
   const R = (x, y, w, h, c) => { g.fillStyle = C(c); g.fillRect(x, y, w, h); };
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SW, SH); g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
   g.save(); g.translate(AX, AY); g.scale(o.face * (o.sc || 1), o.sc || 1);
-  const PL = o.pal || {}, body = PL.body || '#c4452a', belly = PL.belly || '#f0b070', dark = PL.dark || '#7a2418', light = PL.light || '#e0663c', spine = PL.spine || '#ffd070', wing = PL.wing || '#8a2c3a';
+  const PL = o.pal || {}, body = PL.body || '#c8502e', belly = PL.belly || '#f0c890', dark = PL.dark || '#8a2a22', light = PL.light || '#e0663c', spine = PL.spine || '#f0e0b0', wing = PL.wing || '#8a2a22';
   const sway = Math.sin(tickN * 0.1) * 3, st = o.moving ? Math.sin(o.anim) * 4 : 0;
   const bob = (o.moving ? Math.abs(Math.sin(o.anim)) * 1.6 : 0) + Math.sin(tickN * 0.08) * 0.6;
   P([-14, -13 - bob, -14, -7 - bob, -28 + sway, -4, -42 + sway * 1.6, -9, -38 + sway * 1.4, -15, -27 + sway, -11], dark);
@@ -3481,10 +3553,11 @@ function drawDragon(sx, sy, o) {
   P([-18, -9 - bob, -13, -22 - bob, 0, -25 - bob, 12, -21 - bob, 18, -12 - bob, 13, -6 - bob, -14, -5 - bob], body);
   P([-14, -22 - bob, 0, -25 - bob, 12, -21 - bob, 8, -19 - bob, -8, -20 - bob], light);
   P([-12, -6 - bob, 12, -6 - bob, 15, -11 - bob, -15, -11 - bob], belly);
-  for (let i = 0; i < 5; i++) { const x0 = -11 + i * 6; P([x0, -22 - bob, x0 + 4, -23 - bob, x0 + 2, -28 - bob], spine); }
+  for (let i = 0; i < 7; i++) { const x0 = -13 + i * 4.6, hh = i % 2 ? 5 : 7; P([x0, -22 - bob, x0 + 3.6, -23 - bob, x0 + 1.6, -22 - hh - 1 - bob], spine); P([x0 + 1.8, -22.5 - bob, x0 + 3.6, -23 - bob, x0 + 1.6, -22 - hh - 1 - bob], tone(spine, 0)); }
+  for (let i = 0; i < 6; i++) R(-11 + i * 4.4, -8 - bob, 0.9, 3, tone(belly, 0)); // belly scales
   R(-12 + st, -9, 5, 9, body); R(-12 + st, -9, 2, 9, light); R(-13 + st, -2, 8, 2, '#2a1010');
   R(8 - st, -9, 5, 9, body); R(8 - st, -9, 2, 9, light); R(7 - st, -2, 8, 2, '#2a1010');
-  R(-5, -26 - bob, 13, 3, '#3a2418'); R(-5, -27 - bob, 13, 1, '#c9962e');
+  R(-5, -26 - bob, 13, 3, '#3a2418'); R(-5, -27 - bob, 13, 1, '#c9962e'); R(-5, -24.5 - bob, 13, 1, '#e8c060'); R(1, -27 - bob, 1.5, 4, '#fff0a8'); // saddle with a gold stripe
   P([8, -18 - bob, 14, -23 - bob, 22, -35 - bob, 17, -37 - bob, 9, -27 - bob], body);
   P([14, -23 - bob, 22, -35 - bob, 19, -36 - bob, 12, -24 - bob], light);
   const jaw = o.breathe ? 6 : 1;
@@ -3493,6 +3566,7 @@ function drawDragon(sx, sy, o) {
   P([20, -39 - bob, 25, -41 - bob, 35, -37 - bob, 28, -37 - bob], light);
   if (o.breathe) { const bc = o.type === 'storm' ? ['#8ab0ff', '#ffffff'] : o.type === 'stone' ? ['#b8c8a8', '#ffffff'] : ['#ffb43a', '#fff1b0']; R(27, -32 - bob, 6, 3, bc[0]); R(28, -32 - bob, 4, 1, bc[1]); }
   R(25, -38 - bob, 3, 2, '#ffe27a'); R(27, -38 - bob, 1, 2, '#2a0a0a'); R(33, -37 - bob, 1, 1, '#2a0a0a');
+  if (!white && !o.breathe) { const sc2 = o.type === 'storm' ? '#c8f0ff' : o.type === 'stone' ? '#d8e0c8' : '#ffb03a'; for (let i = 0; i < 3; i++) { const q = (tickN * 0.5 + i * 7) % 16; R(35 + q * 0.7, -36 - bob - q * 0.45 + Math.sin(q + i) * 1.2, 1, 1, i % 2 ? sc2 : '#fff1b0'); } } // sparks drift off the snout
   P([18, -40 - bob, 11, -47 - bob, 21, -41 - bob], '#e6dcc4'); P([20, -39 - bob, 15, -44 - bob, 22, -40 - bob], '#bfb49a');
   if (o.horns && !(o.sc > 1.5)) { // stone wyrmling: curved horns and back plates
     P([14, -39 - bob, 5, -52 - bob, 18, -41 - bob], '#e6dcc4'); P([22, -40 - bob, 22, -54 - bob, 27, -41 - bob], '#bfb49a');
@@ -3678,7 +3752,7 @@ function drawHUD() {
   if (!bonus && killCombo >= 2 && tickN - killComboT <= KC_WINDOW) { const a = 1 - (tickN - killComboT) / KC_WINDOW; text('KILL COMBO x' + killCombo, W - 8, 70, 9, '#ffb43a', 'right'); text('XP +' + Math.round(kcBonus() * 100) + '%', W - 8, 81, 8, '#8fc8ff', 'right'); g.fillStyle = '#3a5a8a'; g.fillRect(W - 8 - 60 * a, 86, 60 * a, 2); }
   drawBuffHud();
   if (bonus) drawBonusHud();
-  else if (bossRef && !bossRef.dead && bossRef.hp > 0) { text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? '#ff5a3a' : '#ff9a5a', 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? '#ff3a2a' : '#e0742a', '#3a1c10'); if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
+  else if (bossRef && !bossRef.dead && bossRef.hp > 0) { { const bc = BOSS_COL[bossRef.kind] || '#e0742a'; text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? tone(bc, 3) : tone(bc, 2), 'center'); bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? tone(bc, 2) : bc, tone(bc, 0)); } if (rpg.lvl >= 10) drawElemTags(bossRef, W / 2 + 116, 35, false); }
   else text((cycle ? trialName(cycle) + '  ' : '') + 'STAGE ' + (stageIdx + 1) + '  ' + STAGES[stageIdx].name, W / 2, 31, 8, cycle ? '#e0a8ff' : '#b8a8c8', 'center');
   if (stageCard > 0) { const a = Math.min(1, stageCard / 40, (190 - stageCard) / 25); g.globalAlpha = Math.max(0, a); g.fillStyle = 'rgba(0,0,0,0.5)'; g.fillRect(0, 92, W, 70); text((cycle ? trialName(cycle) + '  ' : '') + 'STAGE ' + (stageIdx + 1), W / 2, 114, 12, '#ffb43a', 'center'); text(STAGES[stageIdx].name, W / 2, 138, 20, '#fff1d0', 'center'); text(STAGES[stageIdx].tag, W / 2, 154, 8, '#c9a8ff', 'center'); g.globalAlpha = 1; }
   if (lastEnemy && lastEnemy !== bossRef && !lastEnemy.dead && lastEnemy.hp > 0) { text(lastEnemy.k.name, W - 12, 18, 10, '#ffa060', 'right'); bar(W - 142, 22, 130, 7, lastEnemy.hp, lastEnemy.maxhp, '#e0742a', '#3a1c10'); if (lastEnemy.barrier > 0) bar(W - 142, 30, 130, 4, lastEnemy.barrier, lastEnemy.bmax, '#9ae8ff', '#1a2440'); if (rpg.lvl >= 10) drawElemTags(lastEnemy, W - 160, 21, true); }

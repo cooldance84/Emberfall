@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.37.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.38.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -84,6 +84,8 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Boss limbs](docs/screenshots/boss-limbs.jpg) | ![Casters and a chasm](docs/screenshots/casters-chasm.jpg) |
 | ![Shrines by the road](docs/screenshots/shrines.jpg) | ![A shrine blessing](docs/screenshots/shrine-blessing.jpg) |
 | ![Element tiers I to X](docs/screenshots/element-tiers.jpg) | ![Set gear glows green](docs/screenshots/set-gear-green.jpg) |
+| ![New hero art](docs/screenshots/art-heroes.jpg) | ![New monster art](docs/screenshots/art-monsters.jpg) |
+| ![New boss and wyrmling art](docs/screenshots/art-bosses.jpg) | |
 
 ## The campaign: seven acts, thirty-five stages
 The story runs through **35 stages in seven acts**, and Nolan (or Panni, or Luca) has to recover **seven Heart-Embers**. Each act ends with an Ember Wyrm; the old bosses return stronger (Colossus II up to Wyrm VII) in new places such as the Drowned Cathedral, the Withered Wilds, the Gilded Dunes, the Eclipse Gate and the World-Forge. Levelling is paced to the whole story: **level 70 arrives around stage 33** if you clear everything. After the last stage the Ashen Cycles keep going for as long as you like.
