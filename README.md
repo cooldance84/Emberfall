@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.38.2-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.38.3-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -62,7 +62,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Sharper fights:** monsters move faster and attack more often, **elite** monsters (a golden rim light, more health and damage, extra loot) turn up from stage 3, and **ambushes** send fresh foes in from both sides when a wave is nearly beaten. Once a foe has stepped onto the screen it stays on it: nothing can be shoved or walk off the edges (thieves and goblins can still escape).
 - **Tougher bosses:** more health and poise, quicker attacks, and they call in escorts when they enrage.
 - **Wyrmling mounts:** a rare enemy (at most one per wave) arrives on a small dragon. Knock the rider off, then press K next to the wyrmling to ride it and breathe fire with J.
-- **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen. Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
+- **Dragon's Wrath (Shift):** a giant dragon head smashes the whole screen (its eyes, cracks and throat glow in your element's colour: fire, frost or lightning). Goblin pilferers carry **Ember Jars**: each jar you take adds +15% wrath damage, up to three jars (+45%).
 - **RPG layer:** levels up to **70**, then **paragon points** (up to 100; each one adds 0.8% life, 0.7% damage and 0.3% damage reduction, shown as a blue +N after the level). Items roll **STR, crit chance, crit damage and hit chance**. Gear has six slots (helm, armor, boots, weapon, ring, amulet), and what you wear shows on the hero.
 - **Elements (fire, frost, lightning):** choose one at level 10 at the Blacksmith; it grows a tier every 10 levels (seven tiers), and paragon 10, 20 and 30 add tiers VIII to X (+1, +2, +3 to all its modifiers). Hits build up burning, chill/freeze or shock, which deal damage over time and can stack up to three layers. They play rock-paper-scissors (frost beats fire, lightning beats frost, fire beats lightning), monsters show their element as a coloured ring under their feet, and bosses carry weaknesses and resistances but are never immune. Recasting a skill on a foe still under your element doubles the effect.
 - **Gear sets:** Vowbound (crit), Bulwark (life and resist) and Emberheart (strength, element power, extra damage to afflicted foes). Wear 2 or 4 pieces for bonuses, and mix sets freely. Set pieces drop from item level 50 and are always better than a mythic of the same level; bosses drop them more often at level 70.

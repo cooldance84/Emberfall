@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.38.3] - 2026-11-17
+- Dragon's Wrath: the giant dragon head was redrawn after the new design board: an angular skull in two reds, swept-back bone horns and cheek spikes, a golden brow wedge with a glowing Ember Jar ember, slanted eyes under a dark brow, lava cracks, and an open jaw with fangs and a glowing throat. The throat light, the cracks and the eyes take the colour of your element (fire, frost or lightning)
+- The strike now plays in four beats: a shadow grows on the floor, the head comes down while the glow builds (the jaw barely open), the impact (jaw gaping, rings, flung stones), and the retreat that leaves a glowing trail and rising embers. A dashed ring of fire, frost or lightning marks the floor throughout. Damage and timing are unchanged
+
 ## [1.38.2] - 2026-11-17
 - Foes can no longer leave the playfield: once a monster has stepped onto the screen it is held at the screen edges, so knock-back and retreating archers or casters can't push or carry it off the side. Reinforcements that arrive from off-screen still walk in freely, and thieves and goblins can still escape.
 

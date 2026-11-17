@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.38.2';
+const VERSION = '1.38.3';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1920,6 +1920,7 @@ function stepDragon() {
   if (d.t === 6) tone('sawtooth', 55, 30, 1.2, 0.1);
   if (d.t < 62 && d.t % 18 === 0) { flashA = 0.35; tone('square', 220, 40, 0.2, 0.05); }
   if (d.t === 62) dragonImpact();
+  if (d.t > 84 && d.t < 120 && d.t % 3 === 0) { const E = ELEM[rpg.elem || 'fire']; spawn(cam + W / 2 + rnd(-30, 30), rnd(Y_MIN, Y_MAX), 4, 2, { c: [E.col, E.col2], s0: 0.1, s1: 0.5, l0: 20, l1: 40, up: 2.2, g: -0.02, size: 2, add: true }); } // the glowing trail it leaves behind
   if (d.t >= 128) { d.by.inv = Math.max(d.by.inv, 30); dragon = null; }
 }
 function dragonImpact() {
@@ -1935,11 +1936,13 @@ function dragonImpact() {
   for (const c of chests) if (!c.open && c.x > cam - 10 && c.x < cam + W + 10) { c.hp = 1; openChest(c); } // the wrath smashes every chest on screen open
   shake = 22; freeze = 8; flashA = 1;
   SFX.big(); tone('sawtooth', 70, 20, 0.9, 0.14);
-  for (let i = 0; i < 3; i++) parts.push({ ring: true, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
+  const ER = ELEM[rpg.elem || 'fire'];
+  for (let i = 0; i < 3; i++) parts.push({ ring: true, rgb: ER.rgb, x: cam + W / 2, y: 215, z: 4, life: 26 + i * 6, max: 26 + i * 6 });
+  for (let i = 0; i < 16 + d.v * 4; i++) { const a = rnd(0, 7); parts.push({ x: cam + W / 2 + Math.cos(a) * rnd(10, 90) * d.size, y: 215 + Math.sin(a) * rnd(2, 20), z: rnd(0, 6), vx: Math.cos(a) * rnd(0.6, 2.6), vy: 0, vz: rnd(4, 8.5), life: rnd(34, 60), max: 60, g: 0.26, c: ['#6a5870', '#4a3a50', '#8a7a8a'][i % 3], size: 3 + (i % 2), add: false }); } // flung stones
   const n = 70 + d.v * 30;
   for (let i = 0; i < n; i++) {
     parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 8), vx: rnd(-1.5, 1.5), vy: 0, vz: rnd(2, 6.5), life: rnd(24, 50), max: 50, g: 0.22, c: ['#4a3a50', '#6a5870', '#2a2030'][i % 3], size: i % 4 ? 2 : 3, add: false });
-    if (i % 2) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 6), vx: rnd(-1, 1), vy: 0, vz: rnd(1, 4), life: rnd(16, 34), max: 34, g: 0.05, c: ['#fff1b0', '#ffb43a', '#ff5a1f'][i % 3], size: 2, add: true });
+    if (i % 2) parts.push({ x: cam + rnd(0, W), y: rnd(Y_MIN, Y_MAX), z: rnd(0, 6), vx: rnd(-1, 1), vy: 0, vz: rnd(1, 4), life: rnd(16, 34), max: 34, g: 0.05, c: ['#fff1b0', ER.col2, ER.col][i % 3], size: 2, add: true });
   }
 }
 
@@ -3591,51 +3594,112 @@ function drawDragon(sx, sy, o) {
   MAIN.drawImage(spriteCv, x0, y0);
 }
 
-/* the giant dragon head that smashes the arena (original design, frontal view) */
-function drawGiantHead(cx, cy, s, glow) {
+/* the giant dragon head that smashes the arena (original design, frontal view): angular skull, swept-back bone horns and cheek spikes,
+   golden brow wedge with a glowing Ember Jar ember, slanted eyes under a dark brow, lava cracks, open jaw with fangs and a glowing throat.
+   The throat light, cracks and eyes take the colour of the hero's element (fire / frost / lightning). open: 0 = jaw ajar, 1 = wide open */
+function drawGiantHead(cx, cy, s, glow, open) {
+  open = open || 0;
+  const E = ELEM[rpg.elem || 'fire'], CK = E.col, EY = E.col2, RG = E.rgb;
+  const gap = 6 + open * 40;
+  const pulse = 0.8 + Math.sin(tickN * 0.2) * 0.2;
   g.save(); g.translate(cx, cy); g.scale(s, s);
-  const lw = 2 / s;
-  const shape = (pts, fill, stroke) => {
+  const lw = 2 / s, OUT = '#12060a';
+  const shape = (pts, fill, stroke) => { // a symmetrical plate: the points are the right half, from the centre line out and back
     g.beginPath(); g.moveTo(pts[0], pts[1]);
     for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
     for (let i = pts.length - 2; i >= 0; i -= 2) g.lineTo(-pts[i], pts[i + 1]);
-    g.closePath(); g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = '#12060a'; g.lineWidth = lw; g.stroke(); }
+    g.closePath(); g.fillStyle = fill; g.fill(); if (stroke) { g.strokeStyle = OUT; g.lineWidth = lw; g.stroke(); }
   };
-  const side = (pts, fill, m) => {
+  const side = (pts, fill, m, stroke) => { // one piece, mirrored by m (1 right, -1 left)
     g.beginPath(); g.moveTo(pts[0] * m, pts[1]);
     for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i] * m, pts[i + 1]);
-    g.closePath(); g.fillStyle = fill; g.fill(); g.strokeStyle = '#12060a'; g.lineWidth = lw; g.stroke();
+    g.closePath(); g.fillStyle = fill; g.fill(); if (stroke !== false) { g.strokeStyle = OUT; g.lineWidth = lw; g.stroke(); }
   };
-  shape([0, -420, 32, -420, 42, -90, 36, -50, 0, -44], '#4a1420', true);
-  for (let y = -400; y < -80; y += 22) { const hw = 32 + 10 * ((y + 420) / 330); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-hw, y, hw * 2, 3); g.fillStyle = 'rgba(200,80,60,0.12)'; g.fillRect(-hw, y + 3, hw * 2, 1); }
-  shape([0, -6, 34, -14, 42, 6, 28, 24, 0, 30], '#6a1c28', true);
-  shape([0, -30, 26, -30, 22, -2, 0, 2], `rgb(${50 + glow * 205 | 0},${12 + glow * 110 | 0},12)`, false);
-  g.globalCompositeOperation = 'lighter';
-  const mg = g.createRadialGradient(0, -14, 2, 0, -14, 20 + 36 * glow); mg.addColorStop(0, `rgba(255,170,60,${0.25 + 0.6 * glow})`); mg.addColorStop(1, 'rgba(255,100,20,0)');
-  g.fillStyle = mg; g.fillRect(-70, -70, 140, 120); g.globalCompositeOperation = 'source-over';
-  for (const xx of [-20, -10, 0, 10, 20]) { g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 3, -2); g.lineTo(xx + 3, -2); g.lineTo(xx, -13); g.fill(); }
-  shape([0, -150, 26, -146, 50, -120, 58, -84, 52, -52, 40, -34, 0, -30], '#8a2634', true);
-  shape([0, -146, 7, -142, 10, -92, 0, -84], '#b8483a', false);
-  shape([0, -80, 52, -76, 52, -52, 40, -34, 0, -30], 'rgba(40,6,16,0.38)', false);
-  for (const m of [1, -1]) { g.strokeStyle = 'rgba(30,4,10,0.55)'; g.lineWidth = lw; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(m * (14 + i * 9), -130 + i * 6); g.lineTo(m * (22 + i * 9), -118 + i * 9); g.stroke(); } }
-  shape([0, -78, 22, -76, 32, -56, 24, -34, 0, -32], '#b8483a', true);
-  for (const xx of [-22, -14, -6, 6, 14, 22]) { g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 3.5, -31); g.lineTo(xx + 3.5, -31); g.lineTo(xx, -18); g.fill(); }
-  for (const m of [1, -1]) {
-    side([40, -140, 70, -190, 96, -232, 88, -176, 58, -124], '#e6dcc4', m);
-    side([52, -110, 84, -138, 70, -100], '#bfb49a', m);
-    side([10, -104, 50, -112, 58, -90, 24, -86], '#2a0a10', m);
-    g.globalCompositeOperation = 'lighter';
-    const gr = g.createRadialGradient(m * 36, -94, 2, m * 36, -94, 26); gr.addColorStop(0, 'rgba(255,190,60,0.6)'); gr.addColorStop(1, 'rgba(255,120,30,0)');
-    g.fillStyle = gr; g.fillRect(m * 36 - 26, -120, 52, 52); g.globalCompositeOperation = 'source-over';
-    side([22, -96, 46, -100, 44, -90, 26, -88], '#ffd24a', m);
-    g.fillStyle = '#c8300a'; g.fillRect(m * 36 - 2, -98, 4, 7);
-    g.fillStyle = '#1a0508'; g.fillRect(m * 10 - 3, -62, 6, 4);
+  const glowAt = (x, y, r, rgb, a) => { g.globalCompositeOperation = 'lighter'; const gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); g.globalCompositeOperation = 'source-over'; };
+  // charge halo behind the head
+  glowAt(0, -120, 200, RG, 0.08 + 0.22 * glow);
+  // neck
+  shape([0, -430, 30, -430, 40, -100, 34, -44, 0, -40], '#4a1420', true);
+  for (let y = -410; y < -80; y += 22) { const hw = 30 + 10 * ((y + 430) / 340); g.fillStyle = 'rgba(0,0,0,0.25)'; g.fillRect(-hw, y, hw * 2, 3); g.fillStyle = 'rgba(200,80,60,0.12)'; g.fillRect(-hw, y + 3, hw * 2, 1); }
+  // lower jaw (stays on the ground; the skull lifts off it as the mouth opens)
+  shape([0, -2, 24, -4, 46, -12, 60, -30, 48, -54, 0, -48], '#7a1c2a', true);
+  shape([0, -2, 24, -4, 46, -12, 36, -22, 0, -20], 'rgba(30,4,10,0.35)', false);
+  shape([0, -48, 48, -54, 44, -45, 0, -42], '#9a2434', false);
+  side([30, -36, 56, -34, 46, -14, 28, -22], 'rgba(255,150,130,0.12)', 1, false); side([30, -36, 56, -34, 46, -14, 28, -22], 'rgba(255,150,130,0.12)', -1, false);
+  // throat: dark, then the element light grows with the charge
+  const th = 50 + gap;
+  shape([0, -th, 38, -th, 42, -46, 0, -46], '#14040a', false);
+  glowAt(0, -(th + 46) / 2, 22 + 34 * glow + open * 16, RG, 0.3 + 0.6 * glow * (0.35 + 0.65 * open));
+  if (open > 0.2) glowAt(0, -(th + 46) / 2, 12 + 8 * open, '255,255,255', 0.25 * open * glow + 0.1 * open);
+  for (const xx of [-38, -25, -13, 0, 13, 25, 38]) { const big = Math.abs(xx) === 38; g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 3.5, -47); g.lineTo(xx + 3.5, -47); g.lineTo(xx, -47 - (big ? 20 : 12)); g.closePath(); g.fill(); g.strokeStyle = OUT; g.lineWidth = lw * 0.5; g.stroke(); }
+  // the skull, lifted by the jaw gap
+  g.translate(0, -gap);
+  for (const m of [1, -1]) { // swept-back bone horns, behind the skull
+    side([44, -168, 82, -190, 112, -204, 128, -238, 108, -184, 84, -156, 56, -140], '#e6dcc4', m);
+    side([58, -148, 84, -160, 108, -184, 98, -170, 80, -150], '#bfb49a', m, false);
+    g.strokeStyle = 'rgba(90,70,50,0.55)'; g.lineWidth = lw * 0.8;
+    for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(m * (62 + i * 15), -156 - i * 12); g.lineTo(m * (72 + i * 15), -170 - i * 12); g.stroke(); }
   }
+  shape([0, -198, 28, -194, 58, -172, 72, -134, 62, -112, 52, -92, 50, -66, 44, -50, 0, -50], '#9a2434', true);
+  shape([0, -112, 62, -112, 52, -92, 50, -66, 44, -50, 0, -50], 'rgba(58,10,20,0.5)', false); // shadowed lower face (#7a1c2a)
+  shape([0, -180, 6, -174, 12, -100, 0, -92], '#b8404a', false); // bridge highlight
+  for (const m of [1, -1]) { // angular facets
+    side([28, -194, 58, -172, 42, -160, 18, -178], '#aa2c3e', m, false);
+    side([72, -134, 62, -112, 52, -92, 56, -122], '#7a1c2a', m, false);
+    side([42, -160, 58, -172, 66, -146, 46, -138], 'rgba(255,150,130,0.16)', m, false);
+    side([50, -66, 52, -92, 40, -84, 36, -66], 'rgba(20,2,8,0.28)', m, false);
+  }
+  // cheek spikes, bone
+  for (const m of [1, -1]) { side([62, -112, 102, -132, 76, -96], '#e6dcc4', m); side([52, -82, 92, -86, 58, -64], '#bfb49a', m); }
+  // lava cracks in the element's colour
+  const cracks = [[26, -188, 30, -170, 24, -158, 34, -146, 30, -132], [60, -122, 50, -106, 52, -90, 44, -72], [8, -92, 14, -78, 8, -66], [38, -176, 48, -168, 54, -150]];
+  const ca = 0.35 + 0.65 * glow;
+  for (const pass of [0, 1, 2]) {
+    g.globalCompositeOperation = pass === 0 ? 'lighter' : 'source-over';
+    g.strokeStyle = pass === 0 ? `rgba(${RG},${0.22 * ca})` : pass === 1 ? CK : EY; g.globalAlpha = pass === 0 ? 1 : ca * pulse;
+    g.lineWidth = lw * (pass === 0 ? 3.2 : pass === 1 ? 1.3 : 0.5); if (pass === 2 && glow < 0.5) continue;
+    for (const m of [1, -1]) for (const c of cracks) { g.beginPath(); g.moveTo(c[0] * m, c[1]); for (let i = 2; i < c.length; i += 2) g.lineTo(c[i] * m, c[i + 1]); g.stroke(); }
+  }
+  g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  // golden brow wedge with the glowing Ember Jar ember
+  shape([0, -190, 13, -174, 10, -134, 0, -116], '#ffd24a', true);
+  shape([0, -184, 6, -174, 4, -142, 0, -132], '#fff0a0', false);
+  glowAt(0, -154, 20, '255,150,40', (0.45 + 0.4 * glow) * pulse);
+  g.fillStyle = '#fff1b0'; g.beginPath(); g.moveTo(0, -164); g.lineTo(4, -154); g.lineTo(0, -143); g.lineTo(-4, -154); g.closePath(); g.fill();
+  // dark brow arches and slanted eyes
+  for (const m of [1, -1]) {
+    side([4, -118, 28, -136, 56, -144, 63, -133, 34, -125, 12, -108], '#2a0a10', m);
+    glowAt(m * 32, -118, 20, RG, 0.25 + 0.4 * glow);
+    side([10, -112, 30, -124, 54, -128, 46, -116, 28, -108], EY, m);
+    g.fillStyle = '#1a0508'; g.fillRect(m * 33 - 1.5, -123, 3, 12);
+    g.fillStyle = 'rgba(255,255,255,0.7)'; g.fillRect(m * 22 - 1, -117, 4, 1.5);
+  }
+  // nostrils
+  for (const m of [1, -1]) { g.fillStyle = '#1a0508'; g.fillRect(m * 9 - 3, -90, 6, 3); glowAt(m * 9, -88, 9, RG, 0.12 + 0.3 * glow); }
+  // upper jaw: gum line and fangs (drawn last so they overlap the throat)
+  shape([0, -55, 48, -55, 44, -50, 0, -50], '#5a0e1c', false);
+  for (const xx of [-38, -25, -12, 12, 25, 38]) { const big = Math.abs(xx) === 38; g.fillStyle = '#f4efe0'; g.beginPath(); g.moveTo(xx - 4, -50); g.lineTo(xx + 4, -50); g.lineTo(xx, -50 + (big ? 28 : 15)); g.closePath(); g.fill(); g.strokeStyle = OUT; g.lineWidth = lw * 0.5; g.stroke(); }
   g.restore();
 }
 
+/* ground ring of the wrath: a dashed ring of fire (or frost, or lightning) that opens with the charge and flares on impact */
+function dragonRing(t, d) {
+  const RG = ELEM[rpg.elem || 'fire'].rgb, cx = W / 2, cy = 220;
+  const grow = t < 62 ? 0.3 + 0.3 * clamp((t - 6) / 56, 0, 1) : 0.6 + 0.5 * clamp((t - 62) / 24, 0, 1);
+  const a = t < 62 ? 0.15 + 0.4 * clamp((t - 6) / 56, 0, 1) : t < 100 ? 0.95 : Math.max(0, 0.95 * (1 - (t - 100) / 28));
+  if (a <= 0) return;
+  const rx = 150 * d.size * grow, off = (tickN * 1.6) | 0;
+  g.save(); g.globalCompositeOperation = 'lighter';
+  for (const [k, w, dir] of [[1, 2.5, 1], [0.72, 1.5, -1]]) {
+    g.setLineDash([10 * k, 7 * k]); g.lineDashOffset = -off * dir;
+    g.strokeStyle = `rgba(${RG},${a * (k === 1 ? 1 : 0.6)})`; g.lineWidth = w;
+    g.beginPath(); g.ellipse(cx, cy, rx * k, rx * k * 0.3, 0, 0, 7); g.stroke();
+  }
+  g.setLineDash([]); g.restore();
+}
+
 function drawDragonCast() {
-  const d = dragon, t = d.t;
+  const d = dragon, t = d.t, RG = ELEM[rpg.elem || 'fire'].rgb;
   const k = Math.min(1, t / 20, (128 - t) / 28);
   g.fillStyle = `rgba(8,0,22,${0.58 * k})`; g.fillRect(0, 0, W, H);
   const ca = Math.min(1, t / 24, (128 - t) / 22);
@@ -3655,13 +3719,28 @@ function drawDragonCast() {
   else if (t >= 62 && t < 84) chin = 218 + Math.sin(t * 2) * 1.5;
   else if (t >= 84) { const q = clamp((t - 84) / 44, 0, 1); chin = lerp(218, -170, q * q * (3 - 2 * q)); }
   const glow = t < 62 ? clamp((t - 30) / 32, 0, 1) : Math.max(0.25, 1 - (t - 62) / 50);
-  if (t >= 62 && t < 100) { g.fillStyle = `rgba(0,0,0,${0.45 * Math.min(1, (100 - t) / 20)})`; g.beginPath(); g.ellipse(W / 2, 220, 120 * d.size, 14, 0, 0, 7); g.fill(); }
-  if (t >= 30 && chin > -180) drawGiantHead(W / 2, chin, 0.95 * d.size, glow);
+  const open = t < 62 ? 0.12 * clamp((t - 30) / 32, 0, 1) : t < 84 ? Math.max(0.12, Math.min(1, (t - 62) / 5)) : Math.max(0.1, 1 - (t - 84) / 30);
+  // 1. shadow: a dark pool grows on the ground as the head comes down, then fades after the impact
+  const sh = t < 62 ? 0.5 * clamp(t / 50, 0, 1) : 0.5 * Math.min(1, (104 - t) / 30);
+  if (sh > 0) { const w = (t < 62 ? 60 + 60 * clamp(t / 62, 0, 1) : 120) * d.size; g.fillStyle = `rgba(0,0,0,${sh})`; g.beginPath(); g.ellipse(W / 2, 220, w, 14, 0, 0, 7); g.fill(); }
+  dragonRing(t, d);
+  // 4. retreat: the head leaves a glowing trail (a column of light up to the sky and a scorch on the ground)
+  if (t >= 84) {
+    const q = clamp((t - 84) / 44, 0, 1), tw = 34 * d.size;
+    g.globalCompositeOperation = 'lighter';
+    const tg = g.createLinearGradient(W / 2 - tw, 0, W / 2 + tw, 0);
+    tg.addColorStop(0, `rgba(${RG},0)`); tg.addColorStop(0.5, `rgba(${RG},${0.5 * (1 - q)})`); tg.addColorStop(1, `rgba(${RG},0)`);
+    g.fillStyle = tg; g.fillRect(W / 2 - tw, 0, tw * 2, Math.max(0, chin + 20));
+    const sg = g.createRadialGradient(W / 2, 221, 2, W / 2, 221, 90 * d.size); sg.addColorStop(0, `rgba(${RG},${0.45 * (1 - q)})`); sg.addColorStop(1, `rgba(${RG},0)`);
+    g.save(); g.translate(0, 221); g.scale(1, 0.25); g.translate(0, -221); g.fillStyle = sg; g.fillRect(W / 2 - 90 * d.size, 221 - 90 * d.size, 180 * d.size, 180 * d.size); g.restore();
+    g.globalCompositeOperation = 'source-over';
+  }
+  if (t >= 30 && chin > -180) drawGiantHead(W / 2, chin, 0.95 * d.size, glow, open);
 }
 
 function drawParts(addOnly) {
   for (const p of parts) {
-    if (p.ring) { const t = 1 - p.life / p.max, r = t * 120; g.globalCompositeOperation = 'lighter'; g.strokeStyle = `rgba(255,${180 - t * 100 | 0},60,${1 - t})`; g.lineWidth = 3; g.beginPath(); g.ellipse(p.x - cam, p.y, r, r * 0.35, 0, 0, 7); g.stroke(); g.globalCompositeOperation = 'source-over'; continue; }
+    if (p.ring) { const t = 1 - p.life / p.max, r = t * 120; g.globalCompositeOperation = 'lighter'; g.strokeStyle = `rgba(${p.rgb || '255,' + (180 - t * 100 | 0) + ',60'},${1 - t})`; g.lineWidth = 3; g.beginPath(); g.ellipse(p.x - cam, p.y, r, r * 0.35, 0, 0, 7); g.stroke(); g.globalCompositeOperation = 'source-over'; continue; }
     if (!!p.add !== addOnly) continue;
     const a = clamp(p.life / (p.max * 0.5), 0, 1);
     g.globalAlpha = a; g.fillStyle = p.c;
