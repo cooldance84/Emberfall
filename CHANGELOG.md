@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.43.0] - 2026-11-17
+- The other stages, redrawn: each of the five themes now has its own floor and foreground. Sunken Marsh: a leaning half-sunken cathedral tower with green window light, dead trees, will-o'-the-wisps, a boardwalk over the mud, puddles that hold the moon, hanging moss and reeds in front. Ember Forge: a giant furnace with a barred face, smoking chimneys, scaffolding and a great gear in the middle layer, riveted iron, a glowing lava channel at the back, steaming grates, a chain with a hook and a pipe in front. Obsidian Throne: a red moon, a spiked throne on a stair, glossy obsidian that holds the (now pink) torch light, a red carpet with gold edges, a pillar in front. Heart-Ember Sanctum: the Heart-Ember floating above the dome, gilded arches, marble with a gold seal, drifting light motes, an arch in front.
+- Acts II-VII keep the five themes and change the distant landmark and the colours: II Shattered Bridge (broken stone bridge, blue mist), III Ashen Wastes (ash dunes, burnt trees), IV Withered Wilds (giant dry trees, thorn vines), V Gilded Dunes (a buried giant stone head, a huge sun), VI Eclipse Gate (a black sun with a ring of light, a glowing gate), VII World-Forge (a forge-mountain with rivers of lava, the first flame on its peak).
+- The wall arches are windows now, so the sky and the landmark show through them (under a dark haze).
+- Chasms look different in every theme (swamp water, lava, red-violet void, golden light); their width (34-42 px) is unchanged.
+- Tests: `themes.test.js` (all 35 act/theme combinations build and draw).
+
 ## [1.42.0] - 2026-11-17
 - Daily board: the status line counts today's runs and finished runs; a hero filter (A/D, or tap the chip) narrows the list to Nolan, Panni or Luca; a coloured square marks each row's hero and a dot its element.
 - Run builds: a signed daily result now carries the element, its tier and the six worn pieces (name, rarity, +level, set). W/S selects a row and Enter (or a tap) opens its card. If the table has no `build` column yet the game still works, it just sends and asks for the rows without it (see docs/ONLINE.md for the one SQL line).
