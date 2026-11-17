@@ -82,6 +82,18 @@ grant execute on function public.cloud_get(text), public.cloud_put(text, jsonb) 
 
 How it is used: on the first device press **C** on the title screen, then UPLOAD (a code is made and shown). On the second device press ENTER CODE, type the code, then DOWNLOAD. Typing `NEW` instead of a code makes a fresh one. Each overwrite needs a second press, and the screen shows the level of every hero on this device and in the cloud first.
 
+## Run builds (optional, v1.42)
+
+To show the element and the worn pieces of a run, the daily table needs one more column. Run this once (the SQL, not the file name); without it everything still works, the cards just say "no build saved":
+
+```sql
+alter table public.daily_scores
+  add column if not exists build jsonb
+  check (build is null or octet_length(build::text) <= 3000);
+```
+
+The Hall of Fame and the run counters need nothing extra: the game reads them from the same rows (the newest 300 finished runs for the Hall of Fame, today's first 300 rows for the counters).
+
 ## Limits, honestly
 
 - The result is reported by the player's own device, so it can be faked: anyone can send a request with the public key. The rules above only stop nonsense (bad names, impossible levels, absurd times, old days). They cannot prove a race was played.
@@ -90,3 +102,4 @@ How it is used: on the first device press **C** on the title screen, then UPLOAD
 - A player in another time zone can be on a different "day" for a few hours; the server accepts the day before and after today.
 - Cloud save: whoever knows a sync code can read and replace that save, so the code is the password. It has 60 bits of randomness, so it cannot be guessed, but do not post it. To retire a leaked code, delete its row in the Table Editor (`cloud_saves`), then type `NEW` in ENTER CODE for a fresh code and upload again.
 - Anyone with the public key can also write junk rows into `cloud_saves` (each at most 100 KB); clean them in the Table Editor if it ever happens. The seal on the saves is a deterrent only: a hand-made save can still be put into the cloud under a fresh code.
+- The build on a card is reported by the player's device like everything else, so it can be faked too.

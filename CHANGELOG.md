@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.42.0] - 2026-11-17
+- Daily board: the status line counts today's runs and finished runs; a hero filter (A/D, or tap the chip) narrows the list to Nolan, Panni or Luca; a coloured square marks each row's hero and a dot its element.
+- Run builds: a signed daily result now carries the element, its tier and the six worn pieces (name, rarity, +level, set). W/S selects a row and Enter (or a tap) opens its card. If the table has no `build` column yet the game still works, it just sends and asks for the rows without it (see docs/ONLINE.md for the one SQL line).
+- Hall of Fame: **H** on the daily board opens the fastest finisher of each of the last days (newest first) with the rule of that day; their builds open the same way. It needs no new table or view.
+- Fix: after looking at the daily board (N) and leaving, a normal game over could show the daily board instead of the leatherboard; the board view is now reset on every exit and at the end of every run.
+- Tests: `board-views.test.js` (38 checks: build snapshot and cleaning, retry without the build column, hero filter, counters, selection and cards, Hall of Fame, the view reset).
+
 ## [1.41.0] - 2026-11-17
 - Cloud save through the same Supabase project: **C** on the title screen opens a screen where UPLOAD sends your heroes (and their crown counts) under a private 12-character sync code, and DOWNLOAD brings them to another device after ENTER CODE (typing NEW there makes a fresh code). Both directions show this device and the cloud side by side and need a second press to overwrite. A save whose seal does not match is never uploaded, and crowns only ever grow. The table is closed; only the `cloud_put` / `cloud_get` functions are open, and they need the whole code. Touch buttons are kept to the middle of the screen so the on-screen stick does not cover them.
 - Daily race pace line: the HUD shows `TO BEAT <name> <time>` (the fastest finished run online), turning to `BEHIND ...` once your time has passed it, or `NO ONE HAS FINISHED YET`. The board is refreshed every 30 seconds during the run.

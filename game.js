@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.41.0';
+const VERSION = '1.42.0';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -856,20 +856,39 @@ const onlineOn = () => !!(ONL.url && ONL.key && typeof fetch === 'function') && 
 let onlineBoard = { day: '', rows: null, at: 0, err: false, busy: false }, onlineSent = null, onlineSendErr = false;
 const sbHeaders = extra => { const h = { apikey: ONL.key, 'Content-Type': 'application/json' }; if (!/^sb_/.test(ONL.key)) h.Authorization = 'Bearer ' + ONL.key; return Object.assign(h, extra); }; // the new sb_publishable_ keys go in apikey only; the old JWT anon key goes in both
 function sbFetch(path, opt) { return fetch(String(ONL.url).replace(/\/+$/, '') + '/rest/v1/' + path, Object.assign({ headers: sbHeaders() }, opt)); }
-const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0 });
+/* what a run is remembered by: the element and the six pieces worn when it was signed (small, and checked again before it is shown) */
+const buildOf = () => ({ el: rpg.elem || '', et: elemTier(), eq: EQ_ORDER.filter(sl => rpg.eq[sl]).map(sl => { const it = rpg.eq[sl]; return [sl, String(it.name || '').slice(0, 32), it.rar | 0, it.up | 0, it.set || '']; }) });
+const cleanBuild = b => {
+  if (!b || typeof b !== 'object' || !Array.isArray(b.eq)) return null;
+  return { el: ELEMS.includes(b.el) ? b.el : '', et: clamp(b.et | 0, 0, 10), eq: b.eq.slice(0, 6).filter(a => Array.isArray(a) && SLOTS.includes(a[0])).map(a => [a[0], String(a[1] || '').toUpperCase().slice(0, 32), clamp(a[2] | 0, 0, RARITY.length - 1), clamp(a[3] | 0, 0, MAX_UP), SETS[a[4]] ? a[4] : '']) };
+};
+const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0, d: String(r.day || ''), b: cleanBuild(r.build) });
+let buildCol = null; // does the table have the build column yet? null = not known, the game tries it and falls back to rows without it
+const COLS = 'name,hero,t,lv,pg,stage,cycle,finished,created_at';
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
   if (!force && onlineBoard.day === dayStr() && Date.now() - onlineBoard.at < 30000) return;
   const day = dayStr(); onlineBoard.busy = true;
-  sbFetch('daily_scores?day=eq.' + day + '&select=name,hero,t,lv,pg,stage,cycle,finished,created_at&order=created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp).slice(0, 10), at: Date.now(), err: false, busy: false }; })
-    .catch(() => { onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
+  sbFetch('daily_scores?day=eq.' + day + '&select=' + COLS + (buildCol === false ? '' : ',build') + '&order=created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every row is kept (up to 300): the hero filter and the counters use them all
+    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
+}
+let hof = { rows: null, at: 0, err: false, busy: false };
+function loadHof(force) { // the Hall of Fame: the fastest finisher of each day, taken from the finished rows (newest days first)
+  if (!onlineOn() || hof.busy) return;
+  if (!force && hof.rows && Date.now() - hof.at < 60000) return;
+  hof.busy = true;
+  sbFetch('daily_scores?finished=eq.true&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=day.desc,t.asc,created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; const seen = {}, out = []; for (const r of a) { if (seen[r.day]) continue; seen[r.day] = 1; out.push(fromRow(r)); if (out.length >= 10) break; } hof = { rows: out, at: Date.now(), err: false, busy: false }; })
+    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, at: Date.now(), err: true, busy: false }; });
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
   if (!onlineOn()) return; onlineSent = { n: e.n, t: e.t | 0, h: e.h }; onlineSendErr = false;
-  sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify({ day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w }) })
-    .then(r => { if (!r.ok) throw r.status; loadOnlineBoard(true); }).catch(() => { onlineSendErr = true; });
+  const row = { day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w };
+  const post = withBuild => sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(withBuild ? Object.assign({ build: e.b || buildOf() }, row) : row) }).then(r => { if (!r.ok) throw r.status; if (withBuild) buildCol = true; loadOnlineBoard(true); hof.at = 0; });
+  post(buildCol !== false).catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; return post(false); } throw st; }).catch(() => { onlineSendErr = true; }); // a table without the build column still takes the result
 }
+const modOfDay = ds => { const q = String(ds).split('-').map(Number); return Math.floor(Date.UTC(q[0], (q[1] || 1) - 1, q[2] || 1) / 86400000) % DAILY_MODS.length; };
 /* ---- cloud save (Supabase RPC, v1.41): the heroes' sealed saves go up under a private sync code and come down on another device. The table is closed; only the two functions cloud_put / cloud_get are open, and they need the full 12-character code ---- */
 const CLOUD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_KEY = 'emberfall_cloud_code', SYNC_KEY = 'emberfall_cloud_sync';
 const cloudNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1040,12 +1059,13 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 let nameBuf = [0, 0, 0], namePos = 0, pendingRun = null, boardHi = -1, resetArm = 0, leatherCv = null;
 let inv = { z: 'bag', i: 0, from: 'play' }, invNote = '', invNoteT = 0;
 function endRun(won) {
-  clearRun();
+  clearRun(); boardView = daily ? 1 : 0; resetBoardUi(); // a normal game over shows the leatherboard even if the daily board was looked at before
+  
   if (won && !daily) score += rpg.coins * 1500 + rpg.gold * 2;
   saveGame(); if (daily) saveDailyRun(stageIdx, true);
   const b = loadBoard();
   pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won, h: CLS };
-  if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); }
+  if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); pendingRun.b = buildOf(); }
   if (daily ? (onlineOn() || b.length < 10 || dailyCmp(pendingRun, b[b.length - 1]) < 0) : (score > 0 && (b.length < 10 || score > b[b.length - 1].s))) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
@@ -1062,7 +1082,7 @@ function dailyWin() { // level 70 and 100 paragon: the race is won
   daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true);
   mode = 'victory'; endTimer = 0; TH = THEMES[4];
 }
-function toTitle() { if (daily) { daily = null; boardView = 0; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
+function toTitle() { boardView = 0; if (daily) { daily = null; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
 function updateName() {
   if (isHit('left')) namePos = (namePos + 2) % 3; if (isHit('right')) namePos = (namePos + 1) % 3;
   if (isHit('up')) nameBuf[namePos] = (nameBuf[namePos] + 1) % 26; if (isHit('down')) nameBuf[namePos] = (nameBuf[namePos] + 25) % 26;
@@ -1072,7 +1092,30 @@ function updateName() {
     saveBoard(b); saveGame(); if (daily) submitOnline(e); mode = 'board';
   }
 }
-function updateBoard() { if ((daily || boardView) && onlineOn()) loadOnlineBoard(); if (isHit('start') || isHit('back')) toTitle(); }
+const HERO_FILT = ['', 'nolan', 'panni', 'luca'];
+let boardSel = -1, boardHero = 0, boardDetail = null, boardBoxes = []; // the selected row, the hero filter (0 = all), the open build card, the tap targets of the screen
+const resetBoardUi = () => { boardSel = -1; boardHero = 0; boardDetail = null; };
+const openBoard = v => { boardView = v; boardHi = -1; resetBoardUi(); mode = 'board'; };
+const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 today's daily board, 2 the Hall of Fame
+const heroOk = e => !boardHero || e.h === HERO_FILT[boardHero];
+const boardRows = () => ((onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; the hero filter applies to both
+const hofRows = () => hof.rows || [];
+function openBuild() { const v = viewOf(), e = (v === 2 ? hofRows() : boardRows())[boardSel]; if (e) boardDetail = e; }
+function updateBoard() {
+  const v = viewOf(); if (v && onlineOn()) { if (v === 2) loadHof(); else loadOnlineBoard(); }
+  if (boardDetail) { if (isHit('start') || isHit('back')) boardDetail = null; return; }
+  const list = v === 2 ? hofRows() : v === 1 ? boardRows() : [];
+  if (list.length) { if (isHit('down')) boardSel = Math.min(list.length - 1, boardSel + 1); else if (isHit('up')) boardSel = boardSel <= 0 ? 0 : boardSel - 1; }
+  if (v === 1 && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
+  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between today's board and the Hall of Fame
+  if (isHit('start')) { if (v && boardSel >= 0 && boardSel < list.length) openBuild(); else toTitle(); }
+  else if (isHit('back')) toTitle();
+}
+function boardClick(x, y) {
+  if (boardDetail) { boardDetail = null; return; }
+  const b = boardBoxes.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (!b) return;
+  if (b.k === 'hero') { boardHero = (boardHero + 1) % 4; boardSel = -1; } else if (b.k === 'view') { boardView = viewOf() === 2 ? 1 : 2; boardSel = -1; } else if (b.k === 'row') { boardSel = b.i; openBuild(); }
+}
 function makeLeather() {
   leatherCv = document.createElement('canvas'); leatherCv.width = 360; leatherCv.height = 242;
   const c = leatherCv.getContext('2d');
@@ -1102,22 +1145,62 @@ function drawBoardScreen() {
     if ((tickN >> 5) & 1) text('PRESS ENTER TO SIGN THE BOARD', W / 2, 232, 9, '#fff', 'center');
     return;
   }
-  const bv = daily ? 1 : boardView;
-  text(bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
-  text(bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
-  text('#', 80, 76, 7, '#b8935a'); text('NAME', 104, 76, 7, '#b8935a'); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, '#b8935a', 'right'); text('STAGE', 266, 76, 7, '#b8935a'); text('LV', 322, 76, 7, '#b8935a'); if (bv) text('PG', 356, 76, 7, '#b8935a');
-  const onl = bv && onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr(), b = onl ? onlineBoard.rows : loadBoard(bv);
+  const bv = viewOf(); boardBoxes = [];
+  text(bv === 2 ? 'HALL OF FAME' : bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
+  text(bv === 2 ? 'THE FASTEST FINISHER OF EACH DAY' : bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
+  const chip = (label, k, right) => { g.font = 'bold 7px "Courier New",monospace'; const w = Math.ceil(g.measureText(tr(label)).width) + 8, x = right ? 408 - w : 74; g.fillStyle = 'rgba(30,14,2,0.7)'; g.fillRect(x, 32, w, 12); g.strokeStyle = '#8a6a3a'; g.strokeRect(x + 0.5, 32.5, w - 1, 11); text(label, x + w / 2, 41, 7, '#e6cfa0', 'center'); boardBoxes.push({ x, y: 32, w, h: 12, k }); };
+  if (bv === 1) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
+  if (bv) chip(bv === 2 ? 'H: DAILY BOARD' : 'H: HALL OF FAME', 'view', true);
+  const hdr = '#b8935a', heroDot = (h, x, y) => { if (CLASSES[h]) { g.fillStyle = CLASSES[h].col; g.fillRect(x, y - 6, 5, 6); } };
+  const elemDot = (e, x, y) => { if (e.b && e.b.el) { g.fillStyle = ELEM[e.b.el].col; g.beginPath(); g.arc(x, y - 3, 2.5, 0, 7); g.fill(); } };
+  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
+  if (bv === 2) { text('DAY', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
+  else { text('#', 80, 76, 7, hdr); text('NAME', 104, 76, 7, hdr); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, hdr, 'right'); text('STAGE', 266, 76, 7, hdr); text('LV', 322, 76, 7, hdr); if (bv) text('PG', 356, 76, 7, hdr); }
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
-    if (onl ? (onlineSent && e && e.n === onlineSent.n && e.t === onlineSent.t && e.h === onlineSent.h && mode === 'board') : i === boardHi) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
+    if (!bv ? i === boardHi : (bv === 1 && onl && onlineSent && e && e.n === onlineSent.n && e.t === onlineSent.t && e.h === onlineSent.h && mode === 'board') || (bv === 1 && !onl && i === boardHi)) { g.fillStyle = (tickN >> 4) & 1 ? 'rgba(255,210,90,0.28)' : 'rgba(255,210,90,0.12)'; g.fillRect(72, y - 10, 336, 13); }
+    if (bv && i === boardSel && e) { g.fillStyle = 'rgba(140,196,255,0.2)'; g.fillRect(72, y - 10, 336, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(72.5, y - 9.5, 335, 12); }
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
+    if (e && bv) boardBoxes.push({ x: 72, y: y - 10, w: 336, h: 13, k: 'row', i });
+    if (bv === 2) {
+      if (e) { text(e.d, 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col); text(fmtTime(e.t), 262, y, 9, col, 'right'); text(DAILY_MODS[modOfDay(e.d)].name, 272, y, 7, '#b8935a'); elemDot(e, 392, y); } else text('---', 140, y, 9, col);
+      continue;
+    }
     text(String(i + 1).padStart(2, ' '), 78, y, 9, col);
-    if (e) { text(e.n, 104, y, 9, col); text(bv ? (e.w ? fmtTime(e.t) : '-') : String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (bv) text(String(e.pg | 0), 356, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); }
+    if (e) { text(e.n, 104, y, 9, col); heroDot(e.h, 124, y); text(bv ? (e.w ? fmtTime(e.t) : '-') : String(e.s).padStart(7, '0'), 252, y, 9, col, 'right'); text((e.c > 1 ? 'C' + e.c + ' ' : '') + 'S' + e.st, 270, y, 9, col); text(String(e.lv), 322, y, 9, col); if (bv) text(String(e.pg | 0), 356, y, 9, col); if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); if (bv) elemDot(e, 384, y); }
     else text('---', 104, y, 9, col);
   }
-  text(bv ? '* = REACHED LV 70 + 100 PARAGON' : '* = WORLD SAVED', 78, 240, 7, '#b8935a'); if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
-  if (bv) { const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...'; text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center'); }
-  if ((tickN >> 5) & 1) text('PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
+  text(bv === 1 ? '* = REACHED LV 70 + 100 PARAGON' : bv ? '' : '* = WORLD SAVED', 78, 240, 7, hdr);
+  if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
+  else if (bv === 1) {
+    const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 300 ? '300+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
+    const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' + cnt : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...';
+    text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center');
+  } else {
+    const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE HALL OF FAME...';
+    text(st, W / 2, 67, 6, hof.rows && hof.rows.length ? '#9ad08a' : '#e0a070', 'center');
+  }
+  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: HALL OF FAME' : 'W/S: SELECT   ENTER: BUILD   H: DAILY BOARD', W / 2, 252, 6, '#c9a86a', 'center');
+  if ((tickN >> 5) & 1) text(bv && boardSel >= 0 ? 'ENTER: BUILD' : 'PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
+  if (boardDetail) drawBuild(boardDetail);
+}
+function drawBuild(e) { // the card of a run: hero, time, element and the six pieces
+  const bd = e.b ? cleanBuild(e.b) : null, hc = CLASSES[e.h];
+  g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#2a1608'; g.fillRect(96, 30, 288, 206); g.strokeStyle = '#c9a86a'; g.lineWidth = 1; g.strokeRect(96.5, 30.5, 287, 205);
+  text(e.n + (hc ? '  ' + hc.name : ''), W / 2, 50, 12, hc ? hc.col : '#fff1d0', 'center');
+  text((e.w ? 'TIME ' + fmtTime(e.t) : 'NOT FINISHED') + '   LV ' + e.lv + '  PG ' + (e.pg | 0), W / 2, 64, 8, '#e6cfa0', 'center');
+  if (e.d) text(e.d + '   ' + DAILY_MODS[modOfDay(e.d)].name, W / 2, 75, 7, '#b8935a', 'center');
+  if (!bd) { text('NO BUILD SAVED FOR THIS RUN', W / 2, 140, 8, '#8a6a3a', 'center'); }
+  else {
+    text(bd.el ? ELEM[bd.el].name + '  TIER ' + ROMAN[bd.et] : 'NO ELEMENT', W / 2, 92, 9, bd.el ? ELEM[bd.el].col : '#8a7a9a', 'center');
+    EQ_ORDER.forEach((sl, i) => {
+      const y = 112 + i * 18, it = bd.eq.find(q => q[0] === sl);
+      text(SLOT_NAME[sl], 108, y, 7, '#b8935a');
+      if (it) { text(it[1], 156, y, 9, RARITY[it[2]].col); text('+' + it[3], 372, y, 9, '#ffd24a', 'right'); if (it[4]) text(SETS[it[4]].name || it[4], 156, y + 8, 6, '#7aff9a'); } else text('-', 156, y, 9, '#6a4a2a');
+    });
+  }
+  text('ENTER / ESC: CLOSE', W / 2, 226, 7, '#8a6a3a', 'center');
 }
 
 /* ---- inventory (Diablo-style paper doll + backpack) ---- */
@@ -3094,8 +3177,8 @@ function step() {
     if (resetArm > 0) resetArm--;
     if (pressed.KeyR) { if (resetArm > 0) { rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; saveGame(); heroStats(true); resetArm = 0; } else resetArm = 180; }
     else if (isHit('inv')) { openInv('title'); return; }
-    else if (pressed.KeyB) { boardView = 0; boardHi = -1; mode = 'board'; return; }
-    else if (pressed.KeyN) { boardView = 1; boardHi = -1; mode = 'board'; return; }
+    else if (pressed.KeyB) { openBoard(0); return; }
+    else if (pressed.KeyN) { openBoard(1); return; }
     else if (pressed.KeyC) { openCloud(); return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
@@ -4107,7 +4190,8 @@ function drawDonate(y) {
 function openDonate() { try { window.open(DONATE_URL, '_blank', 'noopener'); } catch (e) {} }
 screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
-  if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (b && b.go) { boardView = 1; boardHi = -1; mode = 'board'; } else openSelect(false, true); return; }
+  if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (b && b.go) openBoard(1); else openSelect(false, true); return; }
+  if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (!donateBox && !langBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
@@ -4129,7 +4213,7 @@ let selBoxes = [];
 function openDailyInfo() { mode = 'dailyinfo'; SFX.pick(); }
 function updateDailyInfo() {
   if (isHit('back')) { mode = 'title'; return; }
-  if (pressed.KeyB || pressed.KeyN) { boardView = 1; boardHi = -1; mode = 'board'; return; }
+  if (pressed.KeyB || pressed.KeyN) { openBoard(1); return; }
   if (isHit('start') || isHit('atk')) openSelect(false, true);
 }
 function drawDailyInfo() {
