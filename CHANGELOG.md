@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.38.1] - 2026-11-17
+- HUD: the ember jars (and the mount and co-op rows below them) moved down so they no longer overlap the U skill line and its cooldown bar.
+
 ## [1.38.0] - 2026-11-17
 - Art pass on every figure (one version, easy to roll back to 1.37.0 if it is not liked): the heroes, the four foe types, the wyrmlings and the four bosses were redrawn after the new design boards. Hitboxes and gameplay are unchanged.
 - Shared principles: stronger silhouettes, 3-4 tone colour ramps with cool shadows and warm lights, outlines in a dark shade of each figure's own colour instead of black, a thin elemental rim light on the back edge (the hero's element, gold for elites, a boss's own power) and extra secondary motion (breathing, a lagging plume, scarf and robe).

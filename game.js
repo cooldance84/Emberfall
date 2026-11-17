@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.38.0';
+const VERSION = '1.38.1';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -3741,11 +3741,11 @@ function drawHUD() {
   else bar(12, 40, 110, 2, rpg.xp, xpNeed(rpg.lvl), '#8a6aff', '#1c1430');
   text(hero.vases ? 'SHIFT: DRAGON WRATH' : 'WRATH NEEDS AN EMBER JAR', 12, 52, 8, hero.vases ? '#ffd24a' : '#6a5a40');
   { const S = skillOf(hero); if (S) { text('U: ' + skName(S, hero), 12, 62, 7, hero.skcd > 0 ? '#6a7a90' : '#8cc4ff'); if (hero.skcd > 0) bar(12, 64, 80, 2, S.cd - hero.skcd, S.cd, '#8cc4ff', '#1c2a3a'); } else text('SKILL AT LV 10', 12, 62, 7, '#4a4a5a'); }
-  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 76, i < hero.vases);
-  text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 73, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
-  if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 92, 8, T.col); bar(12, 95, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
-  if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 112, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 116, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 131, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 142, 7, '#8878a0'); }
-  if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 100, 7, '#8878a0');
+  for (let i = 0; i < 3; i++) drawJar(20 + i * 15, 92, i < hero.vases);
+  text(hero.vases ? `+${hero.vases * 15}%` : 'JARS', 62, 89, 8, hero.vases ? '#7fd0ff' : '#5a6a80');
+  if (hero.mount) { const T = mtype(hero.mount); text(T.name.split(' ')[0] + '  GRIP ' + (2 - (hero.mount.falls || 0)), 12, 108, 8, T.col); bar(12, 111, 70, 4, hero.mount.hp, hero.mount.maxhp, T.col, '#2a1a20'); }
+  if (coop && hero2) { const p = hero2; text(CLASSES[CLS2].name, 12, 128, 10, p.dead ? '#6a6a70' : '#8affb0'); bar(12, 132, 110, 7, Math.max(0, p.hp), p.maxhp, '#d94a3a', '#3a1418'); if (p.vases) text('+' + p.vases * 15 + '%', 98, 147, 7, '#7fd0ff'); if (p.dead && rpg.coins > 0 && !hero.dead) text('RETURNS SOON (-1 COIN)', 12, 158, 7, '#8878a0'); }
+  if (coop && hero.dead && hero2 && !hero2.dead && rpg.coins > 0) text('RETURNS SOON (-1 COIN)', 12, 116, 7, '#8878a0');
   text('COINS', W - 56, 49, 7, '#b8a8c8', 'right'); drawCoins(W - 46, 46, rpg.coins, 14);
   text('I: GEAR', W - 8, H - 6, 7, '#7a6a8a', 'right');
   text(String(score).padStart(7, '0'), W / 2, 18, 12, '#fff1b0', 'center');
