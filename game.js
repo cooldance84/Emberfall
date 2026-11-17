@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.38.1';
+const VERSION = '1.38.2';
 const W = 480, H = 270, GROUND_TOP = 140, Y_MIN = 160, Y_MAX = 252;
 const screen = document.getElementById('screen');
 const off = document.createElement('canvas'); off.width = W; off.height = H;
@@ -1679,6 +1679,7 @@ function updateHeroCore(f) {
 /* ---------- enemies ---------- */
 function updateEnemy(e) { // foes that back away (archers, casters, retreating soldiers) stop at the lip of a chasm instead of drifting out over it; chasers still hop across
   const px = e.x; updateEnemy0(e);
+  if (!e.dead && !e.pitT && !e.gone && e.kind !== 'imp' && e.kind !== 'gob') { if (e.inField) e.x = clamp(e.x, cam + 10, cam + W - 10); else if (e.x > cam + 10 && e.x < cam + W - 10) e.inField = true; } // once a foe has stepped onto the screen it can no longer be shoved, or walk, off its edge
   if (e.dead || e.pitT || isBoss(e) || e.kind === 'imp' || e.hopDir || e.z > 0.5 || e.st === 'down' || e.st === 'hurt' || e.st === 'getup') return;
   const q = gapAt(e.x, 4);
   if (q && q.type === 'pit' && !gapAt(px, 4)) { const h = nearestPlayer(px); if (Math.abs(h.x - e.x) > Math.abs(h.x - px)) e.x = px; }

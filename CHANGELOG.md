@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.38.2] - 2026-11-17
+- Foes can no longer leave the playfield: once a monster has stepped onto the screen it is held at the screen edges, so knock-back and retreating archers or casters can't push or carry it off the side. Reinforcements that arrive from off-screen still walk in freely, and thieves and goblins can still escape.
+
 ## [1.38.1] - 2026-11-17
 - HUD: the ember jars (and the mount and co-op rows below them) moved down so they no longer overlap the U skill line and its cooldown bar.
 
