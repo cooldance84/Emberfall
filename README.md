@@ -82,6 +82,8 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 | ![Pause menu](docs/screenshots/pause.jpg) | ![Touch controls](docs/screenshots/touch.jpg) |
 | ![Gear tiers](docs/screenshots/gear-tiers.jpg) | ![New monsters](docs/screenshots/new-enemies.jpg) |
 | ![Boss limbs](docs/screenshots/boss-limbs.jpg) | ![Casters and a chasm](docs/screenshots/casters-chasm.jpg) |
+| ![Shrines by the road](docs/screenshots/shrines.jpg) | ![A shrine blessing](docs/screenshots/shrine-blessing.jpg) |
+| ![Element tiers I to X](docs/screenshots/element-tiers.jpg) | ![Set gear glows green](docs/screenshots/set-gear-green.jpg) |
 
 ## The campaign: seven acts, thirty-five stages
 The story runs through **35 stages in seven acts**, and Nolan (or Panni, or Luca) has to recover **seven Heart-Embers**. Each act ends with an Ember Wyrm; the old bosses return stronger (Colossus II up to Wyrm VII) in new places such as the Drowned Cathedral, the Withered Wilds, the Gilded Dunes, the Eclipse Gate and the World-Forge. Levelling is paced to the whole story: **level 70 arrives around stage 33** if you clear everything. After the last stage the Ashen Cycles keep going for as long as you like.
