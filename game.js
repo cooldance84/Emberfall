@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.46.0';
+const VERSION = '1.47.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -1146,6 +1146,7 @@ const pgHp = () => 1 + 0.008 * (rpg.pg | 0), pgDmg = () => 1 + 0.007 * (rpg.pg |
 let killCombo = 0, killComboT = -999;
 const KC_WINDOW = 180, kcBonus = () => Math.min(0.75, killCombo * 0.03);
 function gainXP(n) {
+  if (daily && n > 0) n = Math.round(n * SEASON_XP); // the season race pays double
   if (rpg.lvl >= MAX_LV && n > 0) {
     if (rpg.pg >= PG_MAX) return;
     rpg.pxp += n; let up = 0; const pg0 = rpg.pg;
@@ -1275,18 +1276,25 @@ const validItem = it => { const ok = !!(it && SLOTS.includes(it.slot) && RARITY[
   if (ok) { it.up = clamp(it.up | 0, 0, MAX_UP); if (it.set && !(SETS[it.set] && it.rar >= 3)) delete it.set;
   for (const k of ['ea', 'er']) if (it[k] && !(ELEMS.includes(it[k].k) && it[k].v > 0)) delete it[k]; else if (it[k]) it[k].v = Math.min(99, it[k].v | 0); } return ok; };
 const saveKey = c => (c || CLS) === 'nolan' ? SAVE_KEY : SAVE_KEY + '_' + (c || CLS);
-/* ---------- daily challenge: an endless race with a fresh level-1 hero and one rule of the day; the goal is level 70 + 100 paragon, the shortest play time wins; it has its own leaderboard, and only a crown reaches your saved hero ---------- */
-let daily = null, boardView = 0; // boardView 0 = all time, 1 = today's daily
+/* ---------- the season race (it began as the daily challenge): an endless race with a fresh level-1 hero and double XP;
+   the goal is level 70 + 100 paragon, the shortest play time wins. A season is a calendar month with one rule; the board shows
+   each player's best time, and the eternal board keeps the best of all seasons. Only a crown reaches your saved hero ---------- */
+let daily = null, boardView = 0; // boardView 0 = all time (this device), 1 = this season's board, 2 = the eternal board
 const DAILY_MODS = [
   { name: 'GOLD RUSH', info: 'ALL GOLD IS DOUBLED' },
   { name: 'GLASS CANNON', info: 'YOU HIT 50% HARDER, AND TAKE 50% MORE' },
   { name: 'IRON FOES', info: 'FOES HAVE 50% MORE LIFE, AND PAY 50% MORE XP' },
   { name: 'SWIFT FOES', info: 'EVERY MONSTER IS 20% FASTER' },
-  { name: 'TREASURE DAY', info: 'TWICE THE CHESTS, MORE GOLDEN ONES' }
+  { name: 'TREASURE SEASON', info: 'TWICE THE CHESTS, MORE GOLDEN ONES' }
 ];
+const SEASON_FROM = '2026-11-19', SEASON_XP = 2; // the first season race: older rows were made under other rules and never count
+const seasonStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+const seasonFirst = () => { const s = seasonStr() + '-01'; return s < SEASON_FROM ? SEASON_FROM : s; };
+const seasonLast = () => { const d = new Date(); return seasonStr() + '-' + String(new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()).padStart(2, '0'); };
+const seasonDaysLeft = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate(); }; // full days after today
 const dayStr = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const fmtTime = f => { const t = Math.floor(f / 60), h = Math.floor(t / 3600); return h + ':' + String(Math.floor(t / 60) % 60).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }; // play time h:mm:ss from 60 Hz frames
-const dailyRunKey = c => 'emberfall_daily_run_' + dayStr() + '_' + c;
+const dailyRunKey = c => 'emberfall_daily_run_' + seasonStr() + '_' + c;
 const crownKey = c => 'emberfall_crown_' + c; let crownMemo = {};
 function crownsOf(c) { if (crownMemo[c] === undefined) { let n = 0; try { const o = unseal(localStorage.getItem(crownKey(c)), crownKey(c)); n = o ? Math.max(0, o.n | 0) : 0; } catch (e) { } crownMemo[c] = n; } return crownMemo[c]; }
 function grantCrown(c) { // winning the day earns the saved hero one crown (at most one a day per hero)
@@ -1304,13 +1312,13 @@ function saveDailyRun(stage, over) { // the race is kept on this device for the 
     pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0, bag: rpg.bag, eq: rpg.eq, elem: rpg.elem, et: rpg.et, eg: rpg.eg, coins: rpg.coins, gold: rpg.gold, score }));
     } catch (e) { }
 }
-function loadDailyRun(c) { try { const k = dailyRunKey(c), o = unseal(localStorage.getItem(k), k); return o && o.d === dayStr() && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
+function loadDailyRun(c) { try { const k = dailyRunKey(c), o = unseal(localStorage.getItem(k), k); return o && o.d === seasonStr() && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
 function applyDailyRun(o) {
   rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0);
   rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); rpg.eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl]) && o.eq[sl].slot === sl) rpg.eq[sl] = o.eq[sl];
   rpg.elem = ELEMS.includes(o.elem) ? o.elem : null; rpg.et = clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.coins = clamp(o.coins | 0, 0, MAX_COINS); rpg.gold = Math.max(0, o.gold | 0); score = Math.max(0, o.score | 0); cycle = clamp(o.cycle | 0, 0, TRIAL_MAX);
 }
-/* ---- the online daily board (Supabase REST): optional, the game works fully without it; the URL and the public anon key live in online-config.js ---- */
+/* ---- the online season board (Supabase REST): optional, the game works fully without it; the URL and the public anon key live in online-config.js ---- */
 const ONL = (typeof window !== 'undefined' && window.EMBERFALL_ONLINE) || {};
 const onlineOn = () => !!(ONL.url && ONL.key && typeof fetch === 'function') && !DEV;
 let onlineBoard = { day: '', rows: null, at: 0, err: false, busy: false }, onlineSent = null, onlineSendErr = false;
@@ -1328,19 +1336,19 @@ let buildCol = null; // does the table have the build column yet? null = not kno
 const COLS = 'name,hero,t,lv,pg,stage,cycle,finished,created_at';
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
-  if (!force && onlineBoard.day === dayStr() && Date.now() - onlineBoard.at < 30000) return;
-  const day = dayStr(); onlineBoard.busy = true;
-  sbFetch('daily_scores?day=eq.' + day + '&select=' + COLS + (buildCol === false ? '' : ',build') + '&order=created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every row is kept (up to 300): the hero filter and the counters use them all
+  if (!force && onlineBoard.day === seasonStr() && Date.now() - onlineBoard.at < 30000) return;
+  const day = seasonStr(); onlineBoard.busy = true;
+  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
     .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
 }
 let hof = { rows: null, at: 0, err: false, busy: false };
-function loadHof(force) { // the Hall of Fame: the fastest finisher of each day, taken from the finished rows (newest days first)
+function loadHof(force) { // the eternal board: every player's fastest finished run of all seasons
   if (!onlineOn() || hof.busy) return;
   if (!force && hof.rows && Date.now() - hof.at < 60000) return;
   hof.busy = true;
-  sbFetch('daily_scores?finished=eq.true&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=day.desc,t.asc,created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; const seen = {}, out = []; for (const r of a) { if (seen[r.day]) continue; seen[r.day] = 1; out.push(fromRow(r)); if (out.length >= 10) break; } hof = { rows: out, at: Date.now(), err: false, busy: false }; })
+  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; hof = { rows: bestPer(a.map(fromRow)).sort(dailyCmp), at: Date.now(), err: false, busy: false }; })
     .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, at: Date.now(), err: true, busy: false }; });
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
@@ -1351,7 +1359,8 @@ function submitOnline(e) { // sent when a daily result is signed; a failure leav
     row) : row) }).then(r => { if (!r.ok) throw r.status; if (withBuild) buildCol = true; loadOnlineBoard(true); hof.at = 0; });
   post(buildCol !== false).catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; return post(false); } throw st; }).catch(() => { onlineSendErr = true; }); // a table without the build column still takes the result
 }
-const modOfDay = ds => { const q = String(ds).split('-').map(Number); return Math.floor(Date.UTC(q[0], (q[1] || 1) - 1, q[2] || 1) / 86400000) % DAILY_MODS.length; };
+const modOfDay = ds => { const q = String(ds).split('-').map(Number); return ((q[0] || 0) * 12 + (q[1] || 1) - 1) % DAILY_MODS.length; }; // the rule of the season a day belongs to
+const bestPer = rows => { const seen = {}, out = []; for (const r of rows.slice().sort(dailyCmp)) { const k = r.n + '|' + r.h; if (seen[k]) continue; seen[k] = 1; out.push(r); } return out; }; // one line per player and hero: the best run
 /* ---- cloud save (Supabase RPC, v1.41): the heroes' sealed saves go up under a private sync code and come down on another device. The table is closed; only the two functions cloud_put / cloud_get are open, and they need the full 12-character code ---- */
 const CLOUD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_KEY = 'emberfall_cloud_code', SYNC_KEY = 'emberfall_cloud_sync';
 const cloudNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -1456,13 +1465,13 @@ function drawCloud() {
     text(b.t, b.x + b.w / 2, b.y + 11, 8, dis ? '#6a6a7a' : '#fff', 'center'); }
   if (cloud.busy) text('...', W / 2, 250, 9, '#8cc4ff', 'center');
 }
-function paceInfo() { // the day's fastest finish on the online board, the time to beat; { none: true } when the board is loaded and nobody has finished, null when there is no board to look at
-  if (!onlineOn() || onlineBoard.day !== dayStr() || !onlineBoard.rows) return null;
+function paceInfo() { // the season's fastest finish on the online board, the time to beat; { none: true } when the board is loaded and nobody has finished, null when there is no board to look at
+  if (!onlineOn() || onlineBoard.day !== seasonStr() || !onlineBoard.rows) return null;
   const w = onlineBoard.rows.find(r => r.w); return w ? { n: w.n, t: w.t } : { none: true };
 }
-const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
+const dayMod = () => { const d = new Date(); return (d.getFullYear() * 12 + d.getMonth()) % DAILY_MODS.length; }; // one rule for the whole month
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
-const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
+const boardKeyFor = v => v ? 'emberfall_board_daily_' + seasonStr() : BOARD_KEY;
 function saveGame() { if (daily || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
@@ -1541,12 +1550,12 @@ function endRun(won) {
   endTimer = 0;
 }
 function startDaily() {
-  daily = { date: dayStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
+  daily = { date: seasonStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
   try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('emberfall_daily_run_') === 0 && k.indexOf('emberfall_daily_run_' + daily.date + '_') !== 0) localStorage.removeItem(k); } } catch (e) { } // runs of earlier days are dropped
   rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null;
   const o = loadDailyRun(CLS), live = !!o && !o.over && !o.done; if (live) { applyDailyRun(o); daily.t = Math.max(0, o.t | 0); }
   heroStats(true); loadOnlineBoard();
-  beginStage(live ? o.stage : 0); msg = live ? 'DAILY RACE RESUMED  -  ' + fmtTime(daily.t) : 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
+  beginStage(live ? o.stage : 0); msg = live ? 'SEASON RACE RESUMED  -  ' + fmtTime(daily.t) : 'SEASON: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function dailyWin() { // level 70 and 100 paragon: the race is won
   daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true);
@@ -1566,18 +1575,18 @@ const HERO_FILT = ['', 'nolan', 'panni', 'luca'];
 let boardSel = -1, boardHero = 0, boardDetail = null, boardBoxes = []; // the selected row, the hero filter (0 = all), the open build card, the tap targets of the screen
 const resetBoardUi = () => { boardSel = -1; boardHero = 0; boardDetail = null; };
 const openBoard = v => { boardView = v; boardHi = -1; resetBoardUi(); mode = 'board'; };
-const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 today's daily board, 2 the Hall of Fame
+const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 this season's board, 2 the eternal board
 const heroOk = e => !boardHero || e.h === HERO_FILT[boardHero];
-const boardRows = () => ((onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; the hero filter applies to both
-const hofRows = () => hof.rows || [];
+const boardRows = () => bestPer((onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; one line per player and hero, the hero filter applies to both
+const hofRows = () => (hof.rows || []).filter(heroOk).slice(0, 10);
 function openBuild() { const v = viewOf(), e = (v === 2 ? hofRows() : boardRows())[boardSel]; if (e) boardDetail = e; }
 function updateBoard() {
   const v = viewOf(); if (v && onlineOn()) { if (v === 2) loadHof(); else loadOnlineBoard(); }
   if (boardDetail) { if (isHit('start') || isHit('back')) boardDetail = null; return; }
   const list = v === 2 ? hofRows() : v === 1 ? boardRows() : [];
   if (list.length) { if (isHit('down')) boardSel = Math.min(list.length - 1, boardSel + 1); else if (isHit('up')) boardSel = boardSel <= 0 ? 0 : boardSel - 1; }
-  if (v === 1 && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
-  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between today's board and the Hall of Fame
+  if (v && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
+  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between this season's board and the eternal board
   if (isHit('start')) { if (v && boardSel >= 0 && boardSel < list.length) openBuild(); else toTitle(); }
   else if (isHit('back')) toTitle();
 }
@@ -1601,7 +1610,7 @@ function drawBoardScreen() {
   g.drawImage(leatherCv, 60, 14);
   const C = '#f2d58c';
   if (mode === 'name') {
-    text(daily ? 'DAILY RESULT' : 'NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
+    text(daily ? 'SEASON RESULT' : 'NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
     text(daily ? (pendingRun.w ? 'TIME ' + fmtTime(pendingRun.t) : 'NOT FINISHED  LV ' + pendingRun.lv + '  PG ' + pendingRun.pg) : 'SCORE ' + String(score).padStart(7, '0'), W / 2, 76, 11, '#fff1d0', 'center');
     text((pendingRun.c > 1 ? trialName(pendingRun.c - 1) + '  ' : '') + 'STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w && !daily ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
     for (let i = 0; i < 3; i++) {
@@ -1616,17 +1625,17 @@ function drawBoardScreen() {
     return;
   }
   const bv = viewOf(); boardBoxes = [];
-  text(bv === 2 ? 'HALL OF FAME' : bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
-  text(bv === 2 ? 'THE FASTEST FINISHER OF EACH DAY' : bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
+  text(bv === 2 ? 'ETERNAL BOARD' : bv ? 'SEASON BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
+  text(bv === 2 ? 'EVERY PLAYER\'S FASTEST RACE, ALL SEASONS' : bv ? seasonStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
   const chip = (label, k, right) => { g.font = 'bold 7px "Courier New",monospace'; const w = Math.ceil(g.measureText(tr(label)).width) + 8, x = right ? 408 - w : 74;
     g.fillStyle = 'rgba(30,14,2,0.7)'; g.fillRect(x, 32, w, 12); g.strokeStyle = '#8a6a3a'; g.strokeRect(x + 0.5, 32.5, w - 1, 11);
     text(label, x + w / 2, 41, 7, '#e6cfa0', 'center'); boardBoxes.push({ x, y: 32, w, h: 12, k }); };
-  if (bv === 1) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
-  if (bv) chip(bv === 2 ? 'H: DAILY BOARD' : 'H: HALL OF FAME', 'view', true);
+  if (bv) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
+  if (bv) chip(bv === 2 ? 'H: SEASON BOARD' : 'H: ETERNAL BOARD', 'view', true);
   const hdr = '#b8935a', heroDot = (h, x, y) => { if (CLASSES[h]) { g.fillStyle = CLASSES[h].col; g.fillRect(x, y - 6, 5, 6); } };
   const elemDot = (e, x, y) => { if (e.b && e.b.el) { g.fillStyle = ELEM[e.b.el].col; g.beginPath(); g.arc(x, y - 3, 2.5, 0, 7); g.fill(); } };
-  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
-  if (bv === 2) { text('DAY', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
+  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
+  if (bv === 2) { text('SEASON', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
   else { text('#', 80, 76, 7, hdr); text('NAME', 104, 76, 7, hdr); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, hdr, 'right'); text('STAGE', 266, 76, 7, hdr); text('LV', 322, 76, 7, hdr); if (bv) text('PG', 356, 76, 7, hdr); }
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
@@ -1636,7 +1645,7 @@ function drawBoardScreen() {
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
     if (e && bv) boardBoxes.push({ x: 72, y: y - 10, w: 336, h: 13, k: 'row', i });
     if (bv === 2) {
-      if (e) { text(e.d, 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col);
+      if (e) { text(e.d.slice(0, 7), 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col);
         text(fmtTime(e.t), 262, y, 9, col, 'right'); text(DAILY_MODS[modOfDay(e.d)].name, 272, y, 7, '#b8935a'); elemDot(e, 392, y); } else text('---', 140, y, 9, col);
       continue;
     }
@@ -1649,14 +1658,14 @@ function drawBoardScreen() {
   text(bv === 1 ? '* = REACHED LV 70 + 100 PARAGON' : bv ? '' : '* = WORLD SAVED', 78, 240, 7, hdr);
   if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
   else if (bv === 1) {
-    const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 300 ? '300+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
+    const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 1000 ? '1000+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
     const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' + cnt : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...';
     text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center');
   } else {
-    const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE HALL OF FAME...';
+    const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE ETERNAL BOARD...';
     text(st, W / 2, 67, 6, hof.rows && hof.rows.length ? '#9ad08a' : '#e0a070', 'center');
   }
-  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: HALL OF FAME' : 'W/S: SELECT   ENTER: BUILD   H: DAILY BOARD', W / 2, 252, 6, '#c9a86a', 'center');
+  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: ETERNAL BOARD' : 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: SEASON BOARD', W / 2, 252, 6, '#c9a86a', 'center');
   if ((tickN >> 5) & 1) text(bv && boardSel >= 0 ? 'ENTER: BUILD' : 'PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
   if (boardDetail) drawBuild(boardDetail);
 }
@@ -2898,9 +2907,9 @@ function beginStage(i) {
     else for (let x = 520 + (i * 37) % 120, k = 0; x < stop && k < n; x += 330 + ((i * 53 + k * 71) % 200), k++) { const pit = (i + k) % 3 !== 0; gaps.push({ x, w: pit ? 34 + ((i + k) * 13) % 9 : 14, type: pit ? 'pit' : 'wall' }); } }
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
   { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
-    const td = dailyIs('TREASURE DAY'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1),
+    const td = dailyIs('TREASURE SEASON'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1),
       k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(),
-      type = r < (dailyIs('TREASURE DAY') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x),
+      type = r < (dailyIs('TREASURE SEASON') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x),
       y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
   shrines = []; buff = null; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
   if (i >= 1 || cycle) {
@@ -4827,14 +4836,14 @@ function updateDailyInfo() {
 function drawDailyInfo() {
   g.fillStyle = 'rgba(4,2,10,0.7)'; g.fillRect(0, 0, W, H);
   const M = DAILY_MODS[dayMod()];
-  text('DAILY CHALLENGE', W / 2, 30, 16, '#ffb43a', 'center');
-  text(dayStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
-  const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['THE STAGES KEEP COMING, TOUGHER EVERY ROUND, UNTIL YOU DO IT.', '#e8e0f0'],
-    ['YOU HAVE 1 CONTINUE COIN. WITHOUT IT, A DEFEAT ENDS THE RUN.', '#e8e0f0'], ['TODAY\'S RUN STAYS ON THIS DEVICE: COME BACK AND GO ON FROM YOUR LAST STAGE.', '#e8e0f0'],
-    ['THE REWARD', '#ffd24a'], ['A DAILY CROWN FOR YOUR SAVED HERO, ONE EACH DAY, SHOWN BESIDE ITS LEVEL.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
+  text('SEASON RACE', W / 2, 30, 16, '#ffb43a', 'center');
+  text(seasonStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
+  const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['XP IS DOUBLED. TRY AS OFTEN AS YOU LIKE: YOUR BEST TIME COUNTS.', '#e8e0f0'],
+    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
+    ['THE REWARD', '#ffd24a'], ['A CROWN FOR YOUR SAVED HERO FOR A FINISHED RACE, ONE EACH DAY.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
   L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
   drawCrown(104, 169);
-  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'DAILY BOARD (N)', go: 1 }];
+  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'SEASON BOARD (N)', go: 1 }];
   for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
   text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
 }
@@ -4890,9 +4899,9 @@ function drawTitleOverlay() {
   g.fillStyle = gr; g.fillText('EMBERFALL', W / 2, y);
   text('THE ASHEN VOW', W / 2, y + 22, 12, '#c9a8ff', 'center');
   if ((tickN >> 5) & 1) text('ENTER: 1 PLAYER     2: CO-OP', W / 2, 190, 12, '#ffffff', 'center');
-  { const dt = tr('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name); g.font = '8px "Courier New",monospace'; const dw = g.measureText(dt).width + 12;
+  { const dt = tr('3: SEASON RACE  -  ' + DAILY_MODS[dayMod()].name); g.font = '8px "Courier New",monospace'; const dw = g.measureText(dt).width + 12;
     dailyBox = { x: W / 2 - dw / 2, y: 196, w: dw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.6)'; g.fillRect(dailyBox.x, dailyBox.y, dw, 13); g.strokeStyle = '#8a6a1a';
-    g.strokeRect(dailyBox.x + 0.5, dailyBox.y + 0.5, dw - 1, 12); text('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name, W / 2, 205, 8, '#ffd24a', 'center'); }
+    g.strokeRect(dailyBox.x + 0.5, dailyBox.y + 0.5, dw - 1, 12); text('3: SEASON RACE  -  ' + DAILY_MODS[dayMod()].name, W / 2, 205, 8, '#ffd24a', 'center'); }
   if (!window.touchActive) { // the keyboard hints would sit under the touch buttons, so touch players do not see them
     text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
     text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
@@ -4902,7 +4911,7 @@ function drawTitleOverlay() {
     cloudBox = { x: 4, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
-  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: DAILY BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
+  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
@@ -4962,14 +4971,14 @@ function drawVictory() {
   g.save(); g.globalCompositeOperation = 'lighter'; // slowly turning rays of light behind the title
   for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + t * 0.004, a2 = a + 0.1; g.fillStyle = 'rgba(255,200,90,0.07)'; g.beginPath(); g.moveTo(W2, 84); g.lineTo(W2 + Math.cos(a) * 420, 84 + Math.sin(a) * 420); g.lineTo(W2 + Math.cos(a2) * 420, 84 + Math.sin(a2) * 420); g.fill(); }
   glowDot(g, W2, 80, 120 + Math.sin(t * 0.06) * 8, '255,200,90', 0.22); g.restore();
-  const rank = daily ? 'DAILY CHALLENGE COMPLETE' : cycle >= TRIAL_MAX ? 'LEGEND OF THE ASHEN VOW' : cycle >= 1 ? trialName(cycle) + ' CHAMPION' : 'HERO OF EMBERFALL';
+  const rank = daily ? 'SEASON RACE COMPLETE' : cycle >= TRIAL_MAX ? 'LEGEND OF THE ASHEN VOW' : cycle >= 1 ? trialName(cycle) + ' CHAMPION' : 'HERO OF EMBERFALL';
   g.globalAlpha = fade(0); const bob = Math.sin(t * 0.07) * 2;
   text('CONGRATULATIONS!', W2 + 1, 74 + bob + 2, 26, '#7a3a08', 'center'); text('CONGRATULATIONS!', W2, 74 + bob, 26, (t >> 3) & 1 ? '#ffe27a' : '#ffd24a', 'center');
   g.globalAlpha = fade(16); text(rank, W2, 98, 12, '#ff9a4a', 'center');
   if (daily) {
-    g.globalAlpha = fade(30); text('THE DAILY RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
+    g.globalAlpha = fade(30); text('THE SEASON RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
     g.globalAlpha = fade(48); text('TIME ' + fmtTime(daily.t), W2, 150, 13, '#fff1b0', 'center');
-    g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A DAILY CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
+    g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
   } else {
   g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
   g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');

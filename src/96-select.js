@@ -9,14 +9,14 @@ function updateDailyInfo() {
 function drawDailyInfo() {
   g.fillStyle = 'rgba(4,2,10,0.7)'; g.fillRect(0, 0, W, H);
   const M = DAILY_MODS[dayMod()];
-  text('DAILY CHALLENGE', W / 2, 30, 16, '#ffb43a', 'center');
-  text(dayStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
-  const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['THE STAGES KEEP COMING, TOUGHER EVERY ROUND, UNTIL YOU DO IT.', '#e8e0f0'],
-    ['YOU HAVE 1 CONTINUE COIN. WITHOUT IT, A DEFEAT ENDS THE RUN.', '#e8e0f0'], ['TODAY\'S RUN STAYS ON THIS DEVICE: COME BACK AND GO ON FROM YOUR LAST STAGE.', '#e8e0f0'],
-    ['THE REWARD', '#ffd24a'], ['A DAILY CROWN FOR YOUR SAVED HERO, ONE EACH DAY, SHOWN BESIDE ITS LEVEL.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
+  text('SEASON RACE', W / 2, 30, 16, '#ffb43a', 'center');
+  text(seasonStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
+  const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['XP IS DOUBLED. TRY AS OFTEN AS YOU LIKE: YOUR BEST TIME COUNTS.', '#e8e0f0'],
+    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
+    ['THE REWARD', '#ffd24a'], ['A CROWN FOR YOUR SAVED HERO FOR A FINISHED RACE, ONE EACH DAY.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
   L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
   drawCrown(104, 169);
-  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'DAILY BOARD (N)', go: 1 }];
+  dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'SEASON BOARD (N)', go: 1 }];
   for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
   text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
 }
@@ -72,9 +72,9 @@ function drawTitleOverlay() {
   g.fillStyle = gr; g.fillText('EMBERFALL', W / 2, y);
   text('THE ASHEN VOW', W / 2, y + 22, 12, '#c9a8ff', 'center');
   if ((tickN >> 5) & 1) text('ENTER: 1 PLAYER     2: CO-OP', W / 2, 190, 12, '#ffffff', 'center');
-  { const dt = tr('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name); g.font = '8px "Courier New",monospace'; const dw = g.measureText(dt).width + 12;
+  { const dt = tr('3: SEASON RACE  -  ' + DAILY_MODS[dayMod()].name); g.font = '8px "Courier New",monospace'; const dw = g.measureText(dt).width + 12;
     dailyBox = { x: W / 2 - dw / 2, y: 196, w: dw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.6)'; g.fillRect(dailyBox.x, dailyBox.y, dw, 13); g.strokeStyle = '#8a6a1a';
-    g.strokeRect(dailyBox.x + 0.5, dailyBox.y + 0.5, dw - 1, 12); text('3: DAILY CHALLENGE  -  ' + DAILY_MODS[dayMod()].name, W / 2, 205, 8, '#ffd24a', 'center'); }
+    g.strokeRect(dailyBox.x + 0.5, dailyBox.y + 0.5, dw - 1, 12); text('3: SEASON RACE  -  ' + DAILY_MODS[dayMod()].name, W / 2, 205, 8, '#ffd24a', 'center'); }
   if (!window.touchActive) { // the keyboard hints would sit under the touch buttons, so touch players do not see them
     text('WASD MOVE   J ATTACK (x3)   K JUMP   SHIFT DRAGON WRATH      P2: ARROWS  , . /', W / 2, 222, 8, '#b8a8c8', 'center');
     text('K NEAR A WYRMLING = RIDE (J FIRE, E DISMOUNT)   F: CRT   M: MUTE', W / 2, 234, 8, '#b8a8c8', 'center');
@@ -84,7 +84,7 @@ function drawTitleOverlay() {
     cloudBox = { x: 4, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
-  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: DAILY BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
+  text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
@@ -144,14 +144,14 @@ function drawVictory() {
   g.save(); g.globalCompositeOperation = 'lighter'; // slowly turning rays of light behind the title
   for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2 + t * 0.004, a2 = a + 0.1; g.fillStyle = 'rgba(255,200,90,0.07)'; g.beginPath(); g.moveTo(W2, 84); g.lineTo(W2 + Math.cos(a) * 420, 84 + Math.sin(a) * 420); g.lineTo(W2 + Math.cos(a2) * 420, 84 + Math.sin(a2) * 420); g.fill(); }
   glowDot(g, W2, 80, 120 + Math.sin(t * 0.06) * 8, '255,200,90', 0.22); g.restore();
-  const rank = daily ? 'DAILY CHALLENGE COMPLETE' : cycle >= TRIAL_MAX ? 'LEGEND OF THE ASHEN VOW' : cycle >= 1 ? trialName(cycle) + ' CHAMPION' : 'HERO OF EMBERFALL';
+  const rank = daily ? 'SEASON RACE COMPLETE' : cycle >= TRIAL_MAX ? 'LEGEND OF THE ASHEN VOW' : cycle >= 1 ? trialName(cycle) + ' CHAMPION' : 'HERO OF EMBERFALL';
   g.globalAlpha = fade(0); const bob = Math.sin(t * 0.07) * 2;
   text('CONGRATULATIONS!', W2 + 1, 74 + bob + 2, 26, '#7a3a08', 'center'); text('CONGRATULATIONS!', W2, 74 + bob, 26, (t >> 3) & 1 ? '#ffe27a' : '#ffd24a', 'center');
   g.globalAlpha = fade(16); text(rank, W2, 98, 12, '#ff9a4a', 'center');
   if (daily) {
-    g.globalAlpha = fade(30); text('THE DAILY RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
+    g.globalAlpha = fade(30); text('THE SEASON RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
     g.globalAlpha = fade(48); text('TIME ' + fmtTime(daily.t), W2, 150, 13, '#fff1b0', 'center');
-    g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A DAILY CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
+    g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
   } else {
   g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
   g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');

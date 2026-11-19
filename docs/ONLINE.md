@@ -1,8 +1,8 @@
-# Online daily board (Supabase)
+# Online season board (Supabase)
 
-The daily challenge board can be shared between players through a free Supabase project. It is optional: with an empty `online-config.js` the game runs exactly as before and keeps the board on each device.
+The season race board can be shared between players through a free Supabase project. It is optional: with an empty `online-config.js` the game runs exactly as before and keeps the board on each device.
 
-How it works: when a player signs a daily result, the game posts it to a table in your Supabase project; the board screen (title screen: **3**, then **B**; or **B** and A/D) reads today's rows back. Everything goes through Supabase's REST API with the **public anon key**. That key is meant to be public; what it can do is limited by the row-level-security rules below (read all rows, add a row for today, nothing else: no edit, no delete).
+How it works: when a player signs a season result, the game posts it to a table in your Supabase project; the board screen (title screen: **N**) reads the rows of the current season (the month) back, and **H** shows the eternal board, the finished rows of all seasons. One line is shown per player and hero (the best run). The table does not change: the table is still called `daily_scores` and the `day` column is the day a result was posted. Everything goes through Supabase's REST API with the **public anon key**. That key is meant to be public; what it can do is limited by the row-level-security rules below (read all rows, add a row for today, nothing else: no edit, no delete).
 
 ## Set-up
 
@@ -92,13 +92,13 @@ alter table public.daily_scores
   check (build is null or octet_length(build::text) <= 3000);
 ```
 
-The Hall of Fame and the run counters need nothing extra: the game reads them from the same rows (the newest 300 finished runs for the Hall of Fame, today's first 300 rows for the counters).
+The eternal board and the run counters need nothing extra: the game reads them from the same rows (the fastest 1000 finished runs since the first season for the eternal board, the first 1000 rows of the month for the season board and its counters). Rows from before the first season (2026-11-19) never count.
 
 ## Limits, honestly
 
 - The result is reported by the player's own device, so it can be faked: anyone can send a request with the public key. The rules above only stop nonsense (bad names, impossible levels, absurd times, old days). They cannot prove a race was played.
 - Rows are never edited or deleted by players. You can clean the table in the Supabase dashboard (Table Editor).
-- The all-time board stays on each device; only the daily board is online.
+- The all-time board stays on each device; only the season board and the eternal board are online.
 - A player in another time zone can be on a different "day" for a few hours; the server accepts the day before and after today.
 - Cloud save: whoever knows a sync code can read and replace that save, so the code is the password. It has 60 bits of randomness, so it cannot be guessed, but do not post it. To retire a leaked code, delete its row in the Table Editor (`cloud_saves`), then type `NEW` in ENTER CODE for a fresh code and upload again.
 - Anyone with the public key can also write junk rows into `cloud_saves` (each at most 100 KB); clean them in the Table Editor if it ever happens. The seal on the saves is a deterrent only: a hand-made save can still be put into the cloud under a fresh code.

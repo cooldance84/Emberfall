@@ -1,4 +1,4 @@
-/* ---- the online daily board (Supabase REST): optional, the game works fully without it; the URL and the public anon key live in online-config.js ---- */
+/* ---- the online season board (Supabase REST): optional, the game works fully without it; the URL and the public anon key live in online-config.js ---- */
 const ONL = (typeof window !== 'undefined' && window.EMBERFALL_ONLINE) || {};
 const onlineOn = () => !!(ONL.url && ONL.key && typeof fetch === 'function') && !DEV;
 let onlineBoard = { day: '', rows: null, at: 0, err: false, busy: false }, onlineSent = null, onlineSendErr = false;
@@ -16,19 +16,19 @@ let buildCol = null; // does the table have the build column yet? null = not kno
 const COLS = 'name,hero,t,lv,pg,stage,cycle,finished,created_at';
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
-  if (!force && onlineBoard.day === dayStr() && Date.now() - onlineBoard.at < 30000) return;
-  const day = dayStr(); onlineBoard.busy = true;
-  sbFetch('daily_scores?day=eq.' + day + '&select=' + COLS + (buildCol === false ? '' : ',build') + '&order=created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every row is kept (up to 300): the hero filter and the counters use them all
+  if (!force && onlineBoard.day === seasonStr() && Date.now() - onlineBoard.at < 30000) return;
+  const day = seasonStr(); onlineBoard.busy = true;
+  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
     .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
 }
 let hof = { rows: null, at: 0, err: false, busy: false };
-function loadHof(force) { // the Hall of Fame: the fastest finisher of each day, taken from the finished rows (newest days first)
+function loadHof(force) { // the eternal board: every player's fastest finished run of all seasons
   if (!onlineOn() || hof.busy) return;
   if (!force && hof.rows && Date.now() - hof.at < 60000) return;
   hof.busy = true;
-  sbFetch('daily_scores?finished=eq.true&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=day.desc,t.asc,created_at.asc&limit=300').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; const seen = {}, out = []; for (const r of a) { if (seen[r.day]) continue; seen[r.day] = 1; out.push(fromRow(r)); if (out.length >= 10) break; } hof = { rows: out, at: Date.now(), err: false, busy: false }; })
+  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { if (buildCol === null) buildCol = true; hof = { rows: bestPer(a.map(fromRow)).sort(dailyCmp), at: Date.now(), err: false, busy: false }; })
     .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, at: Date.now(), err: true, busy: false }; });
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
@@ -39,7 +39,8 @@ function submitOnline(e) { // sent when a daily result is signed; a failure leav
     row) : row) }).then(r => { if (!r.ok) throw r.status; if (withBuild) buildCol = true; loadOnlineBoard(true); hof.at = 0; });
   post(buildCol !== false).catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; return post(false); } throw st; }).catch(() => { onlineSendErr = true; }); // a table without the build column still takes the result
 }
-const modOfDay = ds => { const q = String(ds).split('-').map(Number); return Math.floor(Date.UTC(q[0], (q[1] || 1) - 1, q[2] || 1) / 86400000) % DAILY_MODS.length; };
+const modOfDay = ds => { const q = String(ds).split('-').map(Number); return ((q[0] || 0) * 12 + (q[1] || 1) - 1) % DAILY_MODS.length; }; // the rule of the season a day belongs to
+const bestPer = rows => { const seen = {}, out = []; for (const r of rows.slice().sort(dailyCmp)) { const k = r.n + '|' + r.h; if (seen[k]) continue; seen[k] = 1; out.push(r); } return out; }; // one line per player and hero: the best run
 /* ---- cloud save (Supabase RPC, v1.41): the heroes' sealed saves go up under a private sync code and come down on another device. The table is closed; only the two functions cloud_put / cloud_get are open, and they need the full 12-character code ---- */
 const CLOUD_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', CODE_KEY = 'emberfall_cloud_code', SYNC_KEY = 'emberfall_cloud_sync';
 const cloudNorm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -144,13 +145,13 @@ function drawCloud() {
     text(b.t, b.x + b.w / 2, b.y + 11, 8, dis ? '#6a6a7a' : '#fff', 'center'); }
   if (cloud.busy) text('...', W / 2, 250, 9, '#8cc4ff', 'center');
 }
-function paceInfo() { // the day's fastest finish on the online board, the time to beat; { none: true } when the board is loaded and nobody has finished, null when there is no board to look at
-  if (!onlineOn() || onlineBoard.day !== dayStr() || !onlineBoard.rows) return null;
+function paceInfo() { // the season's fastest finish on the online board, the time to beat; { none: true } when the board is loaded and nobody has finished, null when there is no board to look at
+  if (!onlineOn() || onlineBoard.day !== seasonStr() || !onlineBoard.rows) return null;
   const w = onlineBoard.rows.find(r => r.w); return w ? { n: w.n, t: w.t } : { none: true };
 }
-const dayMod = () => { const d = new Date(); return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000) % DAILY_MODS.length; };
+const dayMod = () => { const d = new Date(); return (d.getFullYear() * 12 + d.getMonth()) % DAILY_MODS.length; }; // one rule for the whole month
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
-const boardKeyFor = v => v ? 'emberfall_board_daily_' + dayStr() : BOARD_KEY;
+const boardKeyFor = v => v ? 'emberfall_board_daily_' + seasonStr() : BOARD_KEY;
 function saveGame() { if (daily || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;

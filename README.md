@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.46.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.47.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -73,9 +73,9 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **3 continue coins** per run, and you can buy more in the Ember Market (up to 9; each one past the third costs more). Unspent coins are worth 1,500 points each when you win.
 - **Runs are saved on your device:** close the game mid-campaign and pick the same hero later to continue the stage for **one continue coin**, or start over. With no coins left, the run is over.
 - **Monsters grow with the story:** every act adds a layer of monster health (+20%, +45%, +75%), and a hero far above the stage's level meets monsters of their own level.
-- **Leatherboard:** top 10 scores with initials (**B** on the title screen), kept on this device. The daily challenge has its own, separate board (**N** on the title screen, or the button on the daily rules page). Your character, gear, settings and the boards are saved in your browser.
-- **Cloud save:** with the online features on, **C** on the title screen (or the button beside the language switch) uploads your heroes under a private sync code and downloads them on another device, so the phone and the PC can share them. Every overwrite asks for a second press, a hand-edited save is never uploaded, and the crown count only ever grows. In the daily race a pace line shows the fastest finished time to beat.
-- **Daily board extras:** the board shows how many runs were started and finished today, a hero filter (**A/D**), and the build of any run (**W/S** to select, **Enter** or a tap to open: element, tier and the six worn pieces). **H** opens the Hall of Fame, the fastest finisher of each of the last days with his or her build.
+- **Leatherboard:** top 10 scores with initials (**B** on the title screen), kept on this device. The season race has its own, separate board (**N** on the title screen, or the button on the season rules page). Your character, gear, settings and the boards are saved in your browser.
+- **Cloud save:** with the online features on, **C** on the title screen (or the button beside the language switch) uploads your heroes under a private sync code and downloads them on another device, so the phone and the PC can share them. Every overwrite asks for a second press, a hand-edited save is never uploaded, and the crown count only ever grows. In the season race a pace line shows the fastest finished time to beat.
+- **Season board extras:** the board shows one line per player and hero (the best run of the season), how many runs were started and finished, a hero filter (**A/D**), and the build of any run (**W/S** to select, **Enter** or a tap to open: element, tier and the six worn pieces). **H** opens the eternal board: every player's fastest finished race of all seasons.
 - **2-player co-op:** press **2** on the title screen.
 - **Procedural music** for each stage, a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.
@@ -146,8 +146,8 @@ Every figure was redrawn from design boards. The principles: a strong silhouette
 
 ![New boss and wyrmling art](docs/screenshots/art-bosses.jpg)
 
-## Daily challenge
-Press **3** on the title screen (or **T**, or tap the daily line), read the rules page, pick a hero and race with a fresh level-1 hero, one continue coin and no gold. **The goal is level 70 + 100 paragon: the shortest play time wins** (pauses, shops and story pages do not count). The stages keep coming, tougher every round, until you get there. Your run is kept on the device for the day and resumes from the start of your last stage, and the daily board shows the time (equal times: whoever finished first). Winning earns your saved hero one **daily crown** a day, shown beside its level; your real hero's level, gear and save are never touched. One of five rules applies each day, in a fixed rotation that repeats every five days and changes at your device's midnight:
+## Season race
+Press **3** on the title screen (or **T**, or tap the season line), read the rules page, pick a hero and race with a fresh level-1 hero, one continue coin and no gold. **The goal is level 70 + 100 paragon: the shortest play time wins** (pauses, shops and story pages do not count), and **XP is doubled** in the race. The stages keep coming, tougher every round, until you get there. Try as often as you like: an unfinished run is kept on the device and resumes from the start of your last stage, a finished or lost one starts over, and your best time counts. A **season is a calendar month** (the first one started on 2026-11-19); the season board shows each player's best time (equal times: whoever finished first), and the **eternal board** (**H** on the board) keeps every player's fastest race of all seasons. Finishing a race earns your saved hero a **crown**, at most one a day, shown beside its level; your real hero's level, gear and save are never touched. One of five rules applies for the whole season, in a fixed rotation that moves on at the start of each month:
 
 | Rule | Effect |
 |---|---|

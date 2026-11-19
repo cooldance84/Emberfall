@@ -2,6 +2,13 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.47.0] - 2026-11-19
+- The daily challenge became the **season race**. A season is a calendar month (the first one started on 2026-11-19) with one rule for the whole month (Gold Rush, Glass Cannon, Iron Foes, Swift Foes, Treasure Season; the next season takes the next rule). The goal is the same: a fresh level-1 hero races to level 70 + 100 paragon, the shortest play time wins. XP is doubled in the race, and you may try as often as you like: an unfinished run waits on this device, a finished or lost one starts over, and your best time counts.
+- The board shows one line per player and hero, the best run of the season (A/D filters the hero); the status line counts all runs of the season. The old **Hall of Fame** is now the **eternal board**: every player's fastest finished race of all seasons, with its season, rule and build (H flips between the two boards). The title screen, the rules page, the result screens and the pace line say "season"; the rules page shows how many days are left.
+- The crown for your saved hero stays: one for a finished race, at most one a day per hero.
+- No new SQL: the same table is read by date range (this month; and everything since the first season for the eternal board). Rows from before the first season never count, because they were made under other rules and without double XP.
+- Tests: `season.test.js`; board, online and daily tests follow the new behaviour.
+
 ## [1.46.0] - 2026-11-19
 - Elemental rekindle works with normal hits too. The 4th normal hit on a foe that is still under your element (burning, chilled/frozen, shocked) from an earlier hit rekindles it exactly like a skill does: BURN x2, DEEP FREEZE, OVERCHARGE. The count restarts when the status ends, and lightning's overcharge from normal hits waits 3 seconds between two, so chains cannot run away. Skills rekindle at once, as before.
 - Tests: `rekindle-normal.test.js`.

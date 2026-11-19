@@ -15,12 +15,12 @@ function endRun(won) {
   endTimer = 0;
 }
 function startDaily() {
-  daily = { date: dayStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
+  daily = { date: seasonStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
   try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('emberfall_daily_run_') === 0 && k.indexOf('emberfall_daily_run_' + daily.date + '_') !== 0) localStorage.removeItem(k); } } catch (e) { } // runs of earlier days are dropped
   rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null;
   const o = loadDailyRun(CLS), live = !!o && !o.over && !o.done; if (live) { applyDailyRun(o); daily.t = Math.max(0, o.t | 0); }
   heroStats(true); loadOnlineBoard();
-  beginStage(live ? o.stage : 0); msg = live ? 'DAILY RACE RESUMED  -  ' + fmtTime(daily.t) : 'DAILY: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
+  beginStage(live ? o.stage : 0); msg = live ? 'SEASON RACE RESUMED  -  ' + fmtTime(daily.t) : 'SEASON: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function dailyWin() { // level 70 and 100 paragon: the race is won
   daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true);
@@ -40,18 +40,18 @@ const HERO_FILT = ['', 'nolan', 'panni', 'luca'];
 let boardSel = -1, boardHero = 0, boardDetail = null, boardBoxes = []; // the selected row, the hero filter (0 = all), the open build card, the tap targets of the screen
 const resetBoardUi = () => { boardSel = -1; boardHero = 0; boardDetail = null; };
 const openBoard = v => { boardView = v; boardHi = -1; resetBoardUi(); mode = 'board'; };
-const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 today's daily board, 2 the Hall of Fame
+const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 this season's board, 2 the eternal board
 const heroOk = e => !boardHero || e.h === HERO_FILT[boardHero];
-const boardRows = () => ((onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; the hero filter applies to both
-const hofRows = () => hof.rows || [];
+const boardRows = () => bestPer((onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; one line per player and hero, the hero filter applies to both
+const hofRows = () => (hof.rows || []).filter(heroOk).slice(0, 10);
 function openBuild() { const v = viewOf(), e = (v === 2 ? hofRows() : boardRows())[boardSel]; if (e) boardDetail = e; }
 function updateBoard() {
   const v = viewOf(); if (v && onlineOn()) { if (v === 2) loadHof(); else loadOnlineBoard(); }
   if (boardDetail) { if (isHit('start') || isHit('back')) boardDetail = null; return; }
   const list = v === 2 ? hofRows() : v === 1 ? boardRows() : [];
   if (list.length) { if (isHit('down')) boardSel = Math.min(list.length - 1, boardSel + 1); else if (isHit('up')) boardSel = boardSel <= 0 ? 0 : boardSel - 1; }
-  if (v === 1 && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
-  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between today's board and the Hall of Fame
+  if (v && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
+  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between this season's board and the eternal board
   if (isHit('start')) { if (v && boardSel >= 0 && boardSel < list.length) openBuild(); else toTitle(); }
   else if (isHit('back')) toTitle();
 }
@@ -75,7 +75,7 @@ function drawBoardScreen() {
   g.drawImage(leatherCv, 60, 14);
   const C = '#f2d58c';
   if (mode === 'name') {
-    text(daily ? 'DAILY RESULT' : 'NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
+    text(daily ? 'SEASON RESULT' : 'NEW HIGH SCORE!', W / 2, 54, 16, C, 'center');
     text(daily ? (pendingRun.w ? 'TIME ' + fmtTime(pendingRun.t) : 'NOT FINISHED  LV ' + pendingRun.lv + '  PG ' + pendingRun.pg) : 'SCORE ' + String(score).padStart(7, '0'), W / 2, 76, 11, '#fff1d0', 'center');
     text((pendingRun.c > 1 ? trialName(pendingRun.c - 1) + '  ' : '') + 'STAGE ' + pendingRun.st + '   LV ' + pendingRun.lv + (pendingRun.w && !daily ? '   WORLD SAVED' : ''), W / 2, 92, 8, '#d9b98a', 'center');
     for (let i = 0; i < 3; i++) {
@@ -90,17 +90,17 @@ function drawBoardScreen() {
     return;
   }
   const bv = viewOf(); boardBoxes = [];
-  text(bv === 2 ? 'HALL OF FAME' : bv ? 'DAILY BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
-  text(bv === 2 ? 'THE FASTEST FINISHER OF EACH DAY' : bv ? dayStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
+  text(bv === 2 ? 'ETERNAL BOARD' : bv ? 'SEASON BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
+  text(bv === 2 ? 'EVERY PLAYER\'S FASTEST RACE, ALL SEASONS' : bv ? seasonStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
   const chip = (label, k, right) => { g.font = 'bold 7px "Courier New",monospace'; const w = Math.ceil(g.measureText(tr(label)).width) + 8, x = right ? 408 - w : 74;
     g.fillStyle = 'rgba(30,14,2,0.7)'; g.fillRect(x, 32, w, 12); g.strokeStyle = '#8a6a3a'; g.strokeRect(x + 0.5, 32.5, w - 1, 11);
     text(label, x + w / 2, 41, 7, '#e6cfa0', 'center'); boardBoxes.push({ x, y: 32, w, h: 12, k }); };
-  if (bv === 1) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
-  if (bv) chip(bv === 2 ? 'H: DAILY BOARD' : 'H: HALL OF FAME', 'view', true);
+  if (bv) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
+  if (bv) chip(bv === 2 ? 'H: SEASON BOARD' : 'H: ETERNAL BOARD', 'view', true);
   const hdr = '#b8935a', heroDot = (h, x, y) => { if (CLASSES[h]) { g.fillStyle = CLASSES[h].col; g.fillRect(x, y - 6, 5, 6); } };
   const elemDot = (e, x, y) => { if (e.b && e.b.el) { g.fillStyle = ELEM[e.b.el].col; g.beginPath(); g.arc(x, y - 3, 2.5, 0, 7); g.fill(); } };
-  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === dayStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
-  if (bv === 2) { text('DAY', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
+  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
+  if (bv === 2) { text('SEASON', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
   else { text('#', 80, 76, 7, hdr); text('NAME', 104, 76, 7, hdr); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, hdr, 'right'); text('STAGE', 266, 76, 7, hdr); text('LV', 322, 76, 7, hdr); if (bv) text('PG', 356, 76, 7, hdr); }
   for (let i = 0; i < 10; i++) {
     const y = 93 + i * 15, e = b[i];
@@ -110,7 +110,7 @@ function drawBoardScreen() {
     const col = !e ? '#7a5a3a' : i === 0 ? '#ffe27a' : i < 3 ? '#fff1d0' : '#e6cfa0';
     if (e && bv) boardBoxes.push({ x: 72, y: y - 10, w: 336, h: 13, k: 'row', i });
     if (bv === 2) {
-      if (e) { text(e.d, 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col);
+      if (e) { text(e.d.slice(0, 7), 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col);
         text(fmtTime(e.t), 262, y, 9, col, 'right'); text(DAILY_MODS[modOfDay(e.d)].name, 272, y, 7, '#b8935a'); elemDot(e, 392, y); } else text('---', 140, y, 9, col);
       continue;
     }
@@ -123,14 +123,14 @@ function drawBoardScreen() {
   text(bv === 1 ? '* = REACHED LV 70 + 100 PARAGON' : bv ? '' : '* = WORLD SAVED', 78, 240, 7, hdr);
   if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
   else if (bv === 1) {
-    const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 300 ? '300+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
+    const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 1000 ? '1000+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
     const st = !onlineOn() ? 'THIS DEVICE ONLY' : onlineSendErr ? 'NOT SENT - ONLINE BOARD UNREACHABLE' : onl ? 'ONLINE BOARD' + cnt : onlineBoard.err ? 'OFFLINE - THIS DEVICE ONLY' : 'LOADING THE ONLINE BOARD...';
     text(st, W / 2, 67, 6, onl && !onlineSendErr ? '#9ad08a' : '#e0a070', 'center');
   } else {
-    const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE HALL OF FAME...';
+    const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE ETERNAL BOARD...';
     text(st, W / 2, 67, 6, hof.rows && hof.rows.length ? '#9ad08a' : '#e0a070', 'center');
   }
-  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: HALL OF FAME' : 'W/S: SELECT   ENTER: BUILD   H: DAILY BOARD', W / 2, 252, 6, '#c9a86a', 'center');
+  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: ETERNAL BOARD' : 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: SEASON BOARD', W / 2, 252, 6, '#c9a86a', 'center');
   if ((tickN >> 5) & 1) text(bv && boardSel >= 0 ? 'ENTER: BUILD' : 'PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
   if (boardDetail) drawBuild(boardDetail);
 }

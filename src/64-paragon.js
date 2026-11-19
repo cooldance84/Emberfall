@@ -5,6 +5,7 @@ const pgHp = () => 1 + 0.008 * (rpg.pg | 0), pgDmg = () => 1 + 0.007 * (rpg.pg |
 let killCombo = 0, killComboT = -999;
 const KC_WINDOW = 180, kcBonus = () => Math.min(0.75, killCombo * 0.03);
 function gainXP(n) {
+  if (daily && n > 0) n = Math.round(n * SEASON_XP); // the season race pays double
   if (rpg.lvl >= MAX_LV && n > 0) {
     if (rpg.pg >= PG_MAX) return;
     rpg.pxp += n; let up = 0; const pg0 = rpg.pg;
