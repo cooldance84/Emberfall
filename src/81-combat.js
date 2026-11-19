@@ -12,8 +12,9 @@ function hurt(e, dmg, kind, from) {
   if (!e.pn && from.pn && e.el && (e.el.burn > 0 || e.el.frz > 0 || e.el.stun > 0 || e.el.chill > 0)) { const af = setBonus('afl'); if (af) dmg = Math.round(dmg * (1 + af / 100)); } // Emberheart 4: more damage to burning, frozen, stunned or chilled foes
   if (e.pn && !from.pn) dmg = Math.max(1, Math.round(dmg * dmgMul() * (dailyIs('GLASS CANNON') ? 1.5 : 1) * (from.kind && BOSSES[from.kind] ? 1.15 : 1) * (from.elite ? 1.25 : 1) * (1 - elemResist(hitEl || from.el || ENEMY_EL[from.kind])) * (1 - pgRes())));
   if (e.pn && !from.pn) { // a hit on a hero: the shrine ward soaks it first; only a blow that gets through breaks the kill combo
-    if (buff && buff.id === 'ward' && buff.ward > 0) {
-      const ab = Math.min(buff.ward, dmg); buff.ward -= ab; dmg -= ab; e.flash = 3;
+    const wardB = buffs.find(b => b.id === 'ward' && b.ward > 0);
+    if (wardB) {
+      const ab = Math.min(wardB.ward, dmg); wardB.ward -= ab; dmg -= ab; e.flash = 3;
       spawn(e.x, e.y, e.z + 24, 6, { c: ['#9ae8ff', '#ffffff'], l0: 8, l1: 16, add: true });
       floatText(e.x + rnd(-6, 6), e.y - e.z - e.h * 0.9, '-' + ab, '#6ab8ff', 8);
       if (dmg <= 0) { e.inv = Math.max(e.inv, 8); SFX.land(); return true; }

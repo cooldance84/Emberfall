@@ -8,8 +8,9 @@ const BUFFS = {
   surge: { name: 'SHRINE OF SURGE', short: 'SURGE', col: '#ff8ad8', t: 1500, w: 15, info: '+40% ELEMENT POWER' }
 };
 const SACRED = { name: 'SACRED SHRINE', short: 'SACRED', col: '#ffe27a', info: 'INVULNERABLE FOR 4 SECONDS' };
-function rollBuff() {
-  const ids = Object.keys(BUFFS).filter(k => k !== 'surge' || elemTier() > 0); // a surge is wasted without an element
+function rollBuff() { // a blessing that is already running is never rolled again, so a new shrine adds to the others instead of replacing one
+  const ids = Object.keys(BUFFS).filter(k => (k !== 'surge' || elemTier() > 0) && !buffs.some(b => b.id === k)); // a surge is wasted without an element
+  if (!ids.length) return Object.keys(BUFFS)[0];
   let r = Math.random() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
   for (const k of ids) { r -= BUFFS[k].w; if (r <= 0) return k; }
   return ids[0];
@@ -19,26 +20,34 @@ function useShrine(sh) {
   sh.used = 1; sh.t = 0; sh.shake = 8; SFX.magic(); flashA = Math.max(flashA, 0.18); shake = Math.max(shake, 4);
   let B;
   if (sh.sacred) { B = SACRED; for (const p of players()) if (!p.dead) p.inv = Math.max(p.inv, 240); }
-  else { const id = rollBuff(), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id]; buff = { id, t: B.t, max: B.t, ward: id === 'ward' ? hp : 0, wmax: id === 'ward' ? hp : 0 }; }
+  else {
+    const id = rollBuff(), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id];
+    if (buffs.length >= MAX_BUFFS) { let k = 0; buffs.forEach((b, i) => { if (b.t < buffs[k].t) k = i; }); floatText(hero.x, hero.y - 76, BUFFS[buffs[k].id].short + ' FADES', '#9a9aaa', 8); buffs.splice(k, 1); } // only when all places are taken: the blessing with the least time left makes room
+    buffs.push({ id, t: B.t, max: B.t, ward: id === 'ward' ? hp : 0, wmax: id === 'ward' ? hp : 0 });
+  }
   msg = B.name + '!'; msgT = 110; floatText(sh.x, sh.y - 58, B.info, B.col, 8);
   spawn(sh.x, sh.y, 26, 24, { c: [B.col, '#ffffff'], s0: 1, s1: 3.2, l0: 14, l1: 30, add: true, size: 2, up: 2.4, g: 0.05 });
 }
 function updateShrines() {
   for (const sh of shrines) { sh.t++; if (sh.shake > 0) sh.shake--; }
-  if (!buff) return;
-  buff.t--;
-  const broke = buff.id === 'ward' && buff.ward <= 0;
-  if (buff.t <= 0 || broke) { floatText(hero.x, hero.y - 64, broke ? 'WARD SHATTERED' : 'BLESSING ENDS', broke ? '#6ab8ff' : '#9a9aaa', 8); if (broke) SFX.shatter(); buff = null; }
+  for (const b of buffs) b.t--;
+  buffs = buffs.filter((b, i) => {
+    const broke = b.id === 'ward' && b.ward <= 0;
+    if (b.t > 0 && !broke) return true;
+    floatText(hero.x, hero.y - 64 - 10 * i, broke ? 'WARD SHATTERED' : BUFFS[b.id].short + ' ENDS', broke ? '#6ab8ff' : '#9a9aaa', 8); if (broke) SFX.shatter(); return false;
+  });
 }
 function buffFx() { // a few motes in the blessing's colour drift up around each hero
-  if (!buff || tickN % 5) return; const B = BUFFS[buff.id];
-  for (const p of players()) { if (p.dead) continue;
-    spawn(p.x + rnd(-10, 10), p.y, rnd(4, 40), buff.id === 'ward' ? 2 : 1, { c: [B.col, '#ffffff'], l0: 12, l1: 22, add: true, size: 1, up: 0.8, g: -0.01 }); }
+  if (!buffs.length || tickN % 5) return;
+  for (const b of buffs) { const B = BUFFS[b.id];
+    for (const p of players()) { if (p.dead) continue;
+      spawn(p.x + rnd(-10, 10), p.y, rnd(4, 40), b.id === 'ward' ? 2 : 1, { c: [B.col, '#ffffff'], l0: 12, l1: 22, add: true, size: 1, up: 0.8, g: -0.01 }); } }
 }
 function drawBuffHud() {
-  if (!buff || bonus) return; const B = BUFFS[buff.id], wd = buff.id === 'ward';
-  text(B.short, W / 2 - 3, 52, 8, B.col, 'right'); text(wd ? String(buff.ward) : Math.ceil(buff.t / 60) + 'S', W / 2 + 3, 52, 8, '#ffffff', 'left');
-  bar(W / 2 - 40, 55, 80, 3, wd ? buff.ward : buff.t, wd ? buff.wmax : buff.max, B.col, '#1c1c24');
+  if (!buffs.length || bonus) return; // the blessings sit side by side, centred under the top of the screen, 74 px each
+  buffs.forEach((b, i) => { const B = BUFFS[b.id], wd = b.id === 'ward', cx = W / 2 + (i - (buffs.length - 1) / 2) * 74;
+    text(B.short, cx - 33, 52, 8, B.col, 'left'); text(wd ? String(b.ward) : Math.ceil(b.t / 60) + 'S', cx + 33, 52, 8, '#ffffff', 'right');
+    bar(cx - 33, 55, 66, 3, wd ? b.ward : b.t, wd ? b.wmax : b.max, B.col, '#1c1c24'); });
 }
 function drawShrines() {
   for (const sh of shrines) {

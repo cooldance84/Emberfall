@@ -97,7 +97,7 @@ function beginStage(i) {
       k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(),
       type = r < (dailyIs('TREASURE SEASON') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x),
       y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
-  shrines = []; buff = null; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
+  shrines = []; buffs = []; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
   if (i >= 1 || cycle) {
     const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
       bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;

@@ -6,7 +6,7 @@ function beginBonus(next) {
   const S = STAGES[stageIdx]; TH = themeFor(S.theme, actOf(stageIdx)); weather = null; WAVES = []; STAGE_END = W;
   cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null;
   decals = []; impT = 1e9; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 0; flashA = 0; shake = 0; freeze = 0;
-  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1; shrines = []; buff = null;
+  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1; shrines = []; buffs = [];
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 150 : 120; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 60; p.hits.clear();

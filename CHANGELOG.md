@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.48.0] - 2026-11-19
+- **Shrine blessings stack.** Several shrines no longer overwrite each other: up to three blessings run side by side, each on its own clock (haste, fury, ward, wisdom, fortune, surge). A shrine never rolls a blessing that is already running, and striking the same shrine again (an accidental extra hit) changes nothing. Only when all three places are taken does the blessing with the least time left fade to make room.
+- The blessing bars sit side by side under the score; the ward still soaks blows while the other blessings keep running.
+- Tests: `shrines-stack.test.js`; `shrines.test.js` follows the new list.
+
 ## [1.47.0] - 2026-11-19
 - The daily challenge became the **season race**. A season is a calendar month (the first one started on 2026-11-19) with one rule for the whole month (Gold Rush, Glass Cannon, Iron Foes, Swift Foes, Treasure Season; the next season takes the next rule). The goal is the same: a fresh level-1 hero races to level 70 + 100 paragon, the shortest play time wins. XP is doubled in the race, and you may try as often as you like: an unfinished run waits on this device, a finished or lost one starts over, and your best time counts.
 - The board shows one line per player and hero, the best run of the season (A/D filters the hero); the status line counts all runs of the season. The old **Hall of Fame** is now the **eternal board**: every player's fastest finished race of all seasons, with its season, rule and build (H flips between the two boards). The title screen, the rules page, the result screens and the pace line say "season"; the rules page shows how many days are left.

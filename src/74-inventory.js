@@ -193,7 +193,7 @@ function newHero() {
 function resetGame() {
   newHero(); heroStats(true); floats = []; intro = null;
   enemies = []; items = []; parts = []; decals = []; cam = 0; lockX = Infinity; score = 0; waveIdx = 0; shake = 0; freeze = 0; endTimer = 0;
-  lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0; shots = []; story = null; bossRef = null; stageCard = 0; clearT = 0; shrines = []; buff = null;
+  lastEnemy = null; msg = ''; msgT = 0; mounts = []; dragon = null; impT = 240; flashA = 0; shots = []; story = null; bossRef = null; stageCard = 0; clearT = 0; shrines = []; buffs = [];
 }
 resetGame();
 
