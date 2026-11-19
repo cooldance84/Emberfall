@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.45.2';
+const VERSION = '1.46.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -2018,9 +2018,16 @@ function elemBuild0(e, el, amt, T, noSpread) {
   }
 }
 const elemActive = e => { const S = e.el, el = rpg.elem; return !!S && (el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.stun > 0 || S.bolt >= 30); };
-function elemRekindle(e, att, was) { // a skill cast on a foe still under your element from before doubles the effect (once per cast and foe)
-  const el = rpg.elem, T = elemTier(); if (!att.pn || !att.sk || !el || !T || !e.el || e.dead || e.el.bsk === att.sk) return;
-  const S = e.el; if (!(el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.bolt >= 1 || S.stun > 0)) return; S.bsk = att.sk;
+const REKINDLE_HITS = 4;  // normal hits on a foe that is still under your element, in a row, rekindle it like a skill does
+function elemRekindle(e, att, was) { // a skill cast on a foe still under your element from before doubles the effect (once per cast and foe); so does the 4th normal hit on it
+  const el = rpg.elem, T = elemTier(); if (!att.pn || !el || !T || !e.el || e.dead || e.el.bsk === att.sk && att.sk) return;
+  const S = e.el; if (!(el === 'fire' ? S.burn > 0 : el === 'frost' ? S.chill > 0 || S.frz > 0 : S.bolt >= 1 || S.stun > 0)) { if (!att.sk) S.nk = 0; return; }
+  if (att.sk) S.bsk = att.sk;
+  else { // a normal hit: counts only on a foe that was already afflicted before this hit, and fires on the 4th; lightning's overcharge also waits 3 s between two
+    if (!was) { S.nk = 0; return; }
+    S.nk = (S.nk | 0) + 1; if (S.nk < REKINDLE_HITS) return; S.nk = 0;
+    if (el === 'bolt') { if (S.nkc > 0) return; S.nkc = 180; }
+  }
   if (!was) return;
   if (el === 'fire' && !S.bdbl) { S.bdbl = 1; S.burn = Math.max(S.burn, 150 + 25 * T); floatText(e.x, e.y - e.h - 22, 'BURN x2', '#ffb43a', 9); SFX.burn(); spawn(e.x, e.y, e.h * 0.5, 12, { c: ['#fff1b0', '#ff7a2a', '#ff3a1a'], s0: 1, s1: 2.6, l0: 12, l1: 26, add: true, size: 2, up: 2 }); }
   else if (el === 'frost' && !S.fdbl) { // deeper cold: twice as long, a harder slow, a frozen foe stays frozen longer and can be frozen again sooner
@@ -2053,7 +2060,7 @@ function elemProc(e, att, dealt, isSkill) {
 function elemTick(e) { // once per frame per afflicted monster; true when it loses this frame (frozen, stunned, slowed)
   const S = e.el, T = elemTier() || 1, free = e.st === 'down' || e.st === 'hurt' || e.st === 'getup';
   for (const k of ELEMS) if (S[k] > 0) S[k] = Math.max(0, S[k] - 0.35); if (S.lq > 0) S.lq = Math.max(0, S.lq - 0.35);
-  if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--;
+  if (S.cd > 0) S.cd--; if (S.chill > 0) S.chill--; if (S.stun > 0) S.stun--; if (S.nkc > 0) S.nkc--;
   if (!(S.chill > 0 || S.frz > 0)) { S.fst = 0; if (S.fdbl) { S.fdbl = 0; S.bsk = null; } } if (S.bsk && rpg.elem === 'bolt' && !(S.bolt >= 1 || S.stun > 0)) S.bsk = null;
   if (S.frz > 0) { S.frz--; if (tickN % 12 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#e8faff', '#7ad8ff'], l0: 8, l1: 16, add: true, size: 1, g: 0 }); }
   if (S.stun > 0 && tickN % 5 === 0) spawn(e.x + rnd(-8, 8), e.y, rnd(4, e.h), 1, { c: ['#fff6a0'], l0: 4, l1: 8, add: true, size: 2, g: 0 });

@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.46.0] - 2026-11-19
+- Elemental rekindle works with normal hits too. The 4th normal hit on a foe that is still under your element (burning, chilled/frozen, shocked) from an earlier hit rekindles it exactly like a skill does: BURN x2, DEEP FREEZE, OVERCHARGE. The count restarts when the status ends, and lightning's overcharge from normal hits waits 3 seconds between two, so chains cannot run away. Skills rekindle at once, as before.
+- Tests: `rekindle-normal.test.js`.
+
 ## [1.45.2] - 2026-11-18
 - Fixed: the sound effects were silent. Two functions were both called `tone()`: the sound effect synth and the sprite colour shader; the later one replaced the first, so every blow, spell and pickup called the colour function and made no sound. The synth is now `sfxTone()`. The effects come back at their original volumes, and the music ducks a little less under them.
 - Tests: every sound effect must create a sound, and no two top-level functions may share a name.
