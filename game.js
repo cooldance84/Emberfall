@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.48.0';
+const VERSION = '1.49.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -304,7 +304,7 @@ function mSchedule(M, until) {
 function musicTick() {
   if (!ac || !mGain || !musicOn || muted || ac.state !== 'running') return;
   const boss = mode === 'play' && !!bossRef && !bossRef.dead;
-  const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'board' || mode === 'name' || mode === 'cloud';
+  const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'journey' || mode === 'board' || mode === 'name' || mode === 'cloud';
   const th = mode === 'gameover' ? -1 : menu ? MUS_TITLE : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
   mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7, ac.currentTime, 0.1);
   if (th < 0) return;
@@ -1047,7 +1047,22 @@ function itemSt(it, up) { // every forge level adds 10% to the weapon's stats an
 }
 const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
-const pickOf = a => a[Math.random() * a.length | 0];
+/* ---------- season seed: in the race the layout, the waves, the chests, shrines, markets and every drop come from a seed everyone shares ---------- */
+let rngS = null;
+function rngMake(str) { // xmur3 hash -> mulberry32
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+  h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); let a = (h ^ h >>> 16) >>> 0;
+  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const rq = () => rngS ? rngS() : Math.random();
+const rqr = (a, b) => a + rq() * (b - a);
+function seeded(key, fn) { // runs fn with a stream that depends only on the season and the key; outside the race (or with no key) it is plain Math.random
+  if (!daily || key == null) return fn();
+  const o = rngS; rngS = rngMake(seasonStr() + '|' + key);
+  try { return fn(); } finally { rngS = o; }
+}
+const pickOf = a => a[rq() * a.length | 0];
 const ELEMS = ['fire', 'frost', 'bolt'];
 /* ---------- elemental specialisation: fire, frost or lightning, unlocked at level 10, a new tier every 10 levels ---------- */
 const ELEM = {
@@ -1178,28 +1193,28 @@ function levelUp(lv0) {
 function rollRarity() { // stage 1: white only. 2: +magic 34%. 3: +rare 15%, +legendary 7%. 4+: +mythic 1%
   const t = tierOf();
   const lk = rpg.lvl || 1; // a little level luck: the higher you are, the better the top drops
-  if (t >= 3 && Math.random() < 0.01 + lk * 0.0003 + trialN() * 0.004) return 4; // each Ember Trial adds a little mythic luck
-  if (t >= 2 && Math.random() < 0.07 + lk * 0.0005) return 3;
-  if (t >= 2 && Math.random() < 0.16) return 2;
-  if (t >= 1 && Math.random() < 0.34) return 1;
+  if (t >= 3 && rq() < 0.01 + lk * 0.0003 + trialN() * 0.004) return 4; // each Ember Trial adds a little mythic luck
+  if (t >= 2 && rq() < 0.07 + lk * 0.0005) return 3;
+  if (t >= 2 && rq() < 0.16) return 2;
+  if (t >= 1 && rq() < 0.34) return 1;
   return 0;
 }
 const canWear = it => (it.lvl || 1) <= rpg.lvl;
 function genItem(rar, slot, ilvl) { // items carry an item level, and you must be at least that level to wear them
   slot = slot || pickOf(SLOTS);
-  const il = ilvl || (rpg.lvl >= MAX_LV ? MAX_LV : clamp(Math.max(areaLv(), rpg.lvl) + (Math.random() * 6 | 0) - 2 + (Math.random() < 0.06 ? 4 + (Math.random() * 4 | 0) : 0), 1, MAX_LV));
+  const il = ilvl || (rpg.lvl >= MAX_LV ? MAX_LV : clamp(Math.max(areaLv(), rpg.lvl) + (rq() * 6 | 0) - 2 + (rq() < 0.06 ? 4 + (rq() * 4 | 0) : 0), 1, MAX_LV));
     // drops land around your level (now and then a few levels above it); at the level cap every drop is full level 70
-  const setId = rar >= 3 && il >= SET_MIN_LV && Math.random() < SET_CH[rar] * (1 + 0.15 * trialN()) * setBoost ? pickOf(Object.keys(SETS)) : null;
+  const setId = rar >= 3 && il >= SET_MIN_LV && rq() < SET_CH[rar] * (1 + 0.15 * trialN()) * setBoost ? pickOf(Object.keys(SETS)) : null;
   if (setId) rar = 4; // a set piece is built from mythic stats...
   const R = RARITY[rar];
-  const Q = Math.random() ** 1.5, qm = setId ? 1.4 + 0.12 * Q : 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic; a set piece rolls above the best mythic
+  const Q = rq() ** 1.5, qm = setId ? 1.4 + 0.12 * Q : 0.8 + 0.6 * Q; // roll quality: mostly average, rarely perfect. A great legendary can still beat a poor mythic; a set piece rolls above the best mythic
   const lc = Math.pow(il / 70, 1.6); // item level counts more than before: same strength at level 70, clearly weaker below it
   const sc = k => (k === 'str' || k === 'cdmg') ? 1 + 3.15 * lc : 1 + 0.84 * lc;
   const first = pickOf(SLOT_PRIMARY[slot]);
-  const keys = [first, ...STAT_KEYS.filter(k => k !== first).sort(() => Math.random() - 0.5)];
-  const n = R.n[0] + (R.n[1] > R.n[0] ? (Math.random() * (R.n[1] - R.n[0] + 1) | 0) : 0);
+  const keys = [first, ...STAT_KEYS.filter(k => k !== first).sort(() => rq() - 0.5)];
+  const n = R.n[0] + (R.n[1] > R.n[0] ? (rq() * (R.n[1] - R.n[0] + 1) | 0) : 0);
   const st = {};
-  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rnd(S.lo, S.hi) * R.mult * qm * sc(k))); }
+  for (const k of keys.slice(0, n)) { const S = STATS[k]; st[k] = Math.max(1, Math.round(rqr(S.lo, S.hi) * R.mult * qm * sc(k))); }
   const WN = slot === 'weapon' && WNAMES[CLS];
   const base = WN ? WN.magic : MAGIC_BASE[slot];
   const name = setId ? SETS[setId].pre + ' ' + pickOf(base) : rar === 0 ? pickOf(WN ? WN.base : BASE_NAMES[slot]) : rar === 1 ? pickOf(MAGIC_PRE) + ' ' + pickOf(base) : rar === 2 ? pickOf(RARE_PRE) + ' ' + pickOf(base)
@@ -1208,13 +1223,13 @@ function genItem(rar, slot, ilvl) { // items carry an item level, and you must b
   if (setId) it.set = setId;
   if (rar >= 1) { // elemental affixes: power for your own element, resistance against what the monsters throw
     const ch = [0, 0.14, 0.3, 0.55, 0.9][rar], roll = b => Math.round((b + il * 0.14) * (0.8 + 0.4 * Q));
-    if (Math.random() < ch) it.ea = { k: pickOf(ELEMS), v: roll(6) };
-    if (Math.random() < ch) it.er = { k: pickOf(ELEMS), v: roll(8) };
+    if (rq() < ch) it.ea = { k: pickOf(ELEMS), v: roll(6) };
+    if (rq() < ch) it.er = { k: pickOf(ELEMS), v: roll(8) };
   }
   return it;
 }
 function dropGear(x, y, rar) {
-  const R = RARITY[rar];
+  const R = RARITY[rar]; if (rar >= 3) jr('legend');
   items.push({ x, y, t: 0, kind: 'gear', it: genItem(rar), z: 14, vz: 3.4 });
   const gi = items[items.length - 1].it; if (gi.set) { rar = 4; }
   spawn(x, y, 14, 10 + rar * 8, { c: [gi.set ? SET_GREEN : R.col, '#ffffff'], l0: 12, l1: 26, add: true, up: 2.4, g: 0.05 });
@@ -1225,27 +1240,29 @@ function dropGear(x, y, rar) {
 }
 function onKill(e) {
   if (e.kind === 'gob') { bonusKill(e); return; }
-  const boss = isBoss(e); elemDeath(e);
+  const boss = isBoss(e); if (e.el && (e.el.burn > 0 || e.el.frz > 0 || e.el.shk > 0 || e.el.chill > 0)) jr('elemkill'); elemDeath(e);
   if (boss) for (const o of enemies) { // the boss falls and every foe around it dies with it (xp and gold still count, no gear drops)
     if (o === e || o.dead || o.kind === 'imp' || isBoss(o)) continue;
     o.hp = 0; o.dead = true; o.fade = 0; o.noLoot = true; o.st = 'down'; o.vx = 0; o.vz = 0; o.z = 0; sparks(o.x, o.y, o.h * 0.6, false); addDecal(o); onKill(o); score += 100;
   }
-  killCombo = (tickN - killComboT <= KC_WINDOW ? killCombo : 0) + 1; killComboT = tickN;
+  killCombo = (tickN - killComboT <= KC_WINDOW ? killCombo : 0) + 1; killComboT = tickN; jr('kill'); if (e.elite) jr('elite'); if (boss) jr('boss'); if (killCombo >= 5) jr('combo', killCombo);
   if (killCombo % 10 === 0) floatText(e.x, e.y - e.h - 16, 'COMBO x' + killCombo + '  XP +' + Math.round(kcBonus() * 100) + '%', '#8fc8ff', 8);
   gainXP(Math.round((boss ? 250 : e.kind === 'b' || e.k.ai ? 30 : 10) * (1 + areaLv() * 0.12) * 0.42 * (dailyIs('IRON FOES') ? 1.5 : 1) * (1 + kcBonus() + (buffIs('wisdom') ? 0.5 : 0)))); // paced so level 70 arrives near the end of act VII
   { const gd = Math.round((boss ? 45 : e.kind === 'b' || e.k.ai ? 7 : 2) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (dailyIs('GOLD RUSH') ? 2 : dailyIs('IRON FOES') ? 1.5 : 1) * (buffIs('fortune') ? 1.6 : 1));
     rpg.gold += gd; if (boss || e.kind === 'b' || e.k.ai) floatText(e.x, e.y - e.h - 8, '+' + gd + 'G', '#ffd24a', 8); }
-  const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (Math.random() < 0.4 ? 1 : 0) : Math.random() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) * (buffIs('fortune') ? 1.5 : 1) ? 1 : 0;
-  const bigBoss = boss && rpg.lvl >= MAX_LV; // at max level a boss always drops at least a legendary first and raises the set chance of all its drops by half
-  setBoost = bigBoss ? 1.5 : 1;
-  for (let i = 0; i < n; i++) {
-    let r = rollRarity();
-    if (bigBoss && i === 0) r = Math.max(3, r);
-    else if (boss && tierOf() === 1) r = 1;                  // stage 2 boss: two magic drops
-    else if (boss && i === 0 && tierOf() >= 2) r = Math.max(1, r);
-    dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
-  }
-  setBoost = 1;
+  seeded(e.sid ? 'K' + stageIdx + '/' + cycle + '/' + e.sid : null, () => { // a wave foe always drops the same for every racer
+    const n = e.noLoot ? 0 : boss ? (tierOf() >= 2 ? 3 : 2) : e.elite ? 1 + (rq() < 0.4 ? 1 : 0) : rq() < (e.kind === 'b' || e.k.ai ? 0.42 : 0.15) * (buffIs('fortune') ? 1.5 : 1) ? 1 : 0;
+    const bigBoss = boss && rpg.lvl >= MAX_LV; // at max level a boss always drops at least a legendary first and raises the set chance of all its drops by half
+    setBoost = bigBoss ? 1.5 : 1;
+    for (let i = 0; i < n; i++) {
+      let r = rollRarity();
+      if (bigBoss && i === 0) r = Math.max(3, r);
+      else if (boss && tierOf() === 1) r = 1;                  // stage 2 boss: two magic drops
+      else if (boss && i === 0 && tierOf() >= 2) r = Math.max(1, r);
+      dropGear(e.x + rnd(-16, 16), clamp(e.y + rnd(-6, 6), Y_MIN, Y_MAX), r);
+    }
+    setBoost = 1;
+  });
 }
 const GOLD_MULT = [1, 3, 5, 8, 20];
 const itemValue = it => Math.round((8 + (it.lvl || 1) * 1.6) * GOLD_MULT[it.rar] * (1 + 0.25 * (it.up | 0)));
@@ -1307,14 +1324,52 @@ function dailyCmp(a, b) { // finished runs first (shortest play time wins), then
   if (a.w) return ((a.t | 0) - (b.t | 0)) || ((a.at || 0) - (b.at || 0)); // equal play time: whoever got there first
   return ((b.lv | 0) - (a.lv | 0)) || ((b.pg | 0) - (a.pg | 0)) || (((b.c | 0) * 100 + (b.st | 0)) - ((a.c | 0) * 100 + (a.st | 0))) || ((a.t | 0) - (b.t | 0));
 }
+/* ---- past seasons: the archive and the champion titles come from the finished runs of the eternal board ---- */
+const seasonNo = k => (+k.slice(0, 4) * 12 + +k.slice(5, 7)) - (+SEASON_FROM.slice(0, 4) * 12 + +SEASON_FROM.slice(5, 7)) + 1; // 2026-11 is season 1
+const monthKey = (y, m) => y + '-' + String(m).padStart(2, '0');
+function endedSeasons() { // newest first: every month since the first season that has finished
+  const cur = seasonStr(); let y = +cur.slice(0, 4), m = +cur.slice(5, 7) - 1; const out = [];
+  for (let n = 0; n < 240; n++) { if (m < 1) { m = 12; y--; } const k = monthKey(y, m); if (k < SEASON_FROM.slice(0, 7)) break; out.push(k); m--; }
+  return out;
+}
+let champMemo = { at: -1, s: '', v: {} };
+function champsOf() { // 'NAME|hero' -> [{ s: season number, p: place 1..3 }] for the seasons that are over
+  if (!hof.all) return {}; if (champMemo.at === hof.at && champMemo.s === seasonStr()) return champMemo.v;
+  const by = {}, v = {}; for (const r of hof.all) { const k = String(r.d).slice(0, 7); if (k >= seasonStr()) continue; (by[k] = by[k] || []).push(r); }
+  for (const k of Object.keys(by).sort()) bestPer(by[k]).slice(0, 3).forEach((r, i) => { const id = r.n + '|' + r.h; (v[id] = v[id] || []).push({ s: seasonNo(k), p: i + 1 }); });
+  champMemo = { at: hof.at, s: seasonStr(), v }; return v;
+}
+const PLACE_COL = ['', '#ffe27a', '#cfd8e6', '#d99a5a'], PLACE_TXT = ['', 'CHAMPION', '2ND PLACE', '3RD PLACE'];
+/* ---- split times: the milestones of a race are timed, kept with the run and posted with the result ---- */
+const SPLIT_KEYS = ['L10', 'L20', 'L30', 'L40', 'L50', 'L60', 'L70', 'P50'];
+const splitName = k => (k[0] === 'L' ? 'LV ' : 'PG ') + k.slice(1);
+const splitReached = k => k[0] === 'L' ? rpg.lvl >= +k.slice(1) : rpg.lvl >= MAX_LV && rpg.pg >= +k.slice(1);
+const fmtDelta = d => { const t = Math.floor(Math.abs(d) / 60); return (d > 0 ? '+' : '-') + (t >= 3600 ? Math.floor(t / 3600) + ':' : '') + String(Math.floor(t / 60) % 60).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+function splitsFrom(x) { // a stored string "L10:1234,L20:..." or an object; anything unknown or out of range is dropped
+  const o = {}; if (typeof x === 'string') { x = x.length > 200 ? {} : Object.fromEntries(x.split(',').map(q => q.split(':'))); }
+  if (x && typeof x === 'object') for (const k of SPLIT_KEYS) { const v = +x[k]; if (v > 0 && v < 1e9) o[k] = Math.floor(v); }
+  return o;
+}
+const splitStr = sp => SPLIT_KEYS.filter(k => sp && sp[k]).map(k => k + ':' + sp[k]).join(',');
+function splitLeader() { // the best finished run online that has splits: the pace to hold
+  const rows = onlineOn() && onlineBoard.day === seasonStr() && onlineBoard.rows; return rows ? rows.find(r => r.w && r.sp && Object.keys(r.sp).length) || null : null;
+}
+function splitTick() { // once in a while during a race: stamp each milestone the moment it is reached
+  if (!daily || daily.done) return; const sp = daily.sp || (daily.sp = {}), L = splitLeader();
+  for (const k of SPLIT_KEYS) if (!sp[k] && splitReached(k)) {
+    sp[k] = daily.t; if (k === 'L50') jr('race50'); const d = L && L.sp[k] ? daily.t - L.sp[k] : null; daily.last = { k, t: daily.t, d, n: L ? L.n : '' };
+    floatText(hero.x, hero.y - 90, splitName(k) + '  ' + fmtTime(daily.t) + (d == null ? '' : '  ' + fmtDelta(d)), d == null ? '#ffd24a' : d > 0 ? '#ff8a6a' : '#9ad08a', 8); SFX.pick();
+  }
+}
 function saveDailyRun(stage, over) { // the race is kept on this device for the day: it resumes from the start of the last stage
   if (!daily || DEV) return;
   try { localStorage.setItem(dailyRunKey(CLS), seal({ v: 3, d: daily.date, stage, cycle, t: daily.t | 0, over: !!over, done: !!daily.done, lvl: rpg.lvl, xp: rpg.xp,
-    pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0, bag: rpg.bag, eq: rpg.eq, elem: rpg.elem, et: rpg.et, eg: rpg.eg, coins: rpg.coins, gold: rpg.gold, score }));
+    pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0, sp: daily.sp || {}, bag: rpg.bag, eq: rpg.eq, elem: rpg.elem, et: rpg.et, eg: rpg.eg, coins: rpg.coins, gold: rpg.gold, score }));
     } catch (e) { }
 }
 function loadDailyRun(c) { try { const k = dailyRunKey(c), o = unseal(localStorage.getItem(k), k); return o && o.d === seasonStr() && o.stage >= 0 && o.stage < STAGES.length ? o : null; } catch (e) { return null; } }
 function applyDailyRun(o) {
+  if (daily) daily.sp = splitsFrom(o.sp);
   rpg.lvl = clamp(o.lvl | 0, 1, MAX_LV); rpg.xp = Math.max(0, +o.xp || 0); rpg.pg = clamp(o.pg | 0, 0, PG_MAX); rpg.pxp = Math.max(0, +o.pxp || 0);
   rpg.bag = (Array.isArray(o.bag) ? o.bag : []).filter(validItem).slice(0, BAG_MAX); rpg.eq = {}; for (const sl of SLOTS) if (o.eq && validItem(o.eq[sl]) && o.eq[sl].slot === sl) rpg.eq[sl] = o.eq[sl];
   rpg.elem = ELEMS.includes(o.elem) ? o.elem : null; rpg.et = clamp(o.et | 0, 0, 10); rpg.eg = Math.max(0, o.eg | 0); rpg.coins = clamp(o.coins | 0, 0, MAX_COINS); rpg.gold = Math.max(0, o.gold | 0); score = Math.max(0, o.score | 0); cycle = clamp(o.cycle | 0, 0, TRIAL_MAX);
@@ -1332,33 +1387,37 @@ const cleanBuild = b => {
   return { el: ELEMS.includes(b.el) ? b.el : '', et: clamp(b.et | 0, 0, 10), eq: b.eq.slice(0, 6).filter(a => Array.isArray(a) && SLOTS.includes(a[0])).map(a => [a[0],
     String(a[1] || '').toUpperCase().slice(0, 32), clamp(a[2] | 0, 0, RARITY.length - 1), clamp(a[3] | 0, 0, MAX_UP), SETS[a[4]] ? a[4] : '']) };
 };
-const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0, d: String(r.day || ''), b: cleanBuild(r.build) });
-let buildCol = null; // does the table have the build column yet? null = not known, the game tries it and falls back to rows without it
+const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0, d: String(r.day || ''), b: cleanBuild(r.build), sp: splitsFrom(r.splits) });
+let buildCol = null, splitCol = null; // does the table have the build / splits column yet? null = not known, the game tries it and falls back to rows without it
+const extraCols = () => (buildCol === false ? '' : ',build') + (splitCol === false ? '' : ',splits');
+const colFail = () => { if (splitCol !== false) { splitCol = false; return true; } if (buildCol !== false) { buildCol = false; return true; } return false; }; // a 400: drop the newest column first, then the older one
+const colOk = () => { if (buildCol === null) buildCol = true; if (splitCol === null) splitCol = true; };
 const COLS = 'name,hero,t,lv,pg,stage,cycle,finished,created_at';
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
   if (!force && onlineBoard.day === seasonStr() && Date.now() - onlineBoard.at < 30000) return;
   const day = seasonStr(); onlineBoard.busy = true;
-  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
-    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
+  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + extraCols() + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { colOk(); onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
+    .catch(st => { if (st === 400 && colFail()) { onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
 }
-let hof = { rows: null, at: 0, err: false, busy: false };
+let hof = { rows: null, all: null, at: 0, err: false, busy: false };
 function loadHof(force) { // the eternal board: every player's fastest finished run of all seasons
   if (!onlineOn() || hof.busy) return;
   if (!force && hof.rows && Date.now() - hof.at < 60000) return;
   hof.busy = true;
-  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; hof = { rows: bestPer(a.map(fromRow)).sort(dailyCmp), at: Date.now(), err: false, busy: false }; })
-    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, at: Date.now(), err: true, busy: false }; });
+  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + extraCols() + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { colOk(); const all = a.map(fromRow).sort(dailyCmp); hof = { rows: bestPer(all).sort(dailyCmp), all, at: Date.now(), err: false, busy: false }; }) // all = every finished run, kept for the archive and the champion titles
+    .catch(st => { if (st === 400 && colFail()) { hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, all: hof.all, at: Date.now(), err: true, busy: false }; });
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
   if (!onlineOn()) return; onlineSent = { n: e.n, t: e.t | 0, h: e.h }; onlineSendErr = false;
   const row = { day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w };
-  const post = withBuild => sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }),
-    body: JSON.stringify(withBuild ? Object.assign({ build: e.b || buildOf() },
-    row) : row) }).then(r => { if (!r.ok) throw r.status; if (withBuild) buildCol = true; loadOnlineBoard(true); hof.at = 0; });
-  post(buildCol !== false).catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; return post(false); } throw st; }).catch(() => { onlineSendErr = true; }); // a table without the build column still takes the result
+  let sent = null;
+  const post = () => { const body = Object.assign({}, row); sent = { b: buildCol !== false, s: splitCol !== false && !!e.sp }; if (sent.b) body.build = e.b || buildOf(); if (sent.s) body.splits = e.sp;
+    return sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(body) }).then(r => { if (!r.ok) throw r.status; colOk(); loadOnlineBoard(true); hof.at = 0; }); };
+  const go = () => post().catch(st => { if (st === 400 && sent && (sent.s || sent.b)) { if (sent.s) splitCol = false; else buildCol = false; return go(); } throw st; }); // a 400: leave out the newest column that was sent, then the older one
+  go().catch(() => { onlineSendErr = true; }); // a table without the newer columns still takes the result
 }
 const modOfDay = ds => { const q = String(ds).split('-').map(Number); return ((q[0] || 0) * 12 + (q[1] || 1) - 1) % DAILY_MODS.length; }; // the rule of the season a day belongs to
 const bestPer = rows => { const seen = {}, out = []; for (const r of rows.slice().sort(dailyCmp)) { const k = r.n + '|' + r.h; if (seen[k]) continue; seen[k] = 1; out.push(r); } return out; }; // one line per player and hero: the best run
@@ -1545,13 +1604,13 @@ function endRun(won) {
   saveGame(); if (daily) saveDailyRun(stageIdx, true);
   const b = loadBoard();
   pendingRun = { s: score, st: stageIdx + 1, c: cycle + 1, lv: rpg.lvl, w: !!won, h: CLS };
-  if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); pendingRun.b = buildOf(); }
+  if (daily) { pendingRun.t = daily.t | 0; pendingRun.pg = rpg.pg | 0; pendingRun.at = Date.now(); pendingRun.b = buildOf(); pendingRun.sp = splitStr(daily.sp); }
   if (daily ? (onlineOn() || b.length < 10 || dailyCmp(pendingRun, b[b.length - 1]) < 0) : (score > 0 && (b.length < 10 || score > b[b.length - 1].s))) { nameBuf = rpg.ini.split('').map(c => Math.max(0, LETTERS.indexOf(c))); namePos = 0; mode = 'name'; }
   else { boardHi = -1; mode = 'board'; }
   endTimer = 0;
 }
 function startDaily() {
-  daily = { date: seasonStr(), mod: dayMod(), t: 0, done: false, crown: false }; coop = false; cycle = 0;
+  daily = { date: seasonStr(), mod: dayMod(), t: 0, done: false, crown: false, sp: {}, last: null }; coop = false; cycle = 0;
   try { for (let i = localStorage.length - 1; i >= 0; i--) { const k = localStorage.key(i); if (k && k.indexOf('emberfall_daily_run_') === 0 && k.indexOf('emberfall_daily_run_' + daily.date + '_') !== 0) localStorage.removeItem(k); } } catch (e) { } // runs of earlier days are dropped
   rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; PS = null; resetGame(); stageIdx = 0; TH = THEMES[0]; rpg.coins = 1; rpg.gold = 0; shop = null;
   const o = loadDailyRun(CLS), live = !!o && !o.over && !o.done; if (live) { applyDailyRun(o); daily.t = Math.max(0, o.t | 0); }
@@ -1559,7 +1618,7 @@ function startDaily() {
   beginStage(live ? o.stage : 0); msg = live ? 'SEASON RACE RESUMED  -  ' + fmtTime(daily.t) : 'SEASON: ' + DAILY_MODS[daily.mod].name + '  -  ' + DAILY_MODS[daily.mod].info; msgT = 280;
 }
 function dailyWin() { // level 70 and 100 paragon: the race is won
-  daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true);
+  daily.done = true; score += 5000; daily.crown = grantCrown(CLS); saveDailyRun(stageIdx, true); jrRaceWon();
   mode = 'victory'; endTimer = 0; TH = THEMES[4];
 }
 function toTitle() { boardView = 0; if (daily) { daily = null; PS = null; loadGame(); heroStats(true); } coop = false; cycle = 0; resetGame(); TH = THEMES[0]; weather = 'ash'; mode = 'title'; }
@@ -1573,28 +1632,33 @@ function updateName() {
   }
 }
 const HERO_FILT = ['', 'nolan', 'panni', 'luca'];
-let boardSel = -1, boardHero = 0, boardDetail = null, boardBoxes = []; // the selected row, the hero filter (0 = all), the open build card, the tap targets of the screen
-const resetBoardUi = () => { boardSel = -1; boardHero = 0; boardDetail = null; };
+let boardPage = 0, boardSel = -1, boardHero = 0, boardDetail = null, boardBoxes = []; // the selected row, the hero filter (0 = all), the open build card, the tap targets of the screen
+const resetBoardUi = () => { boardSel = -1; boardHero = 0; boardDetail = null; boardPage = 0; archIdx = 0; };
 const openBoard = v => { boardView = v; boardHi = -1; resetBoardUi(); mode = 'board'; };
-const viewOf = () => boardView === 2 ? 2 : daily ? 1 : boardView; // 0 all time (this device), 1 this season's board, 2 the eternal board
+let archIdx = 0; // which past season the archive shows (0 = the latest one that is over)
+const viewOf = () => boardView >= 2 ? boardView : daily ? 1 : boardView; // 0 all time (this device), 1 this season's board, 2 the eternal board, 3 the past seasons
+const archKey = () => endedSeasons()[archIdx] || '';
+const archRows = () => hof.all ? bestPer(hof.all.filter(r => String(r.d).slice(0, 7) === archKey())).slice(0, 10) : [];
+const nextView = v => v === 1 ? 2 : v === 2 ? 3 : 1;
 const heroOk = e => !boardHero || e.h === HERO_FILT[boardHero];
 const boardRows = () => bestPer((onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr()) ? onlineBoard.rows : loadBoard(1)).filter(heroOk).slice(0, 10); // online when it is loaded, this device otherwise; one line per player and hero, the hero filter applies to both
 const hofRows = () => (hof.rows || []).filter(heroOk).slice(0, 10);
-function openBuild() { const v = viewOf(), e = (v === 2 ? hofRows() : boardRows())[boardSel]; if (e) boardDetail = e; }
+function openBuild() { const v = viewOf(), e = (v === 3 ? archRows() : v === 2 ? hofRows() : boardRows())[boardSel]; if (e) { boardDetail = e; boardPage = 0; } }
 function updateBoard() {
-  const v = viewOf(); if (v && onlineOn()) { if (v === 2) loadHof(); else loadOnlineBoard(); }
-  if (boardDetail) { if (isHit('start') || isHit('back')) boardDetail = null; return; }
-  const list = v === 2 ? hofRows() : v === 1 ? boardRows() : [];
+  const v = viewOf(); if (v && onlineOn()) { loadHof(); if (v < 2) loadOnlineBoard(); } // the eternal data also feeds the titles and the archive
+  if (boardDetail) { if (isHit('start') || isHit('back')) boardDetail = null; else if (isHit('left') || isHit('right')) boardPage ^= 1; return; }
+  const list = v === 3 ? archRows() : v === 2 ? hofRows() : v === 1 ? boardRows() : [];
   if (list.length) { if (isHit('down')) boardSel = Math.min(list.length - 1, boardSel + 1); else if (isHit('up')) boardSel = boardSel <= 0 ? 0 : boardSel - 1; }
-  if (v && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
-  if (v && pressed.KeyH) { boardView = v === 2 ? 1 : 2; boardSel = -1; return; } // H flips between this season's board and the eternal board
+  if (v === 3 && (isHit('left') || isHit('right'))) { const n = endedSeasons().length; if (n) archIdx = (archIdx + (isHit('left') ? 1 : n - 1)) % n; boardSel = -1; } // A/D: an older or a newer season
+  else if (v && (isHit('left') || isHit('right'))) { boardHero = (boardHero + (isHit('right') ? 1 : 3)) % 4; boardSel = -1; }
+  if (v && pressed.KeyH) { boardView = nextView(v); boardSel = -1; return; } // H goes round: this season's board, the eternal board, the past seasons
   if (isHit('start')) { if (v && boardSel >= 0 && boardSel < list.length) openBuild(); else toTitle(); }
   else if (isHit('back')) toTitle();
 }
 function boardClick(x, y) {
   if (boardDetail) { boardDetail = null; return; }
   const b = boardBoxes.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h); if (!b) return;
-  if (b.k === 'hero') { boardHero = (boardHero + 1) % 4; boardSel = -1; } else if (b.k === 'view') { boardView = viewOf() === 2 ? 1 : 2; boardSel = -1; } else if (b.k === 'row') { boardSel = b.i; openBuild(); }
+  if (b.k === 'hero') { boardHero = (boardHero + 1) % 4; boardSel = -1; } else if (b.k === 'view') { boardView = nextView(viewOf()); boardSel = -1; } else if (b.k === 'arch') { const n = endedSeasons().length; if (n) archIdx = (archIdx + 1) % n; boardSel = -1; } else if (b.k === 'row') { boardSel = b.i; openBuild(); }
 }
 function makeLeather() {
   leatherCv = document.createElement('canvas'); leatherCv.width = 360; leatherCv.height = 242;
@@ -1626,16 +1690,19 @@ function drawBoardScreen() {
     return;
   }
   const bv = viewOf(); boardBoxes = [];
-  text(bv === 2 ? 'ETERNAL BOARD' : bv ? 'SEASON BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
-  text(bv === 2 ? 'EVERY PLAYER\'S FASTEST RACE, ALL SEASONS' : bv ? seasonStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') : 'HALL OF EMBER WARDENS', W / 2, 58, 8, '#c9a86a', 'center');
+  text(bv === 3 ? 'PAST SEASONS' : bv === 2 ? 'ETERNAL BOARD' : bv ? 'SEASON BOARD' : 'LEATHERBOARD', W / 2, 44, 18, C, 'center');
+  const sub = bv === 3 ? (archKey() ? 'SEASON ' + seasonNo(archKey()) + '   ' + archKey() + '   ' + DAILY_MODS[modOfDay(archKey())].name : 'NO SEASON IS OVER YET')
+    : bv === 2 ? 'EVERY PLAYER\'S FASTEST RACE, ALL SEASONS'
+    : bv ? seasonStr() + '   ' + DAILY_MODS[daily ? daily.mod : dayMod()].name + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') : 'HALL OF EMBER WARDENS';
+  text(sub, W / 2, 58, 8, '#c9a86a', 'center');
   const chip = (label, k, right) => { g.font = 'bold 7px "Courier New",monospace'; const w = Math.ceil(g.measureText(tr(label)).width) + 8, x = right ? 408 - w : 74;
     g.fillStyle = 'rgba(30,14,2,0.7)'; g.fillRect(x, 32, w, 12); g.strokeStyle = '#8a6a3a'; g.strokeRect(x + 0.5, 32.5, w - 1, 11);
     text(label, x + w / 2, 41, 7, '#e6cfa0', 'center'); boardBoxes.push({ x, y: 32, w, h: 12, k }); };
-  if (bv) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
-  if (bv) chip(bv === 2 ? 'H: SEASON BOARD' : 'H: ETERNAL BOARD', 'view', true);
+  if (bv === 3) chip('A/D: OLDER / NEWER', 'arch', false); else if (bv) chip('HERO: ' + (boardHero ? CLASSES[HERO_FILT[boardHero]].name : 'ALL'), 'hero', false);
+  if (bv) chip(bv === 3 ? 'H: SEASON BOARD' : bv === 2 ? 'H: PAST SEASONS' : 'H: ETERNAL BOARD', 'view', true);
   const hdr = '#b8935a', heroDot = (h, x, y) => { if (CLASSES[h]) { g.fillStyle = CLASSES[h].col; g.fillRect(x, y - 6, 5, 6); } };
   const elemDot = (e, x, y) => { if (e.b && e.b.el) { g.fillStyle = ELEM[e.b.el].col; g.beginPath(); g.arc(x, y - 3, 2.5, 0, 7); g.fill(); } };
-  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr(), b = bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0);
+  const onl = bv === 1 && onlineOn() && onlineBoard.rows && onlineBoard.day === seasonStr(), b = bv === 3 ? archRows() : bv === 2 ? hofRows() : bv === 1 ? boardRows() : loadBoard(0), ch = bv === 2 ? champsOf() : {};
   if (bv === 2) { text('SEASON', 78, 76, 7, hdr); text('NAME', 140, 76, 7, hdr); text('HERO', 168, 76, 7, hdr); text('TIME', 262, 76, 7, hdr, 'right'); text('RULE', 272, 76, 7, hdr); }
   else { text('#', 80, 76, 7, hdr); text('NAME', 104, 76, 7, hdr); text(bv ? 'TIME' : 'SCORE', 252, 76, 7, hdr, 'right'); text('STAGE', 266, 76, 7, hdr); text('LV', 322, 76, 7, hdr); if (bv) text('PG', 356, 76, 7, hdr); }
   for (let i = 0; i < 10; i++) {
@@ -1647,7 +1714,8 @@ function drawBoardScreen() {
     if (e && bv) boardBoxes.push({ x: 72, y: y - 10, w: 336, h: 13, k: 'row', i });
     if (bv === 2) {
       if (e) { text(e.d.slice(0, 7), 78, y, 9, col); text(e.n, 140, y, 9, col); text(CLASSES[e.h] ? CLASSES[e.h].name : '', 168, y, 8, CLASSES[e.h] ? CLASSES[e.h].col : col);
-        text(fmtTime(e.t), 262, y, 9, col, 'right'); text(DAILY_MODS[modOfDay(e.d)].name, 272, y, 7, '#b8935a'); elemDot(e, 392, y); } else text('---', 140, y, 9, col);
+        text(fmtTime(e.t), 262, y, 9, col, 'right'); text(DAILY_MODS[modOfDay(e.d)].name, 272, y, 7, '#b8935a'); elemDot(e, 400, y);
+        (ch[e.n + '|' + e.h] || []).slice(0, 3).forEach((c, k) => text('S' + c.s, 350 + k * 15, y, 7, PLACE_COL[c.p])); } // the seasons this player won a place in: gold, silver, bronze else text('---', 140, y, 9, col);
       continue;
     }
     text(String(i + 1).padStart(2, ' '), 78, y, 9, col);
@@ -1656,7 +1724,7 @@ function drawBoardScreen() {
       if (e.w) text('*', 396, y, 9, '#ffd24a', 'center'); if (bv) elemDot(e, 384, y); }
     else text('---', 104, y, 9, col);
   }
-  text(bv === 1 ? '* = REACHED LV 70 + 100 PARAGON' : bv ? '' : '* = WORLD SAVED', 78, 240, 7, hdr);
+  text(bv === 1 || bv === 3 ? '* = REACHED LV 70 + 100 PARAGON' : bv === 2 ? 'S1 S2.. = PLACE IN A PAST SEASON: GOLD, SILVER, BRONZE' : '* = WORLD SAVED', 78, 240, 7, hdr);
   if (!bv) text('ON THIS DEVICE', W / 2, 67, 6, '#c98a6a', 'center');
   else if (bv === 1) {
     const rows = onl ? onlineBoard.rows : null, cnt = rows ? '  -  ' + (rows.length >= 1000 ? '1000+' : rows.length) + ' RUNS, ' + rows.filter(r => r.w).length + ' FINISHED' : '';
@@ -1666,8 +1734,9 @@ function drawBoardScreen() {
     const st = !onlineOn() ? 'ONLINE ONLY' : hof.rows ? (hof.rows.length ? 'ONLINE BOARD' : 'NO WINNER YET') : hof.err ? 'OFFLINE' : 'LOADING THE ETERNAL BOARD...';
     text(st, W / 2, 67, 6, hof.rows && hof.rows.length ? '#9ad08a' : '#e0a070', 'center');
   }
-  if (bv) text(bv === 1 ? 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: ETERNAL BOARD' : 'W/S: SELECT   ENTER: BUILD   A/D: HERO   H: SEASON BOARD', W / 2, 252, 6, '#c9a86a', 'center');
+  if (bv) text(bv === 3 ? 'W/S: SELECT   ENTER: BUILD + SPLITS   A/D: SEASON   H: SEASON BOARD' : bv === 1 ? 'W/S: SELECT   ENTER: BUILD + SPLITS   A/D: HERO   H: ETERNAL BOARD' : 'W/S: SELECT   ENTER: BUILD + SPLITS   A/D: HERO   H: PAST SEASONS', W / 2, 252, 6, '#c9a86a', 'center');
   if ((tickN >> 5) & 1) text(bv && boardSel >= 0 ? 'ENTER: BUILD' : 'PRESS ENTER', W / 2 + 40, 240, 9, '#fff', 'center');
+  if (!boardDetail && bv < 2) drawShareHint(46, 408);
   if (boardDetail) drawBuild(boardDetail);
 }
 function drawBuild(e) { // the card of a run: hero, time, element and the six pieces
@@ -1677,16 +1746,24 @@ function drawBuild(e) { // the card of a run: hero, time, element and the six pi
   text(e.n + (hc ? '  ' + hc.name : ''), W / 2, 50, 12, hc ? hc.col : '#fff1d0', 'center');
   text((e.w ? 'TIME ' + fmtTime(e.t) : 'NOT FINISHED') + '   LV ' + e.lv + '  PG ' + (e.pg | 0), W / 2, 64, 8, '#e6cfa0', 'center');
   if (e.d) text(e.d + '   ' + DAILY_MODS[modOfDay(e.d)].name, W / 2, 75, 7, '#b8935a', 'center');
+  const cs = champsOf()[e.n + '|' + e.h]; if (cs && cs.length) text(cs.slice(0, 3).map(c => 'S' + c.s + ' ' + PLACE_TXT[c.p]).join('   '), W / 2, 83, 6, PLACE_COL[cs[0].p], 'center'); // the titles this player has won
+  if (boardPage === 1) { // the second page: the split times, against the fastest finished run that has them
+    const sp = e.sp || {}, rows = viewOf() === 2 ? hof.rows : onlineBoard.rows, L = rows && rows.find(r => r.w && r.sp && Object.keys(r.sp).length && r !== e), has = SPLIT_KEYS.some(k => sp[k]);
+    text('SPLIT TIMES' + (L && L.n !== e.n ? '   VS ' + L.n : ''), W / 2, 97, 9, '#ffd24a', 'center');
+    if (!has) text('NO SPLITS SAVED FOR THIS RUN', W / 2, 140, 8, '#8a6a3a', 'center');
+    else SPLIT_KEYS.forEach((k, i) => { const y = 116 + i * 13, v = sp[k], d = v && L && L.sp[k] ? v - L.sp[k] : null;
+      text(splitName(k), 140, y, 8, '#b8935a'); text(v ? fmtTime(v) : '-', 262, y, 8, v ? '#fff1d0' : '#6a4a2a', 'right'); if (d != null) text(fmtDelta(d), 350, y, 8, d > 0 ? '#ff8a6a' : '#9ad08a', 'right'); });
+  } else
   if (!bd) { text('NO BUILD SAVED FOR THIS RUN', W / 2, 140, 8, '#8a6a3a', 'center'); }
   else {
-    text(bd.el ? ELEM[bd.el].name + '  TIER ' + ROMAN[bd.et] : 'NO ELEMENT', W / 2, 92, 9, bd.el ? ELEM[bd.el].col : '#8a7a9a', 'center');
+    text(bd.el ? ELEM[bd.el].name + '  TIER ' + ROMAN[bd.et] : 'NO ELEMENT', W / 2, 97, 9, bd.el ? ELEM[bd.el].col : '#8a7a9a', 'center');
     EQ_ORDER.forEach((sl, i) => {
       const y = 112 + i * 18, it = bd.eq.find(q => q[0] === sl);
       text(SLOT_NAME[sl], 108, y, 7, '#b8935a');
       if (it) { text(it[1], 156, y, 9, RARITY[it[2]].col); text('+' + it[3], 372, y, 9, '#ffd24a', 'right'); if (it[4]) text(SETS[it[4]].name || it[4], 156, y + 8, 6, '#7aff9a'); } else text('-', 156, y, 9, '#6a4a2a');
     });
   }
-  text('ENTER / ESC: CLOSE', W / 2, 226, 7, '#8a6a3a', 'center');
+  text('A/D: ' + (boardPage ? 'BUILD' : 'SPLITS') + '   ENTER / ESC: CLOSE', W / 2, 226, 7, '#8a6a3a', 'center');
 }
 
 /* ---- inventory (Diablo-style paper doll + backpack) ---- */
@@ -1888,6 +1965,133 @@ function resetGame() {
 }
 resetGame();
 
+/* ---------- season journey: nine goals every season, paid in gold and coins, and a few cosmetic trails to unlock ---------- */
+const JR_KEY = 'emberfall_journey_v1';
+const JR_POOL = [
+  { id: 'kill', ev: 'kill', n: 300, t: 'DEFEAT 300 FOES' },
+  { id: 'elite', ev: 'elite', n: 15, t: 'DEFEAT 15 ELITE FOES' },
+  { id: 'boss', ev: 'boss', n: 6, t: 'FELL 6 BOSSES' },
+  { id: 'stage', ev: 'stage', n: 10, t: 'CLEAR 10 STAGES' },
+  { id: 'chest', ev: 'chest', n: 12, t: 'OPEN 12 TREASURE CHESTS' },
+  { id: 'gold', ev: 'goldchest', n: 2, t: 'OPEN 2 GOLDEN CHESTS' },
+  { id: 'shrine', ev: 'shrine', n: 8, t: 'STRIKE 8 SHRINES' },
+  { id: 'buffs', ev: 'buffs', n: 3, max: 1, t: 'HAVE 3 BLESSINGS AT ONCE' },
+  { id: 'combo', ev: 'combo', n: 25, max: 1, t: 'REACH A KILL COMBO OF 25' },
+  { id: 'elem', ev: 'elemkill', n: 100, t: 'DEFEAT 100 FOES UNDER AN ELEMENT' },
+  { id: 'legend', ev: 'legend', n: 3, t: 'FIND 3 LEGENDARY OR BETTER ITEMS' },
+  { id: 'forge', ev: 'forge', n: 10, t: 'FORGE SUCCESSFULLY 10 TIMES' },
+  { id: 'wrath', ev: 'wrath', n: 10, t: 'CAST DRAGON\'S WRATH 10 TIMES' },
+  { id: 'ride', ev: 'ride', n: 5, t: 'MOUNT A WYRMLING 5 TIMES' },
+  { id: 'race', ev: 'race', n: 1, t: 'FINISH A SEASON RACE' },
+  { id: 'race50', ev: 'race50', n: 1, t: 'REACH LV 50 IN A SEASON RACE' }
+];
+const COSM = { // trails of motes around the heroes: only a look, no power
+  ember: { name: 'EMBER MOTES', col: '#ff9a4a', c2: '#ffd070' }, frost: { name: 'FROST MOTES', col: '#9adcff', c2: '#e8faff' },
+  volt: { name: 'VOLT SPARKS', col: '#fff6a0', c2: '#6ab8ff' }, gild: { name: 'GILDED TRAIL', col: '#ffd24a', c2: '#ffffff' }
+};
+const JR_TIERS = [{ at: 3, cos: 'ember', coins: 0 }, { at: 6, cos: 'frost', coins: 1 }, { at: 9, cos: 'volt', coins: 2 }]; // 3, 6 and 9 goals of the season
+const jrGoals = () => { const s = seasonNo(seasonStr()); return JR_POOL.map((q, i) => [((i + 3) * 37 + s * 53) % 101, q]).sort((a, b) => a[0] - b[0]).slice(0, 9).map(a => a[1]); }; // nine goals, another mix every season
+let jrS = null;
+function jrLoad() {
+  const now = seasonStr(); if (jrS && jrS.s === now) return jrS;
+  let o = null; try { o = unseal(localStorage.getItem(JR_KEY), JR_KEY); } catch (e) { } if (!o || typeof o !== 'object') o = {};
+  const same = o.s === now, ids = JR_POOL.map(q => q.id), cos = (Array.isArray(o.cos) ? o.cos : []).filter(k => COSM[k]), n = {};
+  if (same && o.n && typeof o.n === 'object') for (const id of ids) n[id] = clamp(+o.n[id] | 0, 0, 1e6);
+  jrS = { s: now, n, done: same && Array.isArray(o.done) ? o.done.filter(id => ids.includes(id)) : [], tier: same ? clamp(o.tier | 0, 0, 3) : 0, cos, pick: cos.includes(o.pick) ? o.pick : '', pg: clamp(o.pg | 0, 0, 999), pc: clamp(o.pc | 0, 0, 99) };
+  return jrS;
+}
+function jrSave() { if (DEV || !jrS) return; try { localStorage.setItem(JR_KEY, seal({ s: jrS.s, n: jrS.n, done: jrS.done, tier: jrS.tier, cos: jrS.cos, pick: jrS.pick, pg: jrS.pg, pc: jrS.pc })); } catch (e) { } }
+function jrUnlock(S, k) { if (S.cos.includes(k)) return false; S.cos.push(k); if (!S.pick) S.pick = k; return true; }
+function jrDone(S, q) { // a goal is reached: its gold waits for the saved hero, and every third goal opens a tier
+  S.done.push(q.id); S.pg = Math.min(999, S.pg + 1); let t = 'JOURNEY: ' + q.t;
+  JR_TIERS.forEach((T, i) => { if (S.tier <= i && S.done.length >= T.at) { S.tier = i + 1; S.pc = Math.min(99, S.pc + T.coins);
+    if (jrUnlock(S, T.cos)) t = 'NEW TRAIL: ' + COSM[T.cos].name; else S.pg = Math.min(999, S.pg + 4); } });
+  if (mode === 'play') { msg = t; msgT = 200; SFX.pick(); }
+}
+function jr(ev, v) { // an event of play; the race goals count only in the race, all the others only outside it
+  if (DEV) return; if ((ev.indexOf('race') === 0) !== !!daily) return;
+  const S = jrLoad(); let ch = false;
+  for (const q of jrGoals()) if (q.ev === ev) { const c = S.n[q.id] | 0, nv = Math.min(1e6, q.max ? Math.max(c, v | 0) : c + (v == null ? 1 : v));
+    if (nv !== c) { S.n[q.id] = nv; ch = true; if (nv >= q.n && !S.done.includes(q.id)) jrDone(S, q); } }
+  if (ch) jrSave();
+}
+function jrRaceWon() { jr('race'); const S = jrLoad(); if (jrUnlock(S, 'gild')) { jrSave(); if (daily) daily.newTrail = true; } } // the first finished race gives the gilded trail
+function jrApply() { // the reward goes to the saved hero, never to the race hero
+  if (daily || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
+  const gd = S.pg * (100 + 12 * rpg.lvl), cn = Math.min(S.pc, Math.max(0, 9 - rpg.coins)); rpg.gold += gd; rpg.coins += cn; S.pg = 0; S.pc = 0; jrSave(); saveGame();
+  floatText(hero.x, hero.y - 80, 'JOURNEY +' + gd + 'G' + (cn ? ' +' + cn + ' COIN' : ''), '#ffd24a', 8);
+}
+function cosFx() {
+  const S = jrS || jrLoad(), C = COSM[S.pick]; if (!C || tickN % 3) return;
+  for (const p of players()) { if (p.dead) continue; for (let i = 0; i < 2; i++) spawn(p.x + rnd(-10, 10), p.y, rnd(2, 40), 1, { c: [C.col, C.c2], l0: 16, l1: 30, add: true, size: 2, up: 0.8, g: -0.01 }); }
+}
+function jrCycle(d) { const S = jrLoad(), a = [''].concat(S.cos); S.pick = a[(a.indexOf(S.pick) + d + a.length) % a.length]; jrSave(); SFX.pick(); }
+let journeyBox = null;
+function openJourney() { jrLoad(); mode = 'journey'; SFX.pick(); }
+function updateJourney() {
+  if (isHit('left') || isHit('right')) jrCycle(isHit('right') ? 1 : -1);
+  if (isHit('start') || isHit('back') || pressed.KeyG || pressed.Digit4) { mode = 'title'; SFX.pick(); }
+}
+function drawJourney() {
+  const S = jrLoad(), gs = jrGoals(); g.fillStyle = 'rgba(4,2,10,0.78)'; g.fillRect(0, 0, W, H);
+  text('SEASON JOURNEY', W / 2, 26, 16, '#ffb43a', 'center');
+  text('SEASON ' + seasonNo(seasonStr()) + '   ' + seasonStr() + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') + '   ' + S.done.length + '/9 DONE', W / 2, 42, 8, '#c9a86a', 'center');
+  text('EACH GOAL PAYS GOLD TO YOUR SAVED HERO. RACE GOALS COUNT IN THE RACE ONLY.', W / 2, 54, 6, '#8a7a9a', 'center');
+  gs.forEach((q, i) => { const y = 74 + i * 14, d = S.done.includes(q.id), c = Math.min(q.n, S.n[q.id] | 0);
+    text(d ? 'X' : '-', 40, y, 8, d ? '#7aff9a' : '#6a5a80'); text(q.t, 54, y, 8, d ? '#9ad08a' : '#e8e0f0');
+    text(c + '/' + q.n, 372, y, 8, d ? '#7aff9a' : '#c9a86a', 'right'); bar(380, y - 6, 60, 4, c, q.n, d ? '#7aff9a' : '#ffb43a', '#1c1426'); });
+  JR_TIERS.forEach((T, i) => { const x = 40 + i * 140, got = S.done.length >= T.at, own = S.cos.includes(T.cos);
+    g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(x, 206, 130, 26); g.strokeStyle = got ? COSM[T.cos].col : '#4a3a5a'; g.lineWidth = 1; g.strokeRect(x + 0.5, 206.5, 129, 25);
+    text(T.at + ' GOALS' + (T.coins ? '  +' + T.coins + ' COIN' : ''), x + 65, 216, 7, got ? '#fff1d0' : '#8a7a9a', 'center'); text(COSM[T.cos].name, x + 65, 227, 7, got || own ? COSM[T.cos].col : '#6a5a80', 'center'); });
+  const C = COSM[S.pick], opts = S.cos.length;
+  journeyBox = { x: 90, y: 238, w: 300, h: 13 }; g.fillStyle = 'rgba(30,14,40,0.8)'; g.fillRect(journeyBox.x, journeyBox.y, journeyBox.w, 13); g.strokeStyle = C ? C.col : '#6a5a80'; g.strokeRect(journeyBox.x + 0.5, journeyBox.y + 0.5, journeyBox.w - 1, 12);
+  text(opts ? 'TRAIL: ' + (C ? C.name : 'NONE') + '    A/D: CHANGE' : 'NO TRAIL YET  -  FINISH 3 GOALS OR A SEASON RACE', W / 2, 247, 8, C ? C.col : '#8a7a9a', 'center');
+  text('ESC / ENTER: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
+  if (C && tickN % 3 === 0) spawn(W / 2 + 120 + cam, 150, rnd(0, 20), 1, { c: [C.col, C.c2], l0: 10, l1: 20, add: true, size: 1 });
+}
+/* ---------- share card: a picture of a finished season race for Facebook and friends ---------- */
+let shareNote = '', shareNoteT = 0, shareBox = null;
+function shareData() { // the run on screen: the race that has just been won, or the one that was signed on the board; null when no finished race
+  if (!daily) return null; const pr = pendingRun && pendingRun.t ? pendingRun : null, w = pr ? pr.w : daily.done; if (!w) return null;
+  const rows = onlineOn() && onlineBoard.day === seasonStr() && onlineBoard.rows ? bestPer(onlineBoard.rows.filter(r => r.w)) : null, t = pr ? pr.t : daily.t;
+  return { n: pr ? (pr.n || rpg.ini) : rpg.ini, h: pr ? pr.h : CLS, t, lv: pr ? pr.lv : rpg.lvl, pg: pr ? pr.pg | 0 : rpg.pg, season: seasonNo(seasonStr()), month: seasonStr(), rule: DAILY_MODS[daily.mod].name,
+    sp: pr && pr.sp ? splitsFrom(pr.sp) : daily.sp || {}, el: rpg.elem || '', et: elemTier(), rank: rows ? rows.filter(r => r.t < t).length + 1 : 0, of: rows ? rows.length : 0 };
+}
+function drawShareCard(c, d) { // c: a 2d context of 1200x630
+  const R = 'bold ', F = ' "Courier New",monospace', hc = CLASSES[d.h], mid = 600;
+  const bg = c.createLinearGradient(0, 0, 0, 630); bg.addColorStop(0, '#0a0610'); bg.addColorStop(1, '#2a0e08'); c.fillStyle = bg; c.fillRect(0, 0, 1200, 630);
+  const gl = c.createRadialGradient(mid, 120, 10, mid, 120, 520); gl.addColorStop(0, 'rgba(255,150,60,0.35)'); gl.addColorStop(1, 'rgba(255,150,60,0)'); c.fillStyle = gl; c.fillRect(0, 0, 1200, 630);
+  c.strokeStyle = '#c9a86a'; c.lineWidth = 4; c.strokeRect(18, 18, 1164, 594); c.lineWidth = 1; c.strokeRect(30, 30, 1140, 570);
+  c.textAlign = 'center'; const T = (s, y, px, col, w) => { c.font = (w === 0 ? '' : R) + px + 'px' + F; c.fillStyle = col; c.fillText(s, mid, y); };
+  const tg = c.createLinearGradient(0, 60, 0, 140); tg.addColorStop(0, '#fff1b0'); tg.addColorStop(0.5, '#ffb43a'); tg.addColorStop(1, '#e0431f'); c.font = R + '96px' + F; c.fillStyle = '#2a0e08'; c.fillText('EMBERFALL', mid + 5, 135); c.fillStyle = tg; c.fillText('EMBERFALL', mid, 130);
+  T('THE ASHEN VOW  -  SEASON RACE', 175, 30, '#c9a8ff');
+  T('SEASON ' + d.season + '   ' + d.month + '   ' + d.rule, 222, 30, '#ffd24a');
+  T((hc ? hc.name : String(d.h).toUpperCase()) + (d.n ? '  (' + d.n + ')' : ''), 285, 54, hc ? hc.col : '#ffffff');
+  T('LV ' + d.lv + '  +  PARAGON ' + d.pg, 325, 32, '#e6cfa0');
+  T(fmtTime(d.t), 440, 130, '#fff1b0'); T('FASTEST PLAY TIME WINS', 478, 24, '#b8935a', 0);
+  if (d.rank) T('RANK #' + d.rank + ' OF ' + d.of + ' FINISHERS THIS SEASON', 515, 32, d.rank <= 3 ? PLACE_COL[d.rank] : '#9ad08a');
+  const ks = SPLIT_KEYS.filter(k => d.sp[k]); if (ks.length) { const w = 1080 / ks.length; ks.forEach((k, i) => { c.font = R + '22px' + F; c.fillStyle = '#b8935a'; c.fillText(splitName(k), 60 + w * (i + 0.5), 574); c.fillStyle = '#fff1d0'; c.fillText(fmtTime(d.sp[k]), 60 + w * (i + 0.5), 595); }); }
+  if (d.el && ELEM[d.el]) { c.fillStyle = ELEM[d.el].col; c.beginPath(); c.arc(70, 62, 12, 0, 7); c.fill(); c.textAlign = 'left'; c.font = R + '22px' + F; c.fillText(ELEM[d.el].name + ' ' + ROMAN[d.et], 90, 70); c.textAlign = 'center'; }
+  T('cooldance84.github.io/Emberfall', 551, 18, '#8a7a9a', 0);
+}
+function shareCard() {
+  const d = shareData(); if (!d) { SFX.land(); shareNote = 'FINISH THE RACE TO SHARE IT'; shareNoteT = 180; return; }
+  const cv = document.createElement('canvas'); cv.width = 1200; cv.height = 630; const c = cv.getContext('2d'); drawShareCard(c, d);
+  const note = s => { shareNote = s; shareNoteT = 240; };
+  if (!cv.toBlob) { note('THIS BROWSER CANNOT MAKE THE IMAGE'); return; }
+  cv.toBlob(b => {
+    if (!b) { note('COULD NOT MAKE THE IMAGE'); return; }
+    const name = 'emberfall-season-' + d.season + '-' + fmtTime(d.t).replace(/:/g, '') + '.png', f = typeof File === 'function' ? new File([b], name, { type: 'image/png' }) : null;
+    if (f && navigator.canShare && navigator.share && navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: 'Emberfall season race', text: 'My Emberfall season race: ' + fmtTime(d.t) + '  https://cooldance84.github.io/Emberfall/' }).then(() => note('SHARED'), () => { }); return; }
+    try { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); note('IMAGE SAVED TO YOUR DOWNLOADS'); } catch (e) { note('COULD NOT SAVE THE IMAGE'); }
+  }, 'image/png');
+}
+function drawShareHint(y, xr) { // a chip on the screens of a finished race; the note shows what happened
+  if (!daily || !shareData()) { shareBox = null; return; }
+  const t = 'Y: SHARE IMAGE'; g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 10; shareBox = { x: (xr || W - 4) - w, y, w, h: 13 };
+  g.fillStyle = 'rgba(20,10,40,0.75)'; g.fillRect(shareBox.x, y, w, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(shareBox.x + 0.5, y + 0.5, w - 1, 12); text(t, shareBox.x + w / 2, y + 10, 8, '#8cc4ff', 'center');
+  if (shareNoteT > 0) { shareNoteT--; text(shareNote, W / 2, 262, 8, '#9ad08a', 'center'); }
+}
 /* ---------- particles ---------- */
 function spawn(x, y, z, n, o) {
   for (let i = 0; i < n; i++) {
@@ -2120,7 +2324,7 @@ const SACRED = { name: 'SACRED SHRINE', short: 'SACRED', col: '#ffe27a', info: '
 function rollBuff() { // a blessing that is already running is never rolled again, so a new shrine adds to the others instead of replacing one
   const ids = Object.keys(BUFFS).filter(k => (k !== 'surge' || elemTier() > 0) && !buffs.some(b => b.id === k)); // a surge is wasted without an element
   if (!ids.length) return Object.keys(BUFFS)[0];
-  let r = Math.random() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
+  let r = rq() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
   for (const k of ids) { r -= BUFFS[k].w; if (r <= 0) return k; }
   return ids[0];
 }
@@ -2130,10 +2334,11 @@ function useShrine(sh) {
   let B;
   if (sh.sacred) { B = SACRED; for (const p of players()) if (!p.dead) p.inv = Math.max(p.inv, 240); }
   else {
-    const id = rollBuff(), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id];
+    const id = seeded('S' + stageIdx + '/' + cycle + '/' + sh.x, rollBuff), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id];
     if (buffs.length >= MAX_BUFFS) { let k = 0; buffs.forEach((b, i) => { if (b.t < buffs[k].t) k = i; }); floatText(hero.x, hero.y - 76, BUFFS[buffs[k].id].short + ' FADES', '#9a9aaa', 8); buffs.splice(k, 1); } // only when all places are taken: the blessing with the least time left makes room
     buffs.push({ id, t: B.t, max: B.t, ward: id === 'ward' ? hp : 0, wmax: id === 'ward' ? hp : 0 });
   }
+  jr('shrine'); if (!sh.sacred) jr('buffs', buffs.length);
   msg = B.name + '!'; msgT = 110; floatText(sh.x, sh.y - 58, B.info, B.col, 8);
   spawn(sh.x, sh.y, 26, 24, { c: [B.col, '#ffffff'], s0: 1, s1: 3.2, l0: 14, l1: 30, add: true, size: 2, up: 2.4, g: 0.05 });
 }
@@ -2179,16 +2384,18 @@ function drawShrines() {
 function openChest(c, att) {
   c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
   if (c.hp > 0) return;
-  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1) * (buffIs('fortune') ? 1.6 : 1));
-    rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
-  floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
-  if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
-  if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
-    const n = 2 + (stageIdx >= 5 ? 1 : 0); for (let i = 0; i < n; i++) { const f = spawnFoe(i === 2 && stageIdx >= 5 ? 'b' : 'h', c.x + (i % 2 ? 40 : -40) + i * 6, false); f.y = clamp(c.y + (i - 1) * 8, Y_MIN, Y_MAX); }
-    floatText(c.x, c.y - 36, 'IT WAS A TRAP!', '#ff6a6a', 9); SFX.big(); shake = Math.max(shake, 5); flashA = Math.max(flashA, 0.15);
-  }
-  spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
-  if (Math.random() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
+  seeded('C' + stageIdx + '/' + cycle + '/' + c.x, () => {
+    c.open = 1; jr('chest'); if (c.type === 'gold') jr('goldchest'); const gd = Math.round((20 + rq() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1) * (buffIs('fortune') ? 1.6 : 1));
+      rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
+    floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
+    if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
+    if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
+      const n = 2 + (stageIdx >= 5 ? 1 : 0); for (let i = 0; i < n; i++) { const f = spawnFoe(i === 2 && stageIdx >= 5 ? 'b' : 'h', c.x + (i % 2 ? 40 : -40) + i * 6, false); f.y = clamp(c.y + (i - 1) * 8, Y_MIN, Y_MAX); }
+      floatText(c.x, c.y - 36, 'IT WAS A TRAP!', '#ff6a6a', 9); SFX.big(); shake = Math.max(shake, 5); flashA = Math.max(flashA, 0.15);
+    }
+    spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
+    if (rq() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
+  });
 }
 function strike(att, box, dmg, kind, targets) {
   if (att.pn) for (const sh of shrines) {
@@ -2431,7 +2638,7 @@ function updateHeroCore(f) {
       f.st = (mx || my) ? 'walk' : 'idle'; f.anim += (mx || my) ? (f.mount ? 0.3 : 0.2) : 0;
       const wild = f.mount ? null : mounts.find(m => !m.flee && Math.abs(m.x - f.x) < 28 && Math.abs(m.y - f.y) < 12 && m.z < 3);
       if ((inH(f, 'jump') || inH(f, 'dismount')) && wild) {
-        f.mount = wild; mounts.splice(mounts.indexOf(wild), 1); SFX.pick(); sparks(f.x, f.y, 20, true);
+        f.mount = wild; jr('ride'); mounts.splice(mounts.indexOf(wild), 1); SFX.pick(); sparks(f.x, f.y, 20, true);
         msg = mtype(wild).name + '!   J: ' + mtype(wild).info + (wild.falls ? '   (1 FALL LEFT)' : '   E: DISMOUNT'); msgT = 130;
       } else if (inH(f, 'dismount') && f.mount) {
         const m = f.mount; m.x = f.x - f.face * 12; m.y = f.y; m.face = f.face; m.z = 0.01; m.vz = 2; mounts.push(m); f.mount = null;
@@ -2673,7 +2880,7 @@ const MOUNT_TYPES = {
   storm: { name: 'STORM WYRMLING', hp: 55, spd: 3.0, jump: 7.4, sc: 0.92, col: '#8ab0ff', wings: true, info: 'CHAIN LIGHTNING', pal: { body: '#3a5ac8', belly: '#bfd0ff', dark: '#1c2a6a', light: '#6a8aff', spine: '#c8f0ff', wing: '#4a2a9a' } },
   stone: { name: 'STONE WYRMLING', hp: 120, spd: 1.9, jump: 5, sc: 1.15, col: '#b8c8a8', horns: true, info: 'SHOCKWAVE + STOMP', pal: { body: '#5a6a58', belly: '#c8c0a0', dark: '#2a3228', light: '#7a8a76', spine: '#e6dcc4', wing: '#4a5a48' } }
 };
-function pickMountType() { const a = ['ember']; if (stageIdx >= 1 || cycle) a.push('storm'); if (stageIdx >= 2 || cycle) a.push('stone'); return a[Math.random() * a.length | 0]; }
+function pickMountType() { const a = ['ember']; if (stageIdx >= 1 || cycle) a.push('storm'); if (stageIdx >= 2 || cycle) a.push('stone'); return a[rq() * a.length | 0]; }
 function makeMount(x, y, hp, type) { type = type || 'ember'; const T = MOUNT_TYPES[type]; return { isMount: true, type, x, y, z: 0.01, vz: 3, face: 1, hp: hp || T.hp, maxhp: T.hp, falls: 0, t: 0, anim: 0, flash: 0, h: 30 }; }
 const mtype = m => MOUNT_TYPES[(m && m.type) || 'ember'];
 function zap(x0, y0, z0, x1, y1, z1) {
@@ -2711,7 +2918,7 @@ function updateImpSpawn() {
 function castDragon() {
   const v = hero.vases;
   hero.vases = 0; hero.st = 'magic'; hero.t = 0; hero.inv = 190;
-  dragon = { t: 0, v, mult: 1 + 0.15 * v, size: 1 + 0.15 * v, by: hero };
+  dragon = { t: 0, v, mult: 1 + 0.15 * v, size: 1 + 0.15 * v, by: hero }; jr('wrath');
   msg = v ? `DRAGON'S WRATH  +${v * 15}%` : "DRAGON'S WRATH"; msgT = 120; SFX.magic();
 }
 function stepDragon() {
@@ -2917,22 +3124,22 @@ function beginStage(i) {
     if (i === 0) { gaps.push({ x: 590, w: 14, type: 'wall' }); gaps.push({ x: 1600, w: 34, type: 'pit' }); }
     else for (let x = 520 + (i * 37) % 120, k = 0; x < stop && k < n; x += 330 + ((i * 53 + k * 71) % 200), k++) { const pit = (i + k) % 3 !== 0; gaps.push({ x, w: pit ? 34 + ((i + k) * 13) % 9 : 14, type: pit ? 'pit' : 'wall' }); } }
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
-  { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
-    const td = dailyIs('TREASURE SEASON'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1),
-      k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(),
+  seeded('LC' + i + '/' + cycle, () => { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
+    const td = dailyIs('TREASURE SEASON'); for (let x = 300 + rq() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + rq() * 260) / (td ? 2 : 1),
+      k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = rq(),
       type = r < (dailyIs('TREASURE SEASON') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x),
-      y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
+      y: Y_MIN + 12 + rq() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } });
   shrines = []; buffs = []; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
-  if (i >= 1 || cycle) {
-    const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
+  if (i >= 1 || cycle) seeded('LS' + i + '/' + cycle, () => {
+    const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, rq() < 0.55 ? (rq() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
       bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
     for (let n = 0; n < want; n++) for (let tries = 0; tries < 14; tries++) {
-      const x = Math.round(420 + Math.random() * Math.max(60, stop - 420));
+      const x = Math.round(420 + rq() * Math.max(60, stop - 420));
       if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40) || shrines.some(q => Math.abs(q.x - x) < 160)) continue;
-      shrines.push({ x, y: Math.round(Y_MIN + 14 + Math.random() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: Math.random() < 0.08 }); break;
+      shrines.push({ x, y: Math.round(Y_MIN + 14 + rq() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: rq() < 0.08 }); break;
     }
     if ((i + 1) % 4 === 0 && !shrines.length) shrines.push({ x: Math.round(stop * 0.5 + 200), y: 215, used: 0, t: 0, shake: 0, sacred: false }); // the fixed shrine is never skipped
-  }
+  });
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();
@@ -3005,7 +3212,7 @@ function updateForge() {
   if (up >= forgeCap()) { say(up >= MAX_UP ? 'ALREADY AT +10 (MAX)' : 'CLEAR EMBER TRIAL ' + ROMAN_T[up - 6] + ' TO FORGE +' + (up + 1), false); SFX.land(); return; }
   const c = forgeCost(it); if (rpg.gold < c) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
   rpg.gold -= c;
-  if (Math.random() < FORGE_P[up]) { it.up = up + 1; PS = null; heroStats(false); say(tr('SUCCESS!') + '  ' + tr(it.name) + ' +' + it.up, true); SFX.magic(); f.fx = 40; }
+  if (Math.random() < FORGE_P[up]) { it.up = up + 1; jr('forge'); PS = null; heroStats(false); say(tr('SUCCESS!') + '  ' + tr(it.name) + ' +' + it.up, true); SFX.magic(); f.fx = 40; }
   else { say('THE FORGE FAILED. THE GOLD IS GONE', false); SFX.die(); f.fx = -1; }
   saveGame();
 }
@@ -3078,11 +3285,11 @@ function drawForge() {
   text('FAILED FORGING KEEPS THE LEVEL BUT TAKES THE GOLD', W / 2, 264, 7, '#8a6a5a', 'center');
 }
 function openShop(next) {
-  const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
+  const mk = i => seeded('M' + stageIdx + '/' + cycle + '/' + i, () => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
     let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r);
-    if (stageIdx >= 2 || cycle) { const x = Math.random(); if (i === 3) r = x < 0.06 ? 4 : x < 0.3 ? 3 : x < 0.6 ? 2 : Math.max(1, r); else if (x < 0.02) r = 4; else if (x < 0.09) r = Math.max(r, 3); else if (x < 0.22) r = Math.max(r, 2); }
+    if (stageIdx >= 2 || cycle) { const x = rq(); if (i === 3) r = x < 0.06 ? 4 : x < 0.3 ? 3 : x < 0.6 ? 2 : Math.max(1, r); else if (x < 0.02) r = 4; else if (x < 0.09) r = Math.max(r, 3); else if (x < 0.22) r = Math.max(r, 2); }
     return genItem(r);
-  };
+  });
   shop = { i: 0, note: '', noteT: 0, next, stock: [
     { kind: 'heal', name: 'FULL HEAL', price: 80, info: 'RESTORES THE WHOLE PARTY' },
     { kind: 'coin', name: 'CONTINUE COIN', price: coinPrice(), info: 'AN EXTRA LIFE (MAX 9)' },
@@ -3564,11 +3771,11 @@ function spawnFoe(t, x, hasBoss) {
   if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn);
   if (dailyIs('IRON FOES')) { f.hp = f.maxhp = Math.round(f.maxhp * 1.5); }
   if (dailyIs('SWIFT FOES')) f.k = Object.assign({}, f.k, { spd: f.k.spd * 1.2 });
-  if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && Math.random() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
+  if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && rq() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
     f.elite = true; f.glow = '255,200,80'; f.hp = f.maxhp = Math.round(f.maxhp * 1.8); f.h = Math.round(f.h * 1.12);
     f.k = Object.assign({}, f.k, { name: 'ELITE ' + f.k.name, scale: f.k.scale * 1.12, spd: f.k.spd * 1.15, armor2: '#ffd24a' });
   }
-  if (!BOSSES[t] && !hasBoss && !f.barrier && t !== 'imp' && t !== 'gob' && (stageIdx >= 1 || cycle) && Math.random() < 0.06 + 0.012 * Math.min(stageIdx + cycle * 10, 15)) { // some foes simply arrive with an arcane barrier (6% to 24%)
+  if (!BOSSES[t] && !hasBoss && !f.barrier && t !== 'imp' && t !== 'gob' && (stageIdx >= 1 || cycle) && rq() < 0.06 + 0.012 * Math.min(stageIdx + cycle * 10, 15)) { // some foes simply arrive with an arcane barrier (6% to 24%)
     f.barrier = f.bmax = Math.round(f.maxhp * 0.6); f.warded = true;
   }
   enemies.push(f); return f;
@@ -3580,13 +3787,13 @@ function updateStage() {
     lockX = w.x - 200 > cam ? Math.max(cam, w.x - 200) : cam;
     // later stages throw bigger crowds: extra husks, brutes from stage 3, more escorts around bosses
     const hasBoss = w.e.some(t => BOSSES[t]), list = buildList(w); let rode = false;
-    list.forEach((t, i) => {
+    seeded('W' + stageIdx + '/' + cycle + '/' + waveIdx, () => list.forEach((t, i) => { // the crowd of a wave (elites, barriers, riders) is fixed by the season seed
       const side = i % 2 ? 1 : -1;
       const ex = offGap(side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22, side);
-      const f = spawnFoe(t, ex, hasBoss);
-      if (t === 'h' && !rode && ((stageIdx === 0 && !cycle && waveIdx === 0 && i === 0) || Math.random() < 0.08 + 0.02 * Math.min(stageIdx + cycle, 5))) { rode = true;
+      const f = spawnFoe(t, ex, hasBoss); f.sid = 'w' + waveIdx + '.' + i;
+      if (t === 'h' && !rode && ((stageIdx === 0 && !cycle && waveIdx === 0 && i === 0) || rq() < 0.08 + 0.02 * Math.min(stageIdx + cycle, 5))) { rode = true;
         f.mount = makeMount(0, 0, 0, pickMountType()); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } // wyrmlings are rare now: at most one per wave
-    });
+    }));
     waveN = list.length;
     if (!hasBoss) for (const t of ['warder', 'caller']) if (list.includes(t) && !hints[t]) { hints[t] = 1; msg = t === 'warder' ? 'SHATTER THE BARRIER WITH HEAVY BLOWS' : 'KEEP MOVING: RUNES BURN THE GROUND'; msgT = 150; }
     const bk = w.e.find(t => BOSSES[t]);
@@ -3606,7 +3813,7 @@ function updateStage() {
   }
   if (lockX !== Infinity && enemies.filter(e => e.kind !== 'imp').every(e => e.dead)) {
     lockX = Infinity; waveIdx++; goBlink = 240;
-    if (waveIdx >= WAVES.length) { clearT = LOOT_T; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; }
+    if (waveIdx >= WAVES.length) { clearT = LOOT_T; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; jr('stage'); }
   }
   const target = leadX() - W * 0.42;
   const maxCam = lockX !== Infinity ? lockX : STAGE_END - W;
@@ -3723,10 +3930,12 @@ function step() {
     else if (pressed.KeyC) { openCloud(); return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
+    else if (pressed.Digit4 || pressed.Numpad4 || pressed.KeyG) { openJourney(); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
   if (mode === 'dailyinfo') { updateDailyInfo(); updateParts(); cam += 0.3; return; }
+  if (mode === 'journey') { updateJourney(); updateParts(); cam += 0.3; return; }
   if (mode === 'cloud') { updateCloud(); updateParts(); cam += 0.3; return; }
   if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
   if (mode === 'resume') { updateResume(); updateParts(); cam += 0.3; return; }
@@ -3751,9 +3960,9 @@ function step() {
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
-  if (daily && !daily.done) { daily.t++; if (tickN % 1800 === 0) loadOnlineBoard(); if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
+  if (daily && !daily.done) { daily.t++; if (tickN % 30 === 0) splitTick(); if (tickN % 1800 === 0) loadOnlineBoard(); if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
   for (const p of players()) withHero(p, () => updateHero(p));
-  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx();
+  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx(); cosFx(); if (!daily && tickN % 60 === 0) jrApply();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;
@@ -4769,7 +4978,8 @@ function drawHUD() {
     text('RACE ' + fmtTime(daily.t), W - 12, 72, 8, '#ffd24a', 'right'); text('GOAL: LV ' + MAX_LV + ' + PG ' + PG_MAX, W - 12, 82, 7, '#c9a86a', 'right');
     if (!daily.done) { const p = paceInfo(); if (p && p.none) text('NO ONE HAS FINISHED YET', W - 12, 92, 7, '#8a7a9a', 'right');
       else if (p) { const late = daily.t > p.t; text((late ? 'BEHIND ' : 'TO BEAT ') + p.n + ' ' + fmtTime(p.t), W - 12, 92, 7, late ? '#ff8a6a' : '#9ad08a', 'right');
-      } } // the pace line: the best finished time online
+      } // the pace line: the best finished time online
+      const q = daily.last; if (q) text(splitName(q.k) + '  ' + (q.d == null ? fmtTime(q.t) : fmtDelta(q.d)), W - 12, 102, 7, q.d == null ? '#c9a86a' : q.d > 0 ? '#ff8a6a' : '#9ad08a', 'right'); } // the last split: time, or the gap to the leader
   }
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   if (rpg.lvl >= MAX_LV) bar(12, 40, 110, 2, rpg.pg >= PG_MAX ? 1 : rpg.pxp, rpg.pg >= PG_MAX ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); // at the cap the bar fills toward the next paragon point
@@ -4821,12 +5031,15 @@ screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
   if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
     if (b && b.go) openBoard(1); else openSelect(false, true); return; }
+  if (mode === 'journey') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H; if (journeyBox && y >= journeyBox.y && y <= journeyBox.y + journeyBox.h) jrCycle(1); else { mode = 'title'; SFX.pick(); } return; }
+  if (shareBox && (mode === 'board' || mode === 'victory')) { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H; if (x >= shareBox.x && x <= shareBox.x + shareBox.w && y >= shareBox.y && y <= shareBox.y + shareBox.h) { shareCard(); return; } }
   if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !dailyBox && !cloudBox && !journeyBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
+  if (journeyBox && mode === 'title' && x >= journeyBox.x && x <= journeyBox.x + journeyBox.w && y >= journeyBox.y && y <= journeyBox.y + journeyBox.h) { openJourney(); return; }
   if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
@@ -4835,6 +5048,7 @@ screen.addEventListener('pointermove', e => {
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
 });
+addEventListener('keydown', e => { if (e.code === 'KeyY' && (mode === 'victory' || mode === 'board')) shareCard(); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });
 /* ---------- hero select ---------- */
 let selBoxes = [];
@@ -4850,10 +5064,10 @@ function drawDailyInfo() {
   text('SEASON RACE', W / 2, 30, 16, '#ffb43a', 'center');
   text(seasonStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
   const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['XP IS DOUBLED. TRY AS OFTEN AS YOU LIKE: YOUR BEST TIME COUNTS.', '#e8e0f0'],
-    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
+    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['EVERY RACER MEETS THE SAME STAGES AND DROPS (THE SEASON SEED).', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
     ['THE REWARD', '#ffd24a'], ['A CROWN FOR YOUR SAVED HERO FOR A FINISHED RACE, ONE EACH DAY.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
-  L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
-  drawCrown(104, 169);
+  L.forEach(([t, c], i) => text(t, i === 0 || i === 7 ? 40 : 46, 78 + i * 14 + (i >= 7 ? 5 : 0), i === 0 || i === 7 ? 9 : 8, c));
+  drawCrown(104, 169 + 8);
   dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'SEASON BOARD (N)', go: 1 }];
   for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
   text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
@@ -4921,12 +5135,14 @@ function drawTitleOverlay() {
   if (onlineOn()) { const ct = '[C] CLOUD SAVE'; g.font = '8px "Courier New",monospace'; const cw = g.measureText(ct).width + 10;
     cloudBox = { x: 4, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
+  { const S = jrLoad(), jt = '[4] JOURNEY ' + S.done.length + '/9'; g.font = '8px "Courier New",monospace'; const jw = g.measureText(jt).width + 10; // the season journey sits in the top right corner, like the cloud save in the left
+    journeyBox = { x: W - jw - 4, y: 3, w: jw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.7)'; g.fillRect(journeyBox.x, 3, jw, 13); g.strokeStyle = '#c9a86a'; g.strokeRect(journeyBox.x + 0.5, 3.5, jw - 1, 12); text(jt, journeyBox.x + jw / 2, 13, 8, '#ffd24a', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; dailyBox = null; cloudBox = null;
+  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -4947,6 +5163,7 @@ function render() {
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
   else if (mode === 'dailyinfo') drawDailyInfo();
+  else if (mode === 'journey') drawJourney();
   else if (mode === 'cloud') drawCloud();
   else if (mode === 'select') drawSelect();
   else if (mode === 'resume') drawResume();
@@ -4990,6 +5207,7 @@ function drawVictory() {
     g.globalAlpha = fade(30); text('THE SEASON RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
     g.globalAlpha = fade(48); text('TIME ' + fmtTime(daily.t), W2, 150, 13, '#fff1b0', 'center');
     g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
+    if (daily.newTrail && t > 90) text('NEW TRAIL: ' + COSM.gild.name, W2, 207, 8, COSM.gild.col, 'center');
   } else {
   g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
   g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');
@@ -5000,7 +5218,7 @@ function drawVictory() {
   if (t > 90) { if ((t >> 5) & 1 || t > 200) { if (daily) text('ENTER: SIGN THE LEATHERBOARD', W2, 192, 9, '#fff', 'center');
     else { text('ENTER: BEGIN ' + trialName(cycle + 1) + '  (+1 COIN, TOUGHER FOES)', W2, 192, 9, '#fff', 'center');
     text('ESC: FINISH AND SIGN THE LEATHERBOARD', W2, 205, 8, '#b8a8c8', 'center'); } } }
-  drawDonate(224);
+  drawDonate(224); drawShareHint(3);
 }
 
 /* ---------- WebGL CRT / bloom presentation ---------- */

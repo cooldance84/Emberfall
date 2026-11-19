@@ -11,7 +11,7 @@ const SACRED = { name: 'SACRED SHRINE', short: 'SACRED', col: '#ffe27a', info: '
 function rollBuff() { // a blessing that is already running is never rolled again, so a new shrine adds to the others instead of replacing one
   const ids = Object.keys(BUFFS).filter(k => (k !== 'surge' || elemTier() > 0) && !buffs.some(b => b.id === k)); // a surge is wasted without an element
   if (!ids.length) return Object.keys(BUFFS)[0];
-  let r = Math.random() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
+  let r = rq() * ids.reduce((a, k) => a + BUFFS[k].w, 0);
   for (const k of ids) { r -= BUFFS[k].w; if (r <= 0) return k; }
   return ids[0];
 }
@@ -21,10 +21,11 @@ function useShrine(sh) {
   let B;
   if (sh.sacred) { B = SACRED; for (const p of players()) if (!p.dead) p.inv = Math.max(p.inv, 240); }
   else {
-    const id = rollBuff(), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id];
+    const id = seeded('S' + stageIdx + '/' + cycle + '/' + sh.x, rollBuff), hp = Math.round(pstats().maxhp * 0.4); B = BUFFS[id];
     if (buffs.length >= MAX_BUFFS) { let k = 0; buffs.forEach((b, i) => { if (b.t < buffs[k].t) k = i; }); floatText(hero.x, hero.y - 76, BUFFS[buffs[k].id].short + ' FADES', '#9a9aaa', 8); buffs.splice(k, 1); } // only when all places are taken: the blessing with the least time left makes room
     buffs.push({ id, t: B.t, max: B.t, ward: id === 'ward' ? hp : 0, wmax: id === 'ward' ? hp : 0 });
   }
+  jr('shrine'); if (!sh.sacred) jr('buffs', buffs.length);
   msg = B.name + '!'; msgT = 110; floatText(sh.x, sh.y - 58, B.info, B.col, 8);
   spawn(sh.x, sh.y, 26, 24, { c: [B.col, '#ffffff'], s0: 1, s1: 3.2, l0: 14, l1: 30, add: true, size: 2, up: 2.4, g: 0.05 });
 }
@@ -70,16 +71,18 @@ function drawShrines() {
 function openChest(c, att) {
   c.hp--; c.shake = 8; sparks(c.x, c.y, 8, false); SFX.hit();
   if (c.hp > 0) return;
-  c.open = 1; const gd = Math.round((20 + Math.random() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1) * (buffIs('fortune') ? 1.6 : 1));
-    rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
-  floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
-  if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
-  if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
-    const n = 2 + (stageIdx >= 5 ? 1 : 0); for (let i = 0; i < n; i++) { const f = spawnFoe(i === 2 && stageIdx >= 5 ? 'b' : 'h', c.x + (i % 2 ? 40 : -40) + i * 6, false); f.y = clamp(c.y + (i - 1) * 8, Y_MIN, Y_MAX); }
-    floatText(c.x, c.y - 36, 'IT WAS A TRAP!', '#ff6a6a', 9); SFX.big(); shake = Math.max(shake, 5); flashA = Math.max(flashA, 0.15);
-  }
-  spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
-  if (Math.random() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
+  seeded('C' + stageIdx + '/' + cycle + '/' + c.x, () => {
+    c.open = 1; jr('chest'); if (c.type === 'gold') jr('goldchest'); const gd = Math.round((20 + rq() * 20) * (1 + areaLv() * 0.1) * (1 + 0.25 * trialN()) * (c.type === 'gold' ? 3 : c.type === 'trap' ? 1.6 : 1) * (dailyIs('GOLD RUSH') ? 2 : 1) * (buffIs('fortune') ? 1.6 : 1));
+      rpg.gold += gd; score += gd * 5; if (bonus) { bonus.gold += gd; bonus.opened++; }
+    floatText(c.x, c.y - 24, '+' + gd + 'G', '#ffd24a', 9); SFX.pick();
+    if (c.type === 'gold') { dropGear(c.x + 12, c.y, Math.max(2, rollRarity())); floatText(c.x, c.y - 36, 'GOLDEN CHEST!', '#fff1b0', 9); }
+    if (c.type === 'trap') { // a mimic ambush: husks burst out of the shadows
+      const n = 2 + (stageIdx >= 5 ? 1 : 0); for (let i = 0; i < n; i++) { const f = spawnFoe(i === 2 && stageIdx >= 5 ? 'b' : 'h', c.x + (i % 2 ? 40 : -40) + i * 6, false); f.y = clamp(c.y + (i - 1) * 8, Y_MIN, Y_MAX); }
+      floatText(c.x, c.y - 36, 'IT WAS A TRAP!', '#ff6a6a', 9); SFX.big(); shake = Math.max(shake, 5); flashA = Math.max(flashA, 0.15);
+    }
+    spawn(c.x, c.y, 12, 18, { c: ['#ffd24a', '#fff1b0'], s0: 1, s1: 3, l0: 16, l1: 30, add: true, size: 2, up: 3, g: 0.12 });
+    if (rq() < 0.15) items.push({ x: c.x + 10, y: c.y, t: 0, kind: 'meat' });
+  });
 }
 function strike(att, box, dmg, kind, targets) {
   if (att.pn) for (const sh of shrines) {

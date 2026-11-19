@@ -12,10 +12,10 @@ function drawDailyInfo() {
   text('SEASON RACE', W / 2, 30, 16, '#ffb43a', 'center');
   text(seasonStr() + '   ' + M.name, W / 2, 48, 9, '#c9a86a', 'center'); text(M.info, W / 2, 60, 8, '#e8e0f0', 'center');
   const L = [['THE RACE', '#ffd24a'], ['START WITH A FRESH LV 1 HERO AND RACE TO LV ' + MAX_LV + ' + ' + PG_MAX + ' PARAGON.', '#e8e0f0'], ['THE SHORTEST PLAY TIME WINS. PAUSES AND SHOPS DO NOT COUNT.', '#e8e0f0'], ['XP IS DOUBLED. TRY AS OFTEN AS YOU LIKE: YOUR BEST TIME COUNTS.', '#e8e0f0'],
-    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
+    ['ONE CONTINUE COIN. AN UNFINISHED RUN WAITS ON THIS DEVICE.', '#e8e0f0'], ['EVERY RACER MEETS THE SAME STAGES AND DROPS (THE SEASON SEED).', '#e8e0f0'], ['THE SEASON ENDS IN ' + seasonDaysLeft() + ' DAYS. THE ETERNAL BOARD KEEPS YOUR BEST.', '#e8e0f0'],
     ['THE REWARD', '#ffd24a'], ['A CROWN FOR YOUR SAVED HERO FOR A FINISHED RACE, ONE EACH DAY.', '#e8e0f0'], ['YOUR REAL HERO, ITS LEVEL AND ITS GEAR ARE NEVER TOUCHED.', '#e8e0f0']];
-  L.forEach(([t, c], i) => text(t, i === 0 || i === 6 ? 40 : 46, 80 + i * 15 + (i >= 6 ? 6 : 0), i === 0 || i === 6 ? 9 : 8, c));
-  drawCrown(104, 169);
+  L.forEach(([t, c], i) => text(t, i === 0 || i === 7 ? 40 : 46, 78 + i * 14 + (i >= 7 ? 5 : 0), i === 0 || i === 7 ? 9 : 8, c));
+  drawCrown(104, 169 + 8);
   dailyBtns = [{ x: 56, y: 230, w: 170, h: 16, t: 'CHOOSE HERO (ENTER)', go: 0 }, { x: 254, y: 230, w: 170, h: 16, t: 'SEASON BOARD (N)', go: 1 }];
   for (const b of dailyBtns) { g.fillStyle = 'rgba(40,24,60,0.85)'; g.fillRect(b.x, b.y, b.w, b.h); g.strokeStyle = b.go ? '#c9a86a' : '#ffd24a'; g.lineWidth = 1; g.strokeRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1); text(b.t, b.x + b.w / 2, b.y + 11, 8, '#fff', 'center'); }
   text('ESC: BACK', W / 2, 262, 7, '#8a7a9a', 'center');
@@ -83,12 +83,14 @@ function drawTitleOverlay() {
   if (onlineOn()) { const ct = '[C] CLOUD SAVE'; g.font = '8px "Courier New",monospace'; const cw = g.measureText(ct).width + 10;
     cloudBox = { x: 4, y: 3, w: cw, h: 13 }; g.fillStyle = 'rgba(20,10,40,0.7)'; g.fillRect(cloudBox.x, 3, cw, 13); g.strokeStyle = '#8cc4ff';
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
+  { const S = jrLoad(), jt = '[4] JOURNEY ' + S.done.length + '/9'; g.font = '8px "Courier New",monospace'; const jw = g.measureText(jt).width + 10; // the season journey sits in the top right corner, like the cloud save in the left
+    journeyBox = { x: W - jw - 4, y: 3, w: jw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.7)'; g.fillRect(journeyBox.x, 3, jw, 13); g.strokeStyle = '#c9a86a'; g.strokeRect(journeyBox.x + 0.5, 3.5, jw - 1, 12); text(jt, journeyBox.x + jw / 2, 13, 8, '#ffd24a', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; dailyBox = null; cloudBox = null;
+  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;
@@ -109,6 +111,7 @@ function render() {
   if (flashA > 0) { g.fillStyle = `rgba(255,240,220,${Math.min(1, flashA)})`; g.fillRect(0, 0, W, H); }
   if (mode === 'title') drawTitleOverlay();
   else if (mode === 'dailyinfo') drawDailyInfo();
+  else if (mode === 'journey') drawJourney();
   else if (mode === 'cloud') drawCloud();
   else if (mode === 'select') drawSelect();
   else if (mode === 'resume') drawResume();
@@ -152,6 +155,7 @@ function drawVictory() {
     g.globalAlpha = fade(30); text('THE SEASON RACE IS WON', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' REACHED LV ' + MAX_LV + ' + PG ' + PG_MAX, W2, 130, 9, '#c9a8ff', 'center');
     g.globalAlpha = fade(48); text('TIME ' + fmtTime(daily.t), W2, 150, 13, '#fff1b0', 'center');
     g.globalAlpha = fade(60); drawCrown(W2 - 4, 160); text(daily.crown ? 'A CROWN FOR YOUR SAVED HERO' : 'TODAY\'S CROWN IS ALREADY YOURS', W2, 181, 8, '#ffd24a', 'center');
+    if (daily.newTrail && t > 90) text('NEW TRAIL: ' + COSM.gild.name, W2, 207, 8, COSM.gild.col, 'center');
   } else {
   g.globalAlpha = fade(30); text('THE WORLD IS SAVED', W2, 116, 11, '#fff1d0', 'center'); text(cls().name + ' KEPT THE ASHEN VOW', W2, 130, 9, '#c9a8ff', 'center');
   g.globalAlpha = fade(48); text('LV ' + rpg.lvl + '     SCORE ' + score, W2, 150, 11, '#fff1b0', 'center');
@@ -162,6 +166,6 @@ function drawVictory() {
   if (t > 90) { if ((t >> 5) & 1 || t > 200) { if (daily) text('ENTER: SIGN THE LEATHERBOARD', W2, 192, 9, '#fff', 'center');
     else { text('ENTER: BEGIN ' + trialName(cycle + 1) + '  (+1 COIN, TOUGHER FOES)', W2, 192, 9, '#fff', 'center');
     text('ESC: FINISH AND SIGN THE LEATHERBOARD', W2, 205, 8, '#b8a8c8', 'center'); } } }
-  drawDonate(224);
+  drawDonate(224); drawShareHint(3);
 }
 

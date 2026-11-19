@@ -94,6 +94,18 @@ alter table public.daily_scores
 
 The eternal board and the run counters need nothing extra: the game reads them from the same rows (the fastest 1000 finished runs since the first season for the eternal board, the first 1000 rows of the month for the season board and its counters). Rows from before the first season (2026-11-19) never count.
 
+## Split times (optional, v1.49)
+
+To keep the split times of a race (lv 10..70 and paragon 50) next to its result, the daily table needs one more column. Run this once; without it everything still works, the cards just say "no splits saved":
+
+```sql
+alter table public.daily_scores
+  add column if not exists splits text
+  check (splits is null or char_length(splits) <= 200);
+```
+
+The game tries the newest column first and drops it by itself when the table does not have it, so you can run the SQL whenever you like.
+
 ## Limits, honestly
 
 - The result is reported by the player's own device, so it can be faked: anyone can send a request with the public key. The rules above only stop nonsense (bad names, impossible levels, absurd times, old days). They cannot prove a race was played.
@@ -102,4 +114,4 @@ The eternal board and the run counters need nothing extra: the game reads them f
 - A player in another time zone can be on a different "day" for a few hours; the server accepts the day before and after today.
 - Cloud save: whoever knows a sync code can read and replace that save, so the code is the password. It has 60 bits of randomness, so it cannot be guessed, but do not post it. To retire a leaked code, delete its row in the Table Editor (`cloud_saves`), then type `NEW` in ENTER CODE for a fresh code and upload again.
 - Anyone with the public key can also write junk rows into `cloud_saves` (each at most 100 KB); clean them in the Table Editor if it ever happens. The seal on the saves is a deterrent only: a hand-made save can still be put into the cloud under a fresh code.
-- The build on a card is reported by the player's device like everything else, so it can be faked too.
+- The build and the split times on a card are reported by the player's device like everything else, so they can be faked too.

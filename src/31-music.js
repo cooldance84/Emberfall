@@ -164,7 +164,7 @@ function mSchedule(M, until) {
 function musicTick() {
   if (!ac || !mGain || !musicOn || muted || ac.state !== 'running') return;
   const boss = mode === 'play' && !!bossRef && !bossRef.dead;
-  const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'board' || mode === 'name' || mode === 'cloud';
+  const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'journey' || mode === 'board' || mode === 'name' || mode === 'cloud';
   const th = mode === 'gameover' ? -1 : menu ? MUS_TITLE : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
   mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7, ac.currentTime, 0.1);
   if (th < 0) return;

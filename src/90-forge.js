@@ -44,7 +44,7 @@ function updateForge() {
   if (up >= forgeCap()) { say(up >= MAX_UP ? 'ALREADY AT +10 (MAX)' : 'CLEAR EMBER TRIAL ' + ROMAN_T[up - 6] + ' TO FORGE +' + (up + 1), false); SFX.land(); return; }
   const c = forgeCost(it); if (rpg.gold < c) { say('NOT ENOUGH GOLD', false); SFX.land(); return; }
   rpg.gold -= c;
-  if (Math.random() < FORGE_P[up]) { it.up = up + 1; PS = null; heroStats(false); say(tr('SUCCESS!') + '  ' + tr(it.name) + ' +' + it.up, true); SFX.magic(); f.fx = 40; }
+  if (Math.random() < FORGE_P[up]) { it.up = up + 1; jr('forge'); PS = null; heroStats(false); say(tr('SUCCESS!') + '  ' + tr(it.name) + ' +' + it.up, true); SFX.magic(); f.fx = 40; }
   else { say('THE FORGE FAILED. THE GOLD IS GONE', false); SFX.die(); f.fx = -1; }
   saveGame();
 }
@@ -117,11 +117,11 @@ function drawForge() {
   text('FAILED FORGING KEEPS THE LEVEL BUT TAKES THE GOLD', W / 2, 264, 7, '#8a6a5a', 'center');
 }
 function openShop(next) {
-  const mk = i => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
+  const mk = i => seeded('M' + stageIdx + '/' + cycle + '/' + i, () => { // the market always has a little mythic and legendary luck, on top of the stage drop rates
     let r = rollRarity(); if (i === 0 && tierOf() >= 1) r = Math.max(1, r);
-    if (stageIdx >= 2 || cycle) { const x = Math.random(); if (i === 3) r = x < 0.06 ? 4 : x < 0.3 ? 3 : x < 0.6 ? 2 : Math.max(1, r); else if (x < 0.02) r = 4; else if (x < 0.09) r = Math.max(r, 3); else if (x < 0.22) r = Math.max(r, 2); }
+    if (stageIdx >= 2 || cycle) { const x = rq(); if (i === 3) r = x < 0.06 ? 4 : x < 0.3 ? 3 : x < 0.6 ? 2 : Math.max(1, r); else if (x < 0.02) r = 4; else if (x < 0.09) r = Math.max(r, 3); else if (x < 0.22) r = Math.max(r, 2); }
     return genItem(r);
-  };
+  });
   shop = { i: 0, note: '', noteT: 0, next, stock: [
     { kind: 'heal', name: 'FULL HEAL', price: 80, info: 'RESTORES THE WHOLE PARTY' },
     { kind: 'coin', name: 'CONTINUE COIN', price: coinPrice(), info: 'AN EXTRA LIFE (MAX 9)' },

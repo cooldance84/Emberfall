@@ -32,5 +32,20 @@ function itemSt(it, up) { // every forge level adds 10% to the weapon's stats an
 }
 const iname = it => it.name + (it.up ? ' +' + it.up : '');
 const statName = k => k === 'str' ? cls().stat : STATS[k].n;
-const pickOf = a => a[Math.random() * a.length | 0];
+/* ---------- season seed: in the race the layout, the waves, the chests, shrines, markets and every drop come from a seed everyone shares ---------- */
+let rngS = null;
+function rngMake(str) { // xmur3 hash -> mulberry32
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+  h = Math.imul(h ^ h >>> 16, 2246822507); h = Math.imul(h ^ h >>> 13, 3266489909); let a = (h ^ h >>> 16) >>> 0;
+  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const rq = () => rngS ? rngS() : Math.random();
+const rqr = (a, b) => a + rq() * (b - a);
+function seeded(key, fn) { // runs fn with a stream that depends only on the season and the key; outside the race (or with no key) it is plain Math.random
+  if (!daily || key == null) return fn();
+  const o = rngS; rngS = rngMake(seasonStr() + '|' + key);
+  try { return fn(); } finally { rngS = o; }
+}
+const pickOf = a => a[rq() * a.length | 0];
 const ELEMS = ['fire', 'frost', 'bolt'];

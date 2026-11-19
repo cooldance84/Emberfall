@@ -909,7 +909,8 @@ function drawHUD() {
     text('RACE ' + fmtTime(daily.t), W - 12, 72, 8, '#ffd24a', 'right'); text('GOAL: LV ' + MAX_LV + ' + PG ' + PG_MAX, W - 12, 82, 7, '#c9a86a', 'right');
     if (!daily.done) { const p = paceInfo(); if (p && p.none) text('NO ONE HAS FINISHED YET', W - 12, 92, 7, '#8a7a9a', 'right');
       else if (p) { const late = daily.t > p.t; text((late ? 'BEHIND ' : 'TO BEAT ') + p.n + ' ' + fmtTime(p.t), W - 12, 92, 7, late ? '#ff8a6a' : '#9ad08a', 'right');
-      } } // the pace line: the best finished time online
+      } // the pace line: the best finished time online
+      const q = daily.last; if (q) text(splitName(q.k) + '  ' + (q.d == null ? fmtTime(q.t) : fmtDelta(q.d)), W - 12, 102, 7, q.d == null ? '#c9a86a' : q.d > 0 ? '#ff8a6a' : '#9ad08a', 'right'); } // the last split: time, or the gap to the leader
   }
   bar(12, 22, 110, 7, hero.hp, hero.maxhp, '#d94a3a', '#3a1418');
   if (rpg.lvl >= MAX_LV) bar(12, 40, 110, 2, rpg.pg >= PG_MAX ? 1 : rpg.pxp, rpg.pg >= PG_MAX ? 1 : pgNeed(rpg.pg), '#3a8aff', '#101a30'); // at the cap the bar fills toward the next paragon point
@@ -961,12 +962,15 @@ screen.addEventListener('pointerup', e => {
   if (mode === 'resume') { const r = screen.getBoundingClientRect(), y = (e.clientY - r.top) / r.height * H; const i = y > 155 && y < 175 ? 0 : y > 177 && y < 197 ? 1 : -1; if (i >= 0) { if (resumeSel === i) { pressed.Enter = true; } else resumeSel = runInfo.coins > 0 ? i : 1; } return; }
   if (mode === 'dailyinfo') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H, b = dailyBtns.find(q => x >= q.x && x <= q.x + q.w && y >= q.y && y <= q.y + q.h);
     if (b && b.go) openBoard(1); else openSelect(false, true); return; }
+  if (mode === 'journey') { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H; if (journeyBox && y >= journeyBox.y && y <= journeyBox.y + journeyBox.h) jrCycle(1); else { mode = 'title'; SFX.pick(); } return; }
+  if (shareBox && (mode === 'board' || mode === 'victory')) { const r = screen.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H; if (x >= shareBox.x && x <= shareBox.x + shareBox.w && y >= shareBox.y && y <= shareBox.y + shareBox.h) { shareCard(); return; } }
   if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !dailyBox && !cloudBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !dailyBox && !cloudBox && !journeyBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
+  if (journeyBox && mode === 'title' && x >= journeyBox.x && x <= journeyBox.x + journeyBox.w && y >= journeyBox.y && y <= journeyBox.y + journeyBox.h) { openJourney(); return; }
   if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
 });
@@ -975,4 +979,5 @@ screen.addEventListener('pointermove', e => {
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   screen.style.cursor = (x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) ? 'pointer' : '';
 });
+addEventListener('keydown', e => { if (e.code === 'KeyY' && (mode === 'victory' || mode === 'board')) shareCard(); });
 addEventListener('keydown', e => { if (e.code === 'KeyD' && donateBox && (mode === 'title' || mode === 'victory' || mode === 'gameover' || mode === 'board')) openDonate(); });

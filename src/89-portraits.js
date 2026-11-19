@@ -92,22 +92,22 @@ function beginStage(i) {
     if (i === 0) { gaps.push({ x: 590, w: 14, type: 'wall' }); gaps.push({ x: 1600, w: 34, type: 'pit' }); }
     else for (let x = 520 + (i * 37) % 120, k = 0; x < stop && k < n; x += 330 + ((i * 53 + k * 71) % 200), k++) { const pit = (i + k) % 3 !== 0; gaps.push({ x, w: pit ? 34 + ((i + k) * 13) % 9 : 14, type: pit ? 'pit' : 'wall' }); } }
   if (i >= 1) for (let x = 420, k = 0; x < S.end - 300; x += 330 + (k * 67) % 140, k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60)) vents.push({ x, y: Y_MIN + 20 + (k * 53) % (Y_MAX - Y_MIN - 30), ph: (k * 97) % 260, hit: new Set() });
-  { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
-    const td = dailyIs('TREASURE SEASON'); for (let x = 300 + Math.random() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + Math.random() * 260) / (td ? 2 : 1),
-      k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = Math.random(),
+  seeded('LC' + i + '/' + cycle, () => { const bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = (bw ? bw.x - 260 : S.end - 260); // hidden treasure chests along the road
+    const td = dailyIs('TREASURE SEASON'); for (let x = 300 + rq() * 160, k = 0; x < stop && k < (td ? 8 : 4); x += (380 + rq() * 260) / (td ? 2 : 1),
+      k++) if (!gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 50)) { const r = rq(),
       type = r < (dailyIs('TREASURE SEASON') ? 0.25 : 0.1) ? 'gold' : r < 0.24 && i >= 1 ? 'trap' : 'wood'; chests.push({ x: Math.round(x),
-      y: Y_MIN + 12 + Math.random() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } }
+      y: Y_MIN + 12 + rq() * (Y_MAX - Y_MIN - 24), open: 0, hp: type === 'gold' ? 3 : 2, type }); } });
   shrines = []; buffs = []; // a shrine may wait by the road (never on the first stage of the campaign, and always before the boss)
-  if (i >= 1 || cycle) {
-    const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, Math.random() < 0.55 ? (Math.random() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
+  if (i >= 1 || cycle) seeded('LS' + i + '/' + cycle, () => {
+    const want = Math.max((i + 1) % 4 === 0 ? 1 : 0, rq() < 0.55 ? (rq() < 0.2 ? 2 : 1) : 0), // every fourth stage always has one
       bw = S.waves.find(w => w.e.some(t => BOSSES[t])), stop = bw ? bw.x - 260 : S.end - 260;
     for (let n = 0; n < want; n++) for (let tries = 0; tries < 14; tries++) {
-      const x = Math.round(420 + Math.random() * Math.max(60, stop - 420));
+      const x = Math.round(420 + rq() * Math.max(60, stop - 420));
       if (gaps.some(q => Math.abs(q.x + q.w / 2 - x) < 60) || chests.some(c => Math.abs(c.x - x) < 60) || vents.some(v => Math.abs(v.x - x) < 40) || shrines.some(q => Math.abs(q.x - x) < 160)) continue;
-      shrines.push({ x, y: Math.round(Y_MIN + 14 + Math.random() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: Math.random() < 0.08 }); break;
+      shrines.push({ x, y: Math.round(Y_MIN + 14 + rq() * (Y_MAX - Y_MIN - 28)), used: 0, t: 0, shake: 0, sacred: rq() < 0.08 }); break;
     }
     if ((i + 1) % 4 === 0 && !shrines.length) shrines.push({ x: Math.round(stop * 0.5 + 200), y: 215, used: 0, t: 0, shake: 0, sacred: false }); // the fixed shrine is never skipped
-  }
+  });
   for (const p of players()) {
     if (p.dead && coop) { p.dead = false; p.fade = 0; p.hp = Math.max(1, p.maxhp >> 1); }
     p.pitT = 0; p.x = p.pn === 2 ? 40 : 60; p.y = p.pn === 2 ? 232 : 205; p.z = 0; p.vx = 0; p.vz = 0; p.st = 'idle'; p.t = 0; p.mount = null; p.inv = 90; p.hits.clear();

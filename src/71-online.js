@@ -11,33 +11,37 @@ const cleanBuild = b => {
   return { el: ELEMS.includes(b.el) ? b.el : '', et: clamp(b.et | 0, 0, 10), eq: b.eq.slice(0, 6).filter(a => Array.isArray(a) && SLOTS.includes(a[0])).map(a => [a[0],
     String(a[1] || '').toUpperCase().slice(0, 32), clamp(a[2] | 0, 0, RARITY.length - 1), clamp(a[3] | 0, 0, MAX_UP), SETS[a[4]] ? a[4] : '']) };
 };
-const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0, d: String(r.day || ''), b: cleanBuild(r.build) });
-let buildCol = null; // does the table have the build column yet? null = not known, the game tries it and falls back to rows without it
+const fromRow = r => ({ n: String(r.name || '???'), h: r.hero, t: r.t | 0, lv: r.lv | 0, pg: r.pg | 0, st: r.stage | 0, c: r.cycle | 0, w: !!r.finished, s: 0, at: Date.parse(r.created_at) || 0, d: String(r.day || ''), b: cleanBuild(r.build), sp: splitsFrom(r.splits) });
+let buildCol = null, splitCol = null; // does the table have the build / splits column yet? null = not known, the game tries it and falls back to rows without it
+const extraCols = () => (buildCol === false ? '' : ',build') + (splitCol === false ? '' : ',splits');
+const colFail = () => { if (splitCol !== false) { splitCol = false; return true; } if (buildCol !== false) { buildCol = false; return true; } return false; }; // a 400: drop the newest column first, then the older one
+const colOk = () => { if (buildCol === null) buildCol = true; if (splitCol === null) splitCol = true; };
 const COLS = 'name,hero,t,lv,pg,stage,cycle,finished,created_at';
 function loadOnlineBoard(force) {
   if (!onlineOn() || onlineBoard.busy) return;
   if (!force && onlineBoard.day === seasonStr() && Date.now() - onlineBoard.at < 30000) return;
   const day = seasonStr(); onlineBoard.busy = true;
-  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
-    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
+  sbFetch('daily_scores?day=gte.' + seasonFirst() + '&day=lte.' + seasonLast() + '&select=day,' + COLS + extraCols() + '&order=finished.desc,t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { colOk(); onlineBoard = { day, rows: a.map(fromRow).sort(dailyCmp), at: Date.now(), err: false, busy: false }; }) // every run of the season is kept (up to 1000): the counters use them all, the board shows each player's best
+    .catch(st => { if (st === 400 && colFail()) { onlineBoard.busy = false; loadOnlineBoard(true); return; } onlineBoard = { day, rows: onlineBoard.day === day ? onlineBoard.rows : null, at: Date.now(), err: true, busy: false }; });
 }
-let hof = { rows: null, at: 0, err: false, busy: false };
+let hof = { rows: null, all: null, at: 0, err: false, busy: false };
 function loadHof(force) { // the eternal board: every player's fastest finished run of all seasons
   if (!onlineOn() || hof.busy) return;
   if (!force && hof.rows && Date.now() - hof.at < 60000) return;
   hof.busy = true;
-  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + (buildCol === false ? '' : ',build') + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
-    .then(a => { if (buildCol === null) buildCol = true; hof = { rows: bestPer(a.map(fromRow)).sort(dailyCmp), at: Date.now(), err: false, busy: false }; })
-    .catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, at: Date.now(), err: true, busy: false }; });
+  sbFetch('daily_scores?finished=eq.true&day=gte.' + SEASON_FROM + '&select=day,' + COLS + extraCols() + '&order=t.asc,created_at.asc&limit=1000').then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(a => { colOk(); const all = a.map(fromRow).sort(dailyCmp); hof = { rows: bestPer(all).sort(dailyCmp), all, at: Date.now(), err: false, busy: false }; }) // all = every finished run, kept for the archive and the champion titles
+    .catch(st => { if (st === 400 && colFail()) { hof.busy = false; loadHof(true); return; } hof = { rows: hof.rows, all: hof.all, at: Date.now(), err: true, busy: false }; });
 }
 function submitOnline(e) { // sent when a daily result is signed; a failure leaves it on this device's board only
   if (!onlineOn()) return; onlineSent = { n: e.n, t: e.t | 0, h: e.h }; onlineSendErr = false;
   const row = { day: dayStr(), name: e.n, hero: e.h, t: e.t | 0, lv: e.lv | 0, pg: e.pg | 0, stage: Math.min(35, e.st | 0), cycle: Math.min(11, Math.max(1, e.c | 0)), finished: !!e.w };
-  const post = withBuild => sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }),
-    body: JSON.stringify(withBuild ? Object.assign({ build: e.b || buildOf() },
-    row) : row) }).then(r => { if (!r.ok) throw r.status; if (withBuild) buildCol = true; loadOnlineBoard(true); hof.at = 0; });
-  post(buildCol !== false).catch(st => { if (st === 400 && buildCol !== false) { buildCol = false; return post(false); } throw st; }).catch(() => { onlineSendErr = true; }); // a table without the build column still takes the result
+  let sent = null;
+  const post = () => { const body = Object.assign({}, row); sent = { b: buildCol !== false, s: splitCol !== false && !!e.sp }; if (sent.b) body.build = e.b || buildOf(); if (sent.s) body.splits = e.sp;
+    return sbFetch('daily_scores', { method: 'POST', headers: sbHeaders({ Prefer: 'return=minimal' }), body: JSON.stringify(body) }).then(r => { if (!r.ok) throw r.status; colOk(); loadOnlineBoard(true); hof.at = 0; }); };
+  const go = () => post().catch(st => { if (st === 400 && sent && (sent.s || sent.b)) { if (sent.s) splitCol = false; else buildCol = false; return go(); } throw st; }); // a 400: leave out the newest column that was sent, then the older one
+  go().catch(() => { onlineSendErr = true; }); // a table without the newer columns still takes the result
 }
 const modOfDay = ds => { const q = String(ds).split('-').map(Number); return ((q[0] || 0) * 12 + (q[1] || 1) - 1) % DAILY_MODS.length; }; // the rule of the season a day belongs to
 const bestPer = rows => { const seen = {}, out = []; for (const r of rows.slice().sort(dailyCmp)) { const k = r.n + '|' + r.h; if (seen[k]) continue; seen[k] = 1; out.push(r); } return out; }; // one line per player and hero: the best run

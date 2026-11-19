@@ -28,11 +28,11 @@ function spawnFoe(t, x, hasBoss) {
   if (tn && (t === 'h' || t === 'b')) f.k = Object.assign({}, f.k, tn);
   if (dailyIs('IRON FOES')) { f.hp = f.maxhp = Math.round(f.maxhp * 1.5); }
   if (dailyIs('SWIFT FOES')) f.k = Object.assign({}, f.k, { spd: f.k.spd * 1.2 });
-  if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && Math.random() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
+  if (!BOSSES[t] && !hasBoss && (stageIdx >= 2 || cycle) && rq() < 0.05 + 0.01 * Math.min(stageIdx + cycle * 10, 12)) { // elite: bigger, faster, deadlier, better loot
     f.elite = true; f.glow = '255,200,80'; f.hp = f.maxhp = Math.round(f.maxhp * 1.8); f.h = Math.round(f.h * 1.12);
     f.k = Object.assign({}, f.k, { name: 'ELITE ' + f.k.name, scale: f.k.scale * 1.12, spd: f.k.spd * 1.15, armor2: '#ffd24a' });
   }
-  if (!BOSSES[t] && !hasBoss && !f.barrier && t !== 'imp' && t !== 'gob' && (stageIdx >= 1 || cycle) && Math.random() < 0.06 + 0.012 * Math.min(stageIdx + cycle * 10, 15)) { // some foes simply arrive with an arcane barrier (6% to 24%)
+  if (!BOSSES[t] && !hasBoss && !f.barrier && t !== 'imp' && t !== 'gob' && (stageIdx >= 1 || cycle) && rq() < 0.06 + 0.012 * Math.min(stageIdx + cycle * 10, 15)) { // some foes simply arrive with an arcane barrier (6% to 24%)
     f.barrier = f.bmax = Math.round(f.maxhp * 0.6); f.warded = true;
   }
   enemies.push(f); return f;
@@ -44,13 +44,13 @@ function updateStage() {
     lockX = w.x - 200 > cam ? Math.max(cam, w.x - 200) : cam;
     // later stages throw bigger crowds: extra husks, brutes from stage 3, more escorts around bosses
     const hasBoss = w.e.some(t => BOSSES[t]), list = buildList(w); let rode = false;
-    list.forEach((t, i) => {
+    seeded('W' + stageIdx + '/' + cycle + '/' + waveIdx, () => list.forEach((t, i) => { // the crowd of a wave (elites, barriers, riders) is fixed by the season seed
       const side = i % 2 ? 1 : -1;
       const ex = offGap(side > 0 ? lockX + W + 30 + i * 22 : lockX - 30 - i * 22, side);
-      const f = spawnFoe(t, ex, hasBoss);
-      if (t === 'h' && !rode && ((stageIdx === 0 && !cycle && waveIdx === 0 && i === 0) || Math.random() < 0.08 + 0.02 * Math.min(stageIdx + cycle, 5))) { rode = true;
+      const f = spawnFoe(t, ex, hasBoss); f.sid = 'w' + waveIdx + '.' + i;
+      if (t === 'h' && !rode && ((stageIdx === 0 && !cycle && waveIdx === 0 && i === 0) || rq() < 0.08 + 0.02 * Math.min(stageIdx + cycle, 5))) { rode = true;
         f.mount = makeMount(0, 0, 0, pickMountType()); f.hp = f.maxhp = 60; f.h = f.k.h + 12; } // wyrmlings are rare now: at most one per wave
-    });
+    }));
     waveN = list.length;
     if (!hasBoss) for (const t of ['warder', 'caller']) if (list.includes(t) && !hints[t]) { hints[t] = 1; msg = t === 'warder' ? 'SHATTER THE BARRIER WITH HEAVY BLOWS' : 'KEEP MOVING: RUNES BURN THE GROUND'; msgT = 150; }
     const bk = w.e.find(t => BOSSES[t]);
@@ -70,7 +70,7 @@ function updateStage() {
   }
   if (lockX !== Infinity && enemies.filter(e => e.kind !== 'imp').every(e => e.dead)) {
     lockX = Infinity; waveIdx++; goBlink = 240;
-    if (waveIdx >= WAVES.length) { clearT = LOOT_T; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; }
+    if (waveIdx >= WAVES.length) { clearT = LOOT_T; msg = 'STAGE CLEAR'; msgT = 150; goBlink = 0; jr('stage'); }
   }
   const target = leadX() - W * 0.42;
   const maxCam = lockX !== Infinity ? lockX : STAGE_END - W;
@@ -187,10 +187,12 @@ function step() {
     else if (pressed.KeyC) { openCloud(); return; }
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
+    else if (pressed.Digit4 || pressed.Numpad4 || pressed.KeyG) { openJourney(); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
   if (mode === 'dailyinfo') { updateDailyInfo(); updateParts(); cam += 0.3; return; }
+  if (mode === 'journey') { updateJourney(); updateParts(); cam += 0.3; return; }
   if (mode === 'cloud') { updateCloud(); updateParts(); cam += 0.3; return; }
   if (mode === 'select') { updateSelect(); updateParts(); cam += 0.3; return; }
   if (mode === 'resume') { updateResume(); updateParts(); cam += 0.3; return; }
@@ -215,9 +217,9 @@ function step() {
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
-  if (daily && !daily.done) { daily.t++; if (tickN % 1800 === 0) loadOnlineBoard(); if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
+  if (daily && !daily.done) { daily.t++; if (tickN % 30 === 0) splitTick(); if (tickN % 1800 === 0) loadOnlineBoard(); if (rpg.lvl >= MAX_LV && rpg.pg >= PG_MAX) { dailyWin(); return; } } // only play time counts: shops, pauses and story pages do not
   for (const p of players()) withHero(p, () => updateHero(p));
-  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx();
+  enemies.forEach(e => withHero(nearestPlayer(e.x), () => updateEnemy(e))); updateShots(); elemAura(); gearSparks(); updateShrines(); buffFx(); cosFx(); if (!daily && tickN % 60 === 0) jrApply();
   enemies = enemies.filter(e => !(e.dead && e.fade > 50) && !e.gone);
   updateItems(); updateParts(); updateMounts(); updateImpSpawn(); updateStage(); updateFloats(); updateWeather();
   if (shake > 0) shake *= 0.86; if (shake < 0.2) shake = 0;

@@ -2,6 +2,17 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.49.0] - 2026-11-19
+Season extras.
+- **Season seed:** in the race the stage layout (chests, shrines), the crowd of every wave (elites, barriers, riders), the market stock, every chest and shrine roll and the drops of every wave foe come from a seed that depends only on the month, so every racer meets the same stages and the same loot. Combat rolls (hits, crits) and the normal game stay random.
+- **Split times:** the race stamps lv 10, 20, 30, 40, 50, 60, 70 and paragon 50. While you race, each milestone shows the time and the gap to the fastest finisher that has splits (green ahead, red behind); the last one stays on the HUD. The splits are posted with the result and shown on a second page of a run's card on the boards (A/D flips between build and splits).
+- **Champion titles and the archive:** the top three of every finished season get a title (S1, S2... in gold, silver and bronze) next to their name on the eternal board and on their card. The new **Past seasons** view (H goes round: season board, eternal board, past seasons; A/D picks the season) shows the top ten of any season that is over.
+- **Season Journey:** nine goals every season (another mix each month, 16 in the pool). Each finished goal pays gold to your saved hero (scaled by its level); 3, 6 and 9 goals open the ember, frost and volt trails, the last two with extra coins. Open it with **4** (or **G**, or the button in the top right corner of the title screen). Race goals count in the race only, all the others only outside it.
+- **Trails:** cosmetic motes around your heroes, chosen on the Journey page (A/D). The gilded trail comes with your first finished race. No power, only a look.
+- **Share card:** after a finished race, **Y** (or the button) makes a 1200x630 picture with the hero, time, rank, rule, element and splits and opens the share sheet or saves it as a PNG.
+- Needs one new SQL line for the splits (see docs/ONLINE.md); without it everything works, the splits are just not stored online.
+- Tests: `seed`, `splits`, `archive`, `journey` and `share`; the board and online tests follow the new columns and the third board view.
+
 ## [1.48.0] - 2026-11-19
 - **Shrine blessings stack.** Several shrines no longer overwrite each other: up to three blessings run side by side, each on its own clock (haste, fury, ward, wisdom, fortune, surge). A shrine never rolls a blessing that is already running, and striking the same shrine again (an accidental extra hit) changes nothing. Only when all three places are taken does the blessing with the least time left fade to make room.
 - The blessing bars sit side by side under the score; the ward still soaks blows while the other blessings keep running.
