@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.50.0] - 2026-11-19
+- **Season Journey goals also pay XP:** every finished goal gives your saved hero 20% of the XP it needs for its next level (at level 70 the same share of a paragon point), on top of the gold. It is paid when you are back in play with the saved hero, never to the race hero.
+- Tests: `journey.test.js` checks the XP at a normal level, at the level cap and with all paragon points taken.
+
 ## [1.49.0] - 2026-11-19
 Season extras.
 - **Season seed:** in the race the stage layout (chests, shrines), the crowd of every wave (elites, barriers, riders), the market stock, every chest and shrine roll and the drops of every wave foe come from a seed that depends only on the month, so every racer meets the same stages and the same loot. Combat rolls (hits, crits) and the normal game stay random.

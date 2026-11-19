@@ -22,6 +22,7 @@ const COSM = { // trails of motes around the heroes: only a look, no power
   ember: { name: 'EMBER MOTES', col: '#ff9a4a', c2: '#ffd070' }, frost: { name: 'FROST MOTES', col: '#9adcff', c2: '#e8faff' },
   volt: { name: 'VOLT SPARKS', col: '#fff6a0', c2: '#6ab8ff' }, gild: { name: 'GILDED TRAIL', col: '#ffd24a', c2: '#ffffff' }
 };
+const JR_XP = 0.2; // every goal also pays this share of the XP your hero needs for its next level (or paragon point)
 const JR_TIERS = [{ at: 3, cos: 'ember', coins: 0 }, { at: 6, cos: 'frost', coins: 1 }, { at: 9, cos: 'volt', coins: 2 }]; // 3, 6 and 9 goals of the season
 const jrGoals = () => { const s = seasonNo(seasonStr()); return JR_POOL.map((q, i) => [((i + 3) * 37 + s * 53) % 101, q]).sort((a, b) => a[0] - b[0]).slice(0, 9).map(a => a[1]); }; // nine goals, another mix every season
 let jrS = null;
@@ -51,8 +52,9 @@ function jr(ev, v) { // an event of play; the race goals count only in the race,
 function jrRaceWon() { jr('race'); const S = jrLoad(); if (jrUnlock(S, 'gild')) { jrSave(); if (daily) daily.newTrail = true; } } // the first finished race gives the gilded trail
 function jrApply() { // the reward goes to the saved hero, never to the race hero
   if (daily || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
-  const gd = S.pg * (100 + 12 * rpg.lvl), cn = Math.min(S.pc, Math.max(0, 9 - rpg.coins)); rpg.gold += gd; rpg.coins += cn; S.pg = 0; S.pc = 0; jrSave(); saveGame();
-  floatText(hero.x, hero.y - 80, 'JOURNEY +' + gd + 'G' + (cn ? ' +' + cn + ' COIN' : ''), '#ffd24a', 8);
+  const gd = S.pg * (100 + 12 * rpg.lvl), cn = Math.min(S.pc, Math.max(0, 9 - rpg.coins)), need = rpg.lvl >= MAX_LV ? (rpg.pg >= PG_MAX ? 0 : pgNeed(rpg.pg)) : xpNeed(rpg.lvl), xp = Math.round(S.pg * need * JR_XP);
+  rpg.gold += gd; rpg.coins += cn; S.pg = 0; S.pc = 0; jrSave(); if (xp > 0) gainXP(xp); saveGame();
+  floatText(hero.x, hero.y - 80, 'JOURNEY +' + gd + 'G' + (xp ? ' +' + xp + ' XP' : '') + (cn ? ' +' + cn + ' COIN' : ''), '#ffd24a', 8);
 }
 function cosFx() {
   const S = jrS || jrLoad(), C = COSM[S.pick]; if (!C || tickN % 3) return;
@@ -69,7 +71,7 @@ function drawJourney() {
   const S = jrLoad(), gs = jrGoals(); g.fillStyle = 'rgba(4,2,10,0.78)'; g.fillRect(0, 0, W, H);
   text('SEASON JOURNEY', W / 2, 26, 16, '#ffb43a', 'center');
   text('SEASON ' + seasonNo(seasonStr()) + '   ' + seasonStr() + '   ' + (seasonDaysLeft() ? seasonDaysLeft() + ' DAYS LEFT' : 'LAST DAY') + '   ' + S.done.length + '/9 DONE', W / 2, 42, 8, '#c9a86a', 'center');
-  text('EACH GOAL PAYS GOLD TO YOUR SAVED HERO. RACE GOALS COUNT IN THE RACE ONLY.', W / 2, 54, 6, '#8a7a9a', 'center');
+  text('EACH GOAL PAYS GOLD AND XP TO YOUR SAVED HERO. RACE GOALS COUNT IN THE RACE ONLY.', W / 2, 54, 6, '#8a7a9a', 'center');
   gs.forEach((q, i) => { const y = 74 + i * 14, d = S.done.includes(q.id), c = Math.min(q.n, S.n[q.id] | 0);
     text(d ? 'X' : '-', 40, y, 8, d ? '#7aff9a' : '#6a5a80'); text(q.t, 54, y, 8, d ? '#9ad08a' : '#e8e0f0');
     text(c + '/' + q.n, 372, y, 8, d ? '#7aff9a' : '#c9a86a', 'right'); bar(380, y - 6, 60, 4, c, q.n, d ? '#7aff9a' : '#ffb43a', '#1c1426'); });

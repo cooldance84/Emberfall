@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.49.0';
+const VERSION = '1.50.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
