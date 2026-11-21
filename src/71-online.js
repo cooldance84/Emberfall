@@ -156,7 +156,7 @@ function paceInfo() { // the season's fastest finish on the online board, the ti
 const dayMod = () => { const d = new Date(); return (d.getFullYear() * 12 + d.getMonth()) % DAILY_MODS.length; }; // one rule for the whole month
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + seasonStr() : BOARD_KEY;
-function saveGame() { if (daily || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
+function saveGame() { if (daily || tut || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };

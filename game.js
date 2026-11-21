@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.50.0';
+const VERSION = '1.51.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -57,7 +57,7 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
 let chests = [], vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
-let shrines = [], buffs = []; // the blessings of the shrines are shared by the whole party; up to MAX_BUFFS run side by side
+let shrines = [], buffs = [], tut = null; // tut: the training arena, when it runs; // the blessings of the shrines are shared by the whole party; up to MAX_BUFFS run side by side
 const MAX_BUFFS = 3;
 const buffIs = id => buffs.some(b => b.id === id && b.t > 0);
 const LOOT_T = 1500;
@@ -1162,6 +1162,7 @@ const pgHp = () => 1 + 0.008 * (rpg.pg | 0), pgDmg = () => 1 + 0.007 * (rpg.pg |
 let killCombo = 0, killComboT = -999;
 const KC_WINDOW = 180, kcBonus = () => Math.min(0.75, killCombo * 0.03);
 function gainXP(n) {
+  if (tut) return; // the training pays nothing
   if (daily && n > 0) n = Math.round(n * SEASON_XP); // the season race pays double
   if (rpg.lvl >= MAX_LV && n > 0) {
     if (rpg.pg >= PG_MAX) return;
@@ -1532,7 +1533,7 @@ function paceInfo() { // the season's fastest finish on the online board, the ti
 const dayMod = () => { const d = new Date(); return (d.getFullYear() * 12 + d.getMonth()) % DAILY_MODS.length; }; // one rule for the whole month
 const dailyIs = n => !!daily && DAILY_MODS[daily.mod].name === n;
 const boardKeyFor = v => v ? 'emberfall_board_daily_' + seasonStr() : BOARD_KEY;
-function saveGame() { if (daily || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
+function saveGame() { if (daily || tut || DEV) return; try { localStorage.setItem(saveKey(), seal({ v: 3, lvl: rpg.lvl, xp: rpg.xp, bag: rpg.bag, eq: rpg.eq, ini: rpg.ini, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr | 0, pg: rpg.pg | 0, pxp: Math.round(rpg.pxp) || 0 })); } catch (e) { } }
 function migrateSave(o) { // v1 saves knew no rare tier: legendary was 2, mythic 3
   if (!o || o.v >= 2) return o;
   const up = it => { if (it && typeof it.rar === 'number' && it.rar >= 2) it.rar++; };
@@ -2010,7 +2011,7 @@ function jrDone(S, q) { // a goal is reached: its gold waits for the saved hero,
   if (mode === 'play') { msg = t; msgT = 200; SFX.pick(); }
 }
 function jr(ev, v) { // an event of play; the race goals count only in the race, all the others only outside it
-  if (DEV) return; if ((ev.indexOf('race') === 0) !== !!daily) return;
+  if (DEV || tut) return; if ((ev.indexOf('race') === 0) !== !!daily) return;
   const S = jrLoad(); let ch = false;
   for (const q of jrGoals()) if (q.ev === ev) { const c = S.n[q.id] | 0, nv = Math.min(1e6, q.max ? Math.max(c, v | 0) : c + (v == null ? 1 : v));
     if (nv !== c) { S.n[q.id] = nv; ch = true; if (nv >= q.n && !S.done.includes(q.id)) jrDone(S, q); } }
@@ -2018,7 +2019,7 @@ function jr(ev, v) { // an event of play; the race goals count only in the race,
 }
 function jrRaceWon() { jr('race'); const S = jrLoad(); if (jrUnlock(S, 'gild')) { jrSave(); if (daily) daily.newTrail = true; } } // the first finished race gives the gilded trail
 function jrApply() { // the reward goes to the saved hero, never to the race hero
-  if (daily || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
+  if (daily || tut || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
   const gd = S.pg * (100 + 12 * rpg.lvl), cn = Math.min(S.pc, Math.max(0, 9 - rpg.coins)), need = rpg.lvl >= MAX_LV ? (rpg.pg >= PG_MAX ? 0 : pgNeed(rpg.pg)) : xpNeed(rpg.lvl), xp = Math.round(S.pg * need * JR_XP);
   rpg.gold += gd; rpg.coins += cn; S.pg = 0; S.pc = 0; jrSave(); if (xp > 0) gainXP(xp); saveGame();
   floatText(hero.x, hero.y - 80, 'JOURNEY +' + gd + 'G' + (xp ? ' +' + xp + ' XP' : '') + (cn ? ' +' + cn + ' COIN' : ''), '#ffd24a', 8);
@@ -2093,6 +2094,81 @@ function drawShareHint(y, xr) { // a chip on the screens of a finished race; the
   const t = 'Y: SHARE IMAGE'; g.font = '8px "Courier New",monospace'; const w = g.measureText(t).width + 10; shareBox = { x: (xr || W - 4) - w, y, w, h: 13 };
   g.fillStyle = 'rgba(20,10,40,0.75)'; g.fillRect(shareBox.x, y, w, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(shareBox.x + 0.5, y + 0.5, w - 1, 12); text(t, shareBox.x + w / 2, y + 10, 8, '#8cc4ff', 'center');
   if (shareNoteT > 0) { shareNoteT--; text(shareNote, W / 2, 262, 8, '#9ad08a', 'center'); }
+}
+/* ---------- training: a short guided arena that teaches the buttons; nothing in it is saved, paid or counted ---------- */
+const TUT_KEY = 'emberfall_tut_v1';
+const tutDone = () => { try { return localStorage.getItem(TUT_KEY) === '1'; } catch (e) { return false; } };
+const tutMark = () => { try { localStorage.setItem(TUT_KEY, '1'); } catch (e) { } };
+const tutNeeded = () => !tutDone() && rpg.lvl <= 1; // a hero that already has progress knows the game: no training for it
+const tutKeys = () => IS_TOUCH ? { move: 'THE STICK', atk: 'THE ATK BUTTON', jump: 'THE JUMP BUTTON', magic: 'THE MAGIC BUTTON', skill: 'THE SKILL BUTTON', gear: 'THE GEAR BUTTON', pause: 'THE II BUTTON' }
+  : { move: 'WASD OR THE ARROWS', atk: 'J OR Z  (PAD: X)', jump: 'K, X OR SPACE  (PAD: A)', magic: 'SHIFT, L OR C  (PAD: B)', skill: 'U  (Q SWAPS)', gear: 'I OR TAB', pause: 'ESC OR P' };
+const TUT_STEPS = [
+  { id: 'move', name: 'MOVE', lines: k => ['WALK TO THE GLOWING MARKER.', 'USE ' + k.move + '.'] },
+  { id: 'atk', name: 'ATTACK', lines: k => ['HIT THE DUMMY 3 TIMES WITH ' + k.atk + '.', 'THREE HITS IN A ROW ARE A COMBO: THE LAST ONE KNOCKS FOES BACK.'] },
+  { id: 'jump', name: 'JUMP', lines: k => ['PRESS ' + k.jump + ' TO JUMP.', 'YOU CAN ATTACK IN THE AIR TOO. JUMP OVER CHASMS AND DANGER.'] },
+  { id: 'fight', name: 'FIGHT', lines: () => ['DEFEAT THE 2 HUSKS.', 'WATCH THEIR WIND-UP, STEP AWAY, THEN HIT BACK.'] },
+  { id: 'wrath', name: 'DRAGON WRATH', lines: k => ['PRESS ' + k.magic + ' TO CALL THE DRAGON.', 'IT NEEDS EMBER JARS (SMASH VASES). SAVE IT FOR BOSSES AND CROWDS.'] },
+  { id: 'shrine', name: 'SHRINE', lines: k => ['HIT THE SHRINE WITH ' + k.atk + '.', 'EACH GIVES A TIMED BLESSING. UP TO 3 RUN AT THE SAME TIME.'] }
+];
+function tutFoes(n) { for (let i = 0; i < n; i++) { const f = makeFighter('h', cam + W + 16 + i * 34, 190 + (i % 3) * 20); f.noLoot = true; enemies.push(f); } }
+function tutEnter() { // sets up the next step
+  const T = tut, st = TUT_STEPS[T.i]; T.t = 0; T.done = 0; if (!st) return;
+  if (st.id === 'atk') { const d = makeFighter('h', 300, 215); d.k = Object.assign({}, d.k, { name: 'TRAINING DUMMY', spd: 0, dmg: 0, windup: 99999, rng: 0 }); d.hp = d.maxhp = 99999; d.noLoot = true; enemies.push(d); T.dummy = d; T.hits = 0; }
+  else if (st.id === 'fight') { if (T.dummy) T.dummy.gone = true; T.dummy = null; tutFoes(2); }
+  else if (st.id === 'wrath') { for (const p of players()) { p.vases = 2; p.mana = 60; } tutFoes(4); }
+  else if (st.id === 'shrine') { for (const e of enemies) if (!e.dead) e.gone = true; shrines.push({ x: 300, y: 215, used: 0, t: 0, shake: 0, sacred: false }); }
+}
+let trainBox = null;
+function startTutorial(after, fromTitle) {
+  const snap = { lvl: rpg.lvl, xp: rpg.xp, elem: rpg.elem, et: rpg.et, eg: rpg.eg, tr: rpg.tr, pg: rpg.pg, pxp: rpg.pxp, bag: rpg.bag, eq: rpg.eq, coins: rpg.coins, gold: rpg.gold, coop, cycle, stageIdx };
+  coop = false; cycle = 0; rpg.lvl = 1; rpg.xp = 0; rpg.bag = []; rpg.eq = {}; rpg.elem = null; rpg.et = 0; rpg.eg = 0; rpg.tr = 0; rpg.pg = 0; rpg.pxp = 0; rpg.coins = 0; rpg.gold = 0; PS = null;
+  tut = { i: 0, t: 0, done: 0, hits: 0, dummy: null, seen: false, after, snap, fromTitle: !!fromTitle }; // set first: from here on nothing is saved or counted
+  resetGame(); stageIdx = 0; shop = null; const S = STAGES[0]; TH = themeFor(S.theme, actOf(0)); weather = null; WAVES = []; STAGE_END = W; heroStats(true);
+  cam = 0; lockX = Infinity; waveIdx = 0; enemies = []; items = []; mounts = []; parts = []; shots = []; bossRef = null; dragon = null; decals = []; impT = 1e9; clearT = 0; lastEnemy = null; goBlink = 0; msg = ''; msgT = 0; stageCard = 0; flashA = 0; shake = 0; freeze = 0;
+  intro = null; slashes = []; vents = []; chests = []; gaps = []; ambW = -1; shrines = []; buffs = []; killCombo = 0; bonus = null;
+  hero.x = 80; hero.y = 205; hero.inv = 60; tutEnter(); mode = 'play'; SFX.big();
+}
+function tutFinish() { // the end or a skip: the hero comes back exactly as it was
+  const T = tut, s = T.snap; tut = null; tutMark();
+  Object.assign(rpg, { lvl: s.lvl, xp: s.xp, elem: s.elem, et: s.et, eg: s.eg, tr: s.tr, pg: s.pg, pxp: s.pxp, bag: s.bag, eq: s.eq, coins: s.coins, gold: s.gold });
+  coop = s.coop; cycle = s.cycle; PS = null; shrines = []; buffs = []; dragon = null; bossRef = null; enemies = []; items = []; parts = []; floats = []; msg = ''; msgT = 0;
+  TH = THEMES[0]; weather = 'ash'; mode = 'title'; resetGame(); stageIdx = s.stageIdx; heroStats(true); SFX.magic(); T.after();
+}
+function updateTutorial() {
+  const T = tut; T.t++;
+  for (const p of players()) { p.x = clamp(p.x, 12, W - 12); if (!p.dead && p.hp < 40) p.hp = Math.round(p.maxhp * 0.6); } // the training cannot be lost
+  const st = TUT_STEPS[T.i];
+  if (!st) { if (T.t > 30 && (isHit('start') || isHit('atk'))) tutFinish(); return; } // the summary page
+  if (T.done) { if (++T.done > 60) { T.i++; tutEnter(); } return; }
+  let ok = false;
+  if (st.id === 'move') ok = Math.abs(hero.x - 380) < 24 && Math.abs(hero.y - 215) < 28;
+  else if (st.id === 'atk') { const D = T.dummy; if (D) { if (D.hp < D.maxhp) { T.hits++; D.hp = D.maxhp; } D.x = clamp(D.x, 160, W - 50); } ok = T.hits >= 3; }
+  else if (st.id === 'jump') ok = hero.z > 6;
+  else if (st.id === 'fight') ok = T.t > 30 && !enemies.some(e => !e.dead && !e.gone);
+  else if (st.id === 'wrath') { if (dragon) T.seen = true; ok = T.seen && !dragon; }
+  else if (st.id === 'shrine') ok = buffs.length > 0;
+  if (ok) { T.done = 1; floatText(hero.x, hero.y - 70, ['GOOD!', 'NICE!', 'GREAT!'][T.i % 3], '#7aff9a', 9); SFX.pick(); }
+}
+function drawTutHud() {
+  const T = tut, st = TUT_STEPS[T.i], k = tutKeys(), P = (tickN >> 4) & 1;
+  if (!st) { // the summary: every button on one page
+    g.fillStyle = 'rgba(8,4,16,0.9)'; g.fillRect(40, 36, 400, 214); g.strokeStyle = '#c9a86a'; g.strokeRect(40.5, 36.5, 399, 213);
+    text('TRAINING COMPLETE', W / 2, 58, 14, '#ffb43a', 'center');
+    [['MOVE', k.move], ['ATTACK  (3-HIT COMBO)', k.atk], ['JUMP / RIDE A WYRMLING', k.jump], ['DRAGON WRATH  (EMBER JAR)', k.magic], ['SPECIAL SKILL  (FROM LV 10)', k.skill], ['GEAR AND BACKPACK', k.gear], ['PAUSE AND CONTROLS', k.pause]]
+      .forEach(([a, b], i) => { text(a, 56, 82 + i * 14, 8, '#c9a86a'); text(b, 424, 82 + i * 14, 8, '#fff1d0', 'right'); });
+    text('WYRMLINGS: JUMP ONTO ONE TO RIDE IT' + (IS_TOUCH ? '' : ', E TO DISMOUNT') + '.', W / 2, 192, 7, '#c9a8ff', 'center');
+    text('AFTER EACH STAGE: SHOP, THEN BLACKSMITH. COINS CONTINUE A LOST RUN.', W / 2, 205, 7, '#c9a8ff', 'center');
+    if (T.t > 30 && P) text((IS_TOUCH ? 'OK' : 'ENTER') + (T.fromTitle ? ': BACK TO THE TITLE' : ': START THE GAME'), W / 2, 232, 9, '#ffffff', 'center'); return;
+  }
+  const px = 144, py = 76; // up in the sky: the fighting happens below, on the ground
+  g.fillStyle = 'rgba(8,4,16,0.84)'; g.fillRect(px, py, 322, 58); g.strokeStyle = T.done ? '#7aff9a' : '#c9a86a'; g.strokeRect(px + 0.5, py + 0.5, 321, 57);
+  TUT_STEPS.forEach((s, i) => { g.fillStyle = i < T.i || (i === T.i && T.done) ? '#7aff9a' : i === T.i ? '#ffd24a' : '#4a3a5a'; g.fillRect(px + 8 + i * 12, py + 7, 8, 4); });
+  text((T.i + 1) + '/' + TUT_STEPS.length, px + 82, py + 12, 7, '#8cc4ff');
+  text(IS_TOUCH ? 'II: SKIP' : 'ESC: SKIP', px + 314, py + 12, 7, '#8a7a9a', 'right');
+  text(st.name, px + 8, py + 28, 11, T.done ? '#7aff9a' : '#ffb43a');
+  st.lines(k).forEach((l, i) => text(l, px + 8, py + 41 + i * 11, 7, '#fff1d0'));
+  if (st.id === 'move' && !T.done) { const r = 14 + (P ? 3 : 0); g.strokeStyle = '#ffd24a'; g.lineWidth = 2; g.beginPath(); g.ellipse(380 - cam, 215, r, r * 0.4, 0, 0, 7); g.stroke(); g.lineWidth = 1; text('v', 380 - cam, 184 + P * 3, 12, '#ffd24a', 'center'); }
+  if (st.id === 'atk' && T.dummy) text('HITS ' + Math.min(3, T.hits) + '/3', T.dummy.x - cam, T.dummy.y - T.dummy.h - 12, 8, '#ffd24a', 'center');
 }
 /* ---------- particles ---------- */
 function spawn(x, y, z, n, o) {
@@ -3783,6 +3859,7 @@ function spawnFoe(t, x, hasBoss) {
   enemies.push(f); return f;
 }
 function updateStage() {
+  if (tut) { updateTutorial(); return; }
   if (bonus) { updateBonus(); return; }
   const w = WAVES[waveIdx];
   if (w && lockX === Infinity && leadX() > w.x - 120) {
@@ -3933,6 +4010,7 @@ function step() {
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
     else if (pressed.Digit4 || pressed.Numpad4 || pressed.KeyG) { openJourney(); return; }
+    else if (pressed.Digit5 || pressed.Numpad5 || pressed.KeyH) { startTutorial(() => { }, true); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
@@ -3957,8 +4035,9 @@ function step() {
     return;
   }
   if (mode === 'victory') { endTimer++; victoryFx(); updateParts(); if (endTimer > 90) { if (daily) { if (isHit('start') || isHit('back')) endRun(true); } else if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
+  if (tut && (isHit('pause') || isHit('back'))) { tutFinish(); return; } // ESC skips the training
   if (isHit('pause') && !hero.dead && !dragon) { openPause(); return; }
-  if (isHit('inv') && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
+  if (isHit('inv') && !tut && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }
@@ -5003,6 +5082,7 @@ function drawHUD() {
     g.fillStyle = '#3a5a8a'; g.fillRect(W - 8 - 60 * a, 86, 60 * a, 2); }
   drawBuffHud();
   if (bonus) drawBonusHud();
+  if (tut) drawTutHud();
   else if (bossRef && !bossRef.dead && bossRef.hp > 0) { { const bc = BOSS_COL[bossRef.kind] || '#e0742a';
     text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? tone(bc, 3) : tone(bc, 2), 'center');
     bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? tone(bc, 2) : bc, tone(bc, 0));
@@ -5038,9 +5118,10 @@ screen.addEventListener('pointerup', e => {
   if (mode === 'board') { const r = screen.getBoundingClientRect(); boardClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'cloud') { const r = screen.getBoundingClientRect(); cloudClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
   if (mode === 'select') { const r = screen.getBoundingClientRect(); selClick((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H); return; }
-  if (!donateBox && !dailyBox && !cloudBox && !journeyBox) return; const r = screen.getBoundingClientRect();
+  if (!donateBox && !dailyBox && !cloudBox && !journeyBox && !trainBox) return; const r = screen.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
   if (dailyBox && mode === 'title' && x >= dailyBox.x && x <= dailyBox.x + dailyBox.w && y >= dailyBox.y && y <= dailyBox.y + dailyBox.h) { openDailyInfo(); return; }
+  if (trainBox && mode === 'title' && x >= trainBox.x && x <= trainBox.x + trainBox.w && y >= trainBox.y && y <= trainBox.y + trainBox.h) { startTutorial(() => { }, true); return; }
   if (journeyBox && mode === 'title' && x >= journeyBox.x && x <= journeyBox.x + journeyBox.w && y >= journeyBox.y && y <= journeyBox.y + journeyBox.h) { openJourney(); return; }
   if (cloudBox && mode === 'title' && x >= cloudBox.x && x <= cloudBox.x + cloudBox.w && y >= cloudBox.y && y <= cloudBox.y + cloudBox.h) { openCloud(); return; }
   if (donateBox && x >= donateBox.x && x <= donateBox.x + donateBox.w && y >= donateBox.y && y <= donateBox.y + donateBox.h) openDonate();
@@ -5080,6 +5161,7 @@ function confirmSelect() {
   setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
   if (sel.daily) { sel.daily = false; startDaily(); return; }
   runInfo = loadRun(); if (runInfo) { resumeSel = runInfo.coins > 0 ? 0 : 1; mode = 'resume'; SFX.pick(); return; }
+  if (tutNeeded()) { const two = sel.coop; startTutorial(() => startCampaign(two)); return; } // a new hero starts with the short training, once
   startCampaign(sel.coop);
 }
 function updateSelect() {
@@ -5139,12 +5221,14 @@ function drawTitleOverlay() {
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   { const S = jrLoad(), jt = '[4] JOURNEY ' + S.done.length + '/9'; g.font = '8px "Courier New",monospace'; const jw = g.measureText(jt).width + 10; // the season journey sits in the top right corner, like the cloud save in the left
     journeyBox = { x: W - jw - 4, y: 3, w: jw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.7)'; g.fillRect(journeyBox.x, 3, jw, 13); g.strokeStyle = '#c9a86a'; g.strokeRect(journeyBox.x + 0.5, 3.5, jw - 1, 12); text(jt, journeyBox.x + jw / 2, 13, 8, '#ffd24a', 'center'); }
+  { const tt = '[5] TRAINING'; g.font = '8px "Courier New",monospace'; const tw = g.measureText(tt).width + 10; // the button-by-button training sits under the journey
+    trainBox = { x: W - tw - 4, y: 19, w: tw, h: 13 }; g.fillStyle = 'rgba(8,24,40,0.7)'; g.fillRect(trainBox.x, 19, tw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(trainBox.x + 0.5, 19.5, tw - 1, 12); text(tt, trainBox.x + tw / 2, 29, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null;
+  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null; trainBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;

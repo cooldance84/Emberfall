@@ -38,6 +38,7 @@ function spawnFoe(t, x, hasBoss) {
   enemies.push(f); return f;
 }
 function updateStage() {
+  if (tut) { updateTutorial(); return; }
   if (bonus) { updateBonus(); return; }
   const w = WAVES[waveIdx];
   if (w && lockX === Infinity && leadX() > w.x - 120) {
@@ -188,6 +189,7 @@ function step() {
     else if (pressed.Digit2 || pressed.Numpad2) { openSelect(true); return; }
     else if (pressed.Digit3 || pressed.Numpad3 || pressed.KeyT) { openDailyInfo(); return; }
     else if (pressed.Digit4 || pressed.Numpad4 || pressed.KeyG) { openJourney(); return; }
+    else if (pressed.Digit5 || pressed.Numpad5 || pressed.KeyH) { startTutorial(() => { }, true); return; }
     else if (isHit('start') || isHit('atk')) { openSelect(false); return; }
     updateParts(); cam += 0.3; return;
   }
@@ -212,8 +214,9 @@ function step() {
     return;
   }
   if (mode === 'victory') { endTimer++; victoryFx(); updateParts(); if (endTimer > 90) { if (daily) { if (isHit('start') || isHit('back')) endRun(true); } else if (isHit('start')) nextCycle(); else if (isHit('back')) endRun(true); } return; }
+  if (tut && (isHit('pause') || isHit('back'))) { tutFinish(); return; } // ESC skips the training
   if (isHit('pause') && !hero.dead && !dragon) { openPause(); return; }
-  if (isHit('inv') && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
+  if (isHit('inv') && !tut && !hero.dead && !dragon && hero.st !== 'down') { openInv('play'); return; }
   if (intro) { updateIntro(); return; }
   if (freeze > 0) { freeze--; return; }
   if (dragon) { stepDragon(); if (dragon && dragon.t < 62) { updateParts(); return; } }

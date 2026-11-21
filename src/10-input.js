@@ -34,7 +34,7 @@ const isHit = a => KEYMAP[a].some(c => pressed[c]);
 const KEYMAP2 = { left: ['ArrowLeft', 'P2PadLeft'], right: ['ArrowRight', 'P2PadRight'], up: ['ArrowUp', 'P2PadUp'], down: ['ArrowDown', 'P2PadDown'],
   atk: ['Comma', 'Numpad1', 'P2PadX'], jump: ['Period', 'Numpad2', 'P2PadA'], magic: ['Slash', 'Numpad3', 'P2PadB', 'P2PadRB'], dismount: ['Quote', 'Numpad0', 'P2PadY'], skill: ['Semicolon', 'Numpad4', 'P2PadLB'], swap: ['Backslash', 'Numpad5', 'P2PadLT'] };
 let chests = [], vents = [], slashes = [], shop = null, gaps = [], ambW = -1, waveN = 0, hints = {};
-let shrines = [], buffs = []; // the blessings of the shrines are shared by the whole party; up to MAX_BUFFS run side by side
+let shrines = [], buffs = [], tut = null; // tut: the training arena, when it runs; // the blessings of the shrines are shared by the whole party; up to MAX_BUFFS run side by side
 const MAX_BUFFS = 3;
 const buffIs = id => buffs.some(b => b.id === id && b.t > 0);
 const LOOT_T = 1500;

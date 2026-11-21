@@ -26,6 +26,7 @@ function confirmSelect() {
   setClass(CLS_ORDER[sel.a]); CLS2 = CLS_ORDER[sel.b]; saveSettings();
   if (sel.daily) { sel.daily = false; startDaily(); return; }
   runInfo = loadRun(); if (runInfo) { resumeSel = runInfo.coins > 0 ? 0 : 1; mode = 'resume'; SFX.pick(); return; }
+  if (tutNeeded()) { const two = sel.coop; startTutorial(() => startCampaign(two)); return; } // a new hero starts with the short training, once
   startCampaign(sel.coop);
 }
 function updateSelect() {
@@ -85,12 +86,14 @@ function drawTitleOverlay() {
     g.strokeRect(cloudBox.x + 0.5, 3.5, cw - 1, 12); text(ct, cloudBox.x + cw / 2, 13, 8, '#8cc4ff', 'center'); }
   { const S = jrLoad(), jt = '[4] JOURNEY ' + S.done.length + '/9'; g.font = '8px "Courier New",monospace'; const jw = g.measureText(jt).width + 10; // the season journey sits in the top right corner, like the cloud save in the left
     journeyBox = { x: W - jw - 4, y: 3, w: jw, h: 13 }; g.fillStyle = 'rgba(40,24,4,0.7)'; g.fillRect(journeyBox.x, 3, jw, 13); g.strokeStyle = '#c9a86a'; g.strokeRect(journeyBox.x + 0.5, 3.5, jw - 1, 12); text(jt, journeyBox.x + jw / 2, 13, 8, '#ffd24a', 'center'); }
+  { const tt = '[5] TRAINING'; g.font = '8px "Courier New",monospace'; const tw = g.measureText(tt).width + 10; // the button-by-button training sits under the journey
+    trainBox = { x: W - tw - 4, y: 19, w: tw, h: 13 }; g.fillStyle = 'rgba(8,24,40,0.7)'; g.fillRect(trainBox.x, 19, tw, 13); g.strokeStyle = '#8cc4ff'; g.strokeRect(trainBox.x + 0.5, 19.5, tw - 1, 12); text(tt, trainBox.x + tw / 2, 29, 8, '#8cc4ff', 'center'); }
   text('v' + VERSION, W - 6, H - 5, 7, '#6a5a80', 'right');
   text(resetArm > 0 ? 'PRESS R AGAIN TO ERASE YOUR HERO' : cls().name + ' LV ' + rpg.lvl + '    I: GEAR   B: LEATHERBOARD   N: SEASON BOARD   R: RESET HERO', W / 2, 248, 8, resetArm > 0 ? '#ff6a6a' : '#c9a8ff', 'center');
 }
 
 function render() {
-  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null;
+  donateBox = null; dailyBox = null; cloudBox = null; journeyBox = null; shareBox = null; trainBox = null;
   if (mode === 'story') { drawStory(); return; }
   if (mode === 'name' || mode === 'board') { drawBoardScreen(); return; }
   const sx = shake ? rnd(-shake, shake) : 0, sy = shake ? rnd(-shake, shake) * 0.6 : 0;

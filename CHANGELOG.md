@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.51.0] - 2026-11-21
+- **Training:** a short guided arena that shows which button does what, in six steps: move, attack (a dummy that cannot be killed), jump, a real fight against two husks, Dragon's Wrath (with jars handed out) and a shrine. A summary page lists every button at the end. It starts by itself the first time a new hero begins a campaign, ESC (or the II button) skips it, and **5** (or **H**, or the button under the Journey on the title screen) plays it again whenever you like. The key names follow the device (keyboard, pad or touch).
+- Nothing in the training is saved, paid or counted: no XP, no gold, no loot, no Journey goals. Your hero, its gear and the co-op choice come back exactly as they were. A hero that already has levels never gets it unasked.
+- Tests: `tutorial.test.js`.
+
 ## [1.50.0] - 2026-11-19
 - **Season Journey goals also pay XP:** every finished goal gives your saved hero 20% of the XP it needs for its next level (at level 70 the same share of a paragon point), on top of the gold. It is paid when you are back in play with the saved hero, never to the race hero.
 - Tests: `journey.test.js` checks the XP at a normal level, at the level cap and with all paragon points taken.

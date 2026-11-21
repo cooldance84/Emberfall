@@ -43,7 +43,7 @@ function jrDone(S, q) { // a goal is reached: its gold waits for the saved hero,
   if (mode === 'play') { msg = t; msgT = 200; SFX.pick(); }
 }
 function jr(ev, v) { // an event of play; the race goals count only in the race, all the others only outside it
-  if (DEV) return; if ((ev.indexOf('race') === 0) !== !!daily) return;
+  if (DEV || tut) return; if ((ev.indexOf('race') === 0) !== !!daily) return;
   const S = jrLoad(); let ch = false;
   for (const q of jrGoals()) if (q.ev === ev) { const c = S.n[q.id] | 0, nv = Math.min(1e6, q.max ? Math.max(c, v | 0) : c + (v == null ? 1 : v));
     if (nv !== c) { S.n[q.id] = nv; ch = true; if (nv >= q.n && !S.done.includes(q.id)) jrDone(S, q); } }
@@ -51,7 +51,7 @@ function jr(ev, v) { // an event of play; the race goals count only in the race,
 }
 function jrRaceWon() { jr('race'); const S = jrLoad(); if (jrUnlock(S, 'gild')) { jrSave(); if (daily) daily.newTrail = true; } } // the first finished race gives the gilded trail
 function jrApply() { // the reward goes to the saved hero, never to the race hero
-  if (daily || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
+  if (daily || tut || DEV || mode !== 'play') return; const S = jrLoad(); if (!S.pg && !S.pc) return;
   const gd = S.pg * (100 + 12 * rpg.lvl), cn = Math.min(S.pc, Math.max(0, 9 - rpg.coins)), need = rpg.lvl >= MAX_LV ? (rpg.pg >= PG_MAX ? 0 : pgNeed(rpg.pg)) : xpNeed(rpg.lvl), xp = Math.round(S.pg * need * JR_XP);
   rpg.gold += gd; rpg.coins += cn; S.pg = 0; S.pc = 0; jrSave(); if (xp > 0) gainXP(xp); saveGame();
   floatText(hero.x, hero.y - 80, 'JOURNEY +' + gd + 'G' + (xp ? ' +' + xp + ' XP' : '') + (cn ? ' +' + cn + ' COIN' : ''), '#ffd24a', 8);
