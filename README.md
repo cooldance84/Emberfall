@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.51.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.51.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -77,7 +77,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Cloud save:** with the online features on, **C** on the title screen (or the button in the top left corner) uploads your heroes under a private sync code and downloads them on another device, so the phone and the PC can share them. Every overwrite asks for a second press, a hand-edited save is never uploaded, and the crown count only ever grows. In the season race a pace line shows the fastest finished time to beat.
 - **Season board extras:** the board shows one line per player and hero (the best run of the season), how many runs were started and finished, a hero filter (**A/D**), and the build of any run (**W/S** to select, **Enter** or a tap to open: element, tier and the six worn pieces). **H** opens the eternal board: every player's fastest finished race of all seasons.
 - **2-player co-op:** press **2** on the title screen.
-- **Training:** a new hero starts with a short guided arena (move, attack, jump, fight, Dragon's Wrath, shrine) that teaches the buttons for your device; ESC skips it, **5** on the title screen plays it again. Nothing in it is saved.
+- **Training:** a new hero starts with a short guided arena (move, attack, jump, fight, wyrmling mount and dismount, Dragon's Wrath, shrine) that teaches the buttons for your device; ESC skips it, **5** on the title screen plays it again. Nothing in it is saved.
 - **Procedural music**: a 16-bar piece for every stage theme, a driving boss track and a title track that ducks under the sound effects, a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.
 

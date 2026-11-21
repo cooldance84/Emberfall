@@ -2,8 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.51.1] - 2026-11-21
+- **Training:** the mount is in it now: a wyrmling waits next to you (jump next to it to climb on), you fight two husks from the saddle (attack = its breath), then get off with E (pad Y, the RIDE button on touch). Nine steps in all; the summary page lists the dismount too.
+
 ## [1.51.0] - 2026-11-21
-- **Training:** a short guided arena that shows which button does what, in six steps: move, attack (a dummy that cannot be killed), jump, a real fight against two husks, Dragon's Wrath (with jars handed out) and a shrine. A summary page lists every button at the end. It starts by itself the first time a new hero begins a campaign, ESC (or the II button) skips it, and **5** (or **H**, or the button under the Journey on the title screen) plays it again whenever you like. The key names follow the device (keyboard, pad or touch).
+- **Training:** a short guided arena that shows which button does what, in nine steps: move, attack (a dummy that cannot be killed), jump, a real fight against two husks, climbing onto a wyrmling, fighting from the saddle, getting off again, Dragon's Wrath (with jars handed out) and a shrine. A summary page lists every button at the end. It starts by itself the first time a new hero begins a campaign, ESC (or the II button) skips it, and **5** (or **H**, or the button under the Journey on the title screen) plays it again whenever you like. The key names follow the device (keyboard, pad or touch).
 - Nothing in the training is saved, paid or counted: no XP, no gold, no loot, no Journey goals. Your hero, its gear and the co-op choice come back exactly as they were. A hero that already has levels never gets it unasked.
 - Tests: `tutorial.test.js`.
 
