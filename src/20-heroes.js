@@ -16,8 +16,8 @@ function heroize(t) { // story text follows the chosen hero
 }
 function tr(s) { return s; } // the game is English only (kept as a hook so every string still goes through one place)
 function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false;
-  crtOn = o.crt !== false; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls;
+  crtOn = o.crt !== false; hdOn = o.hd !== false; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls;
   } } catch (e) { } }
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, cls: CLS })); } catch (e) { } }
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, hd: hdOn, cls: CLS })); } catch (e) { } }
 loadSettings();
 

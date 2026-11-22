@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.51.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.52.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -80,6 +80,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Training:** a new hero starts with a short guided arena (move, attack, jump, fight, wyrmling mount and dismount, Dragon's Wrath, shrine) that teaches the buttons for your device; ESC skips it, **5** on the title screen plays it again. Nothing in it is saved.
 - **Procedural music**: a 16-bar piece for every stage theme, a driving boss track and a title track that ducks under the sound effects, a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.
+- **HD effects** (WebGL, **V** or the pause menu): razor-sharp pixels, a mild light shaft per stage, floating sparks and dust that follow the weather, bloom. They switch themselves off on a slow device.
 
 | | |
 |---|---|
@@ -188,7 +189,7 @@ If you enjoyed Emberfall, donations are very welcome and go towards its further 
 | Pause | Esc or P | shared | Start | II |
 | Confirm / continue | Enter | shared | A | OK |
 
-Other keys: **F** toggles the CRT filter and **M** mutes. On the title screen **B** opens the leatherboard, **N** the season board, **3** the season race, **4** (or **G**) the Season Journey, **5** (or **H**) the training, **C** the cloud save and **R** (pressed twice) erases your hero. On the boards **H** goes round the season board, the eternal board and the past seasons, **A/D** picks the hero or the season, **Enter** opens a run's card (A/D flips between build and splits). After a finished race **Y** makes the share picture.
+Other keys: **F** toggles the CRT filter, **V** the HD effects and **M** mutes. On the title screen **B** opens the leatherboard, **N** the season board, **3** the season race, **4** (or **G**) the Season Journey, **5** (or **H**) the training, **C** the cloud save and **R** (pressed twice) erases your hero. On the boards **H** goes round the season board, the eternal board and the past seasons, **A/D** picks the hero or the season, **Enter** opens a run's card (A/D flips between build and splits). After a finished race **Y** makes the share picture.
 
 In the gear screen, Enter equips or swaps an item and X discards it.
 

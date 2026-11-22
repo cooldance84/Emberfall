@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.52.0] - 2026-11-22
+- **HD effects** (WebGL, drawn at screen resolution, so the game's own 480x270 drawing is untouched): the pixels are upscaled razor sharp instead of blurry, a mild **light shaft** in the colour of each stage falls from above, **floating sparks and dust** follow the weather (rising embers in the forge, falling ash, snow, drifting motes), a few soft out-of-focus lights sit in the foreground, and the glow of fire and windows is a real bloom. A soft vignette and a touch of contrast finish it.
+- **V** toggles it, or the new **HD EFFECTS** row in the pause menu (after CRT FILTER); the choice is saved. It works with or without the CRT filter. Menus get only the sharp upscale, no sparks over the text.
+- A slow device is protected: if the game stays under about 40 frames a second for four seconds the effects switch themselves off for that session (a message says so), and V or the menu turns them on again.
+- Tests: `hd.test.js` (finite parameters for every theme and weather, saved choice, pause row, slow-device switch-off).
+
 ## [1.51.1] - 2026-11-21
 - **Training:** the mount is in it now: a wyrmling waits next to you (jump next to it to climb on), you fight two husks from the saddle (attack = its breath), then get off with E (pad Y, the RIDE button on touch). Nine steps in all; the summary page lists the dismount too.
 
