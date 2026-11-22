@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.54.0';
+const VERSION = '1.54.1';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -5167,7 +5167,7 @@ function drawHUD() {
     g.fillStyle = '#3a5a8a'; g.fillRect(W - 8 - 60 * a, 86, 60 * a, 2); }
   drawBuffHud();
   if (bonus) drawBonusHud();
-  if (tut) drawTutHud();
+  else if (tut) drawTutHud();
   else if (bossRef && !bossRef.dead && bossRef.hp > 0) { { const bc = BOSS_COL[bossRef.kind] || '#e0742a';
     text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? tone(bc, 3) : tone(bc, 2), 'center');
     bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? tone(bc, 2) : bc, tone(bc, 0));

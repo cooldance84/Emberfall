@@ -932,7 +932,7 @@ function drawHUD() {
     g.fillStyle = '#3a5a8a'; g.fillRect(W - 8 - 60 * a, 86, 60 * a, 2); }
   drawBuffHud();
   if (bonus) drawBonusHud();
-  if (tut) drawTutHud();
+  else if (tut) drawTutHud();
   else if (bossRef && !bossRef.dead && bossRef.hp > 0) { { const bc = BOSS_COL[bossRef.kind] || '#e0742a';
     text(bossRef.k.name, W / 2, 33, 9, bossRef.p2 ? tone(bc, 3) : tone(bc, 2), 'center');
     bar(W / 2 - 110, 37, 220, 6, Math.max(0, bossRef.hp), bossRef.maxhp, bossRef.p2 ? tone(bc, 2) : bc, tone(bc, 0));

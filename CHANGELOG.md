@@ -2,6 +2,10 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.54.1] - 2026-11-22
+- **Fix:** on the bonus stage the ordinary "STAGE n  NAME" label was drawn over the bonus title, so the two texts ran into each other (a slip from 1.51.0, the training). The bonus HUD is alone at the top again.
+- Tests: `bonushud.test.js`.
+
 ## [1.54.0] - 2026-11-22
 - **Volume settings:** the pause menu's MUSIC and SOUND FX rows are now five boxes each: the lowest box is low, the middle one mid, the top one max, and the filled boxes show the setting. No box filled means off. Left and right step the level, Enter (or a tap) steps up and wraps round to off. Both are saved.
 - The middle setting is a little quieter for the music and a little louder for the effects than before, so the recorded music no longer drowns the blows; the effects now have their own volume bus. Old "music off" / "sound off" settings carry over.
