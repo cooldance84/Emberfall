@@ -17,7 +17,7 @@ function groundPhysics(f) {
     if (f.hp > 0 && f.t > (f.pn ? 55 : 42)) { f.st = 'getup'; f.t = 0; }
     return true;
   }
-  if (f.st === 'getup') { if (++f.t > (f.pn ? 18 : 12)) { f.st = 'idle'; f.t = 0; f.inv = f.pn ? 40 : 14; } return true; }
+  if (f.st === 'getup') { if (++f.t > (f.pn ? 18 : 12)) { f.st = 'idle'; f.t = 0; f.inv = f.pn ? 40 : 14; if (!f.pn && !isBoss(f)) f.toughT = tickN + 75; } return true; }
   return false;
 }
 

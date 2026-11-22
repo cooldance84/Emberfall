@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.56.0] - 2026-11-22
+- **No more stunlock.** A foe hit again and again used to stay in its flinch for ever. Now a foe that has just got up cannot be interrupted for a moment (the blows still hurt), and a third flinch in a quick row is a knockdown. Bosses keep their own poise rule.
+- Docs: the test row in `docs/ONLINE.md` now uses the name `TST` (it was `KTZ`, which could delete a real player's result along with the test row).
+- Tests: `stunlock.test.js` (a foe hit every 8-14 frames stays free for about half of the time; it was 0% before).
+
 ## [1.55.1] - 2026-11-22
 - The floating sparks and dust of the HD effects are halved (half as many specks on screen).
 

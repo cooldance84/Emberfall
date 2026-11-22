@@ -43,9 +43,9 @@ To see the board work without playing a whole race, add a row by hand in the SQL
 
 ```sql
 insert into public.daily_scores (day, name, hero, t, lv, pg, stage, cycle, finished)
-values (current_date, 'KTZ', 'nolan', 72000, 70, 100, 35, 3, true);
--- remove it again:
--- delete from public.daily_scores where name = 'KTZ';
+values (current_date, 'TST', 'nolan', 72000, 70, 100, 35, 3, true);
+-- remove it again (only the test name, never a real player's initials):
+-- delete from public.daily_scores where name = 'TST';
 ```
 
 `current_date` is the server's (UTC) day; the game uses the player's local date, so late in the evening use that date instead.

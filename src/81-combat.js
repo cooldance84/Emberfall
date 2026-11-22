@@ -68,8 +68,11 @@ function hurt(e, dmg, kind, from) {
     knock = true;
   }
   if (isBoss(e) && e.hp > 0) { e.armor -= dmg; if (e.armor <= 0) { e.armor = e.k.poise || 70; knock = true; } else knock = false; }
+  const grunt = !e.pn && !isBoss(e) && e.kind !== 'imp' && e.hp > 0, armoured = grunt && tickN < (e.toughT | 0);
+  if (armoured) knock = false; // anti stunlock: a foe that has just got up cannot be interrupted for a moment, the blows still hurt
+  else if (grunt) { e.stunN = tickN - (e.stunT | 0) > 80 ? 1 : (e.stunN | 0) + 1; e.stunT = tickN; if (e.stunN >= 3) { knock = true; e.stunN = 0; } } // and a third flinch in a row is a knockdown
   if (knock) { e.st = 'down'; e.t = 0; e.vz = 3.2; e.vx = dir * 2.1; e.z = Math.max(e.z, 0.01); e.combo = 0; }
-  else if (!isBoss(e)) { // Nolan's heavy sword swing is not interrupted by light blows (heavy ones still knock him down)
+  else if (!isBoss(e) && !armoured) { // Nolan's heavy sword swing is not interrupted by light blows (heavy ones still knock him down)
     if (e.pn && e.k && e.k.cls === 'nolan' && e.st === 'atk' && !e.sk && kind !== 'down' && e.z <= 3 && e.t >= comboOf(e)[e.combo].a - 2 && e.t <= comboOf(e)[e.combo].b + 2) spawn(e.x, e.y, e.z + 26, 5, { c: ['#fff1b0', '#ffd24a'], l0: 6, l1: 12, add: true });
     else { e.st = 'hurt'; e.t = 0; e.vx = dir * 1.1; }
   }
