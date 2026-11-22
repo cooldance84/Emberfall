@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.53.0';
+const VERSION = '1.54.0';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -81,7 +81,7 @@ const players = () => coop && hero2 ? [hero1, hero2] : [hero1];
 function nearestPlayer(x) { let b = null; for (const p of players()) if (!p.dead && (!b || Math.abs(p.x - x) < Math.abs(b.x - x))) b = p; return b || hero1; }
 const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), hero1.x);
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
-let crtOn = true, hdOn = true, muted = false, musicOn = true, sfxOn = true;
+let musicVol = 3, sfxVol = 3, crtOn = true, hdOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
 /* ---------- three heroes: Nolan (STR warrior), Panni (INT sorceress), Luca (DEX rogue) ---------- */
 const CLASSES = {
@@ -100,16 +100,22 @@ function heroize(t) { // story text follows the chosen hero
     .replace(/the sword/g, CLS === 'panni' ? 'the staff' : 'the daggers').replace(/a sword/g, CLS === 'panni' ? 'a staff' : 'twin daggers').replace(/kardot/g, CLS === 'panni' ? 'varázsbotot' : 'tőröket');
 }
 function tr(s) { return s; } // the game is English only (kept as a hook so every string still goes through one place)
-function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { musicOn = o.music !== false; sfxOn = o.sfx !== false;
+function loadSettings() { try { const o = JSON.parse(localStorage.getItem(SET_KEY) || 'null'); if (o) { const lv = (v, on) => Number.isInteger(v) && v >= 0 && v <= 5 ? v : on === false ? 0 : 3; musicVol = lv(o.mv, o.music); sfxVol = lv(o.sv, o.sfx); musicOn = musicVol > 0; sfxOn = sfxVol > 0;
   crtOn = o.crt !== false; hdOn = o.hd !== false; if (o.cls === 'panni' || o.cls === 'luca' || o.cls === 'nolan') CLS = o.cls;
   } } catch (e) { } }
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, crt: crtOn, hd: hdOn, cls: CLS })); } catch (e) { } }
+function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify({ music: musicOn, sfx: sfxOn, mv: musicVol, sv: sfxVol, crt: crtOn, hd: hdOn, cls: CLS })); } catch (e) { } }
 loadSettings();
 
 /* ---------- audio (tiny synth) ---------- */
-let ac = null;
+let ac = null, sfxBus = null;
+const MUS_MUL = [0, 0.3, 0.55, 0.8, 1.05, 1.3], SFX_MUL = [0, 0.5, 0.85, 1.2, 1.6, 2.1]; // volume steps 0 (off) to 5 (max); 3 is the middle
+function setVol(music, v) { // the pause menu's volume rows
+  v = Math.max(0, Math.min(5, v | 0));
+  if (music) { musicVol = v; musicOn = v > 0; } else { sfxVol = v; sfxOn = v > 0; if (sfxBus) sfxBus.gain.value = SFX_MUL[v]; }
+  saveSettings();
+}
 function initAudio() {
-  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); mChain();
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); mChain(); sfxBus = ac.createGain(); sfxBus.gain.value = SFX_MUL[sfxVol]; sfxBus.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
@@ -118,7 +124,7 @@ function sfxTone(type, f0, f1, dur, vol) {
   const o = ac.createOscillator(), gn = ac.createGain(), t = ac.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
   gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  o.connect(gn); gn.connect(ac.destination); o.start(t); o.stop(t + dur);
+  o.connect(gn); gn.connect(sfxBus || ac.destination); o.start(t); o.stop(t + dur);
 }
 /* heavy sounds push the music down for a moment, so the blows stay audible over the drums */
 function duck(depth) {
@@ -308,7 +314,7 @@ function musicTick() {
   const boss = mode === 'play' && !!bossRef && !bossRef.dead;
   const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'journey' || mode === 'board' || mode === 'name' || mode === 'cloud';
   const th = mode === 'gameover' ? -1 : menu ? MUS_TITLE : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
-  mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7, ac.currentTime, 0.1);
+  mGain.gain.setTargetAtTime((mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7) * MUS_MUL[musicVol], ac.currentTime, 0.1);
   if (recTick(recCueOf(mode, boss, menu, rec.cue), mode === 'play' && !boss && !enemies.some(e => !e.dead && e.kind !== 'imp') ? 0.62 : 1)) return; // a recorded track carries the music
   if (th < 0) return;
   if (mode !== 'pause' && mode !== 'inv') mWant = boss ? 2 : mode === 'story' ? 0 : mode === 'play' ? (enemies.some(e => !e.dead && e.kind !== 'imp') ? 1 : 0) : 1;
@@ -3116,9 +3122,11 @@ function updatePause() {
   if (isHit('down')) { pauseI = (pauseI + 1) % PAUSE_ITEMS.length; SFX.pick(); }
   const go = isHit('start') || isHit('atk') || isHit('left') || isHit('right');
   if (!go) return;
+  const dv = isHit('left') ? -1 : isHit('right') ? 1 : 0;
+  if (pauseI === 1 || pauseI === 2) { // volume rows: left and right step, Enter steps up and wraps round to off
+    const cur = pauseI === 1 ? musicVol : sfxVol; setVol(pauseI === 1, dv ? Math.max(0, Math.min(5, cur + dv)) : (cur + 1) % 6); SFX.pick(); return;
+  }
   if (pauseI === 0) mode = 'play';
-  else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
-  else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
   else if (pauseI === 4) { hdOn = !hdOn; hdAuto = true; hdSlow = 0; saveSettings(); }
   else if (pauseI === 5) pausePg = 2;
@@ -3153,10 +3161,14 @@ function drawPause() {
     text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
-    const sel = i === pauseI, y = 72 + i * 16, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : i === 4 ? hdOn : null;
+    const sel = i === pauseI, y = 72 + i * 16, v = i === 3 ? crtOn : i === 4 ? hdOn : null;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
+    if (i === 1 || i === 2) { // five boxes: the lowest is low, the middle mid, the top max; none filled = off
+      const lv = i === 1 ? musicVol : sfxVol;
+      for (let k = 0; k < 5; k++) { const bx = W / 2 + 86 - 47 + k * 10; if (k < lv) { g.fillStyle = sel ? '#ffd24a' : '#8aff9a'; g.fillRect(bx, y - 8, 7, 7); } else { g.strokeStyle = sel ? '#a8884a' : '#5a4a6a'; g.strokeRect(bx + 0.5, y - 7.5, 6, 6); } }
+    }
   });
   text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }

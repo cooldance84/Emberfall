@@ -2,6 +2,11 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.54.0] - 2026-11-22
+- **Volume settings:** the pause menu's MUSIC and SOUND FX rows are now five boxes each: the lowest box is low, the middle one mid, the top one max, and the filled boxes show the setting. No box filled means off. Left and right step the level, Enter (or a tap) steps up and wraps round to off. Both are saved.
+- The middle setting is a little quieter for the music and a little louder for the effects than before, so the recorded music no longer drowns the blows; the effects now have their own volume bus. Old "music off" / "sound off" settings carry over.
+- Tests: `volume.test.js`.
+
 ## [1.53.0] - 2026-11-22
 - **Recorded music** (four CC0 tracks from OpenGameArt, in `music/`, about 5 MB in all, streamed so they cost almost no memory): *The Old Tower Inn* on the title screen and in the menus, *Battle Theme A* and *Fantasy - Battlegrounds* on the stages (they follow each other with a 2.5 s crossfade, the opening one alternates by stage), *Battle Theme B* for boss fights (cut at a bar line so it loops). On a stage with no foe the music drops to a calmer level, and the pause menu keeps playing under the backpack and the pause screen.
 - The story scenes, the shop, the forge and the victory screen keep the procedural score, and so does everything if a track cannot be loaded (offline, a page opened from disk, a missing file). **M** and the pause-menu music switch work as before.

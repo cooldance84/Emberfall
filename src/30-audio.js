@@ -1,7 +1,13 @@
 /* ---------- audio (tiny synth) ---------- */
-let ac = null;
+let ac = null, sfxBus = null;
+const MUS_MUL = [0, 0.3, 0.55, 0.8, 1.05, 1.3], SFX_MUL = [0, 0.5, 0.85, 1.2, 1.6, 2.1]; // volume steps 0 (off) to 5 (max); 3 is the middle
+function setVol(music, v) { // the pause menu's volume rows
+  v = Math.max(0, Math.min(5, v | 0));
+  if (music) { musicVol = v; musicOn = v > 0; } else { sfxVol = v; sfxOn = v > 0; if (sfxBus) sfxBus.gain.value = SFX_MUL[v]; }
+  saveSettings();
+}
 function initAudio() {
-  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); mChain();
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); mChain(); sfxBus = ac.createGain(); sfxBus.gain.value = SFX_MUL[sfxVol]; sfxBus.connect(ac.destination);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
@@ -10,7 +16,7 @@ function sfxTone(type, f0, f1, dur, vol) {
   const o = ac.createOscillator(), gn = ac.createGain(), t = ac.currentTime;
   o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
   gn.gain.setValueAtTime(vol, t); gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  o.connect(gn); gn.connect(ac.destination); o.start(t); o.stop(t + dur);
+  o.connect(gn); gn.connect(sfxBus || ac.destination); o.start(t); o.stop(t + dur);
 }
 /* heavy sounds push the music down for a moment, so the blows stay audible over the drums */
 function duck(depth) {

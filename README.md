@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.53.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.54.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -78,6 +78,7 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **Season board extras:** the board shows one line per player and hero (the best run of the season), how many runs were started and finished, a hero filter (**A/D**), and the build of any run (**W/S** to select, **Enter** or a tap to open: element, tier and the six worn pieces). **H** opens the eternal board: every player's fastest finished race of all seasons.
 - **2-player co-op:** press **2** on the title screen.
 - **Training:** a new hero starts with a short guided arena (move, attack, jump, fight, wyrmling mount and dismount, Dragon's Wrath, shrine) that teaches the buttons for your device; ESC skips it, **5** on the title screen plays it again. Nothing in it is saved.
+- **Volume:** music and sound effects each have five steps (off, low, ... mid ... max) in the pause menu, shown as boxes; the setting is saved.
 - **Recorded music** (CC0, see `music/CREDITS.md`): an inn loop for the menus, two battle tracks for the stages and a looping boss track; the procedural score is the fallback and plays in the story, shop and forge.
 - **Procedural music**: a 16-bar piece for every stage theme, a driving boss track and a title track that ducks under the sound effects, a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.

@@ -10,9 +10,11 @@ function updatePause() {
   if (isHit('down')) { pauseI = (pauseI + 1) % PAUSE_ITEMS.length; SFX.pick(); }
   const go = isHit('start') || isHit('atk') || isHit('left') || isHit('right');
   if (!go) return;
+  const dv = isHit('left') ? -1 : isHit('right') ? 1 : 0;
+  if (pauseI === 1 || pauseI === 2) { // volume rows: left and right step, Enter steps up and wraps round to off
+    const cur = pauseI === 1 ? musicVol : sfxVol; setVol(pauseI === 1, dv ? Math.max(0, Math.min(5, cur + dv)) : (cur + 1) % 6); SFX.pick(); return;
+  }
   if (pauseI === 0) mode = 'play';
-  else if (pauseI === 1) { musicOn = !musicOn; saveSettings(); }
-  else if (pauseI === 2) { sfxOn = !sfxOn; saveSettings(); SFX.pick(); }
   else if (pauseI === 3) { crtOn = !crtOn; saveSettings(); }
   else if (pauseI === 4) { hdOn = !hdOn; hdAuto = true; hdSlow = 0; saveSettings(); }
   else if (pauseI === 5) pausePg = 2;
@@ -47,10 +49,14 @@ function drawPause() {
     text('YOUR LEVEL ' + rpg.lvl + '.  U CAST   Q SWAP SKILL', W / 2, 214, 8, '#b8a8c8', 'center'); text('PRESS ENTER TO GO BACK', W / 2, 226, 8, '#c9a8ff', 'center'); return;
   }
   PAUSE_ITEMS.forEach((t, i) => {
-    const sel = i === pauseI, y = 72 + i * 16, v = i === 1 ? musicOn : i === 2 ? sfxOn : i === 3 ? crtOn : i === 4 ? hdOn : null;
+    const sel = i === pauseI, y = 72 + i * 16, v = i === 3 ? crtOn : i === 4 ? hdOn : null;
     if (sel) { g.fillStyle = 'rgba(255,180,60,0.22)'; g.fillRect(W / 2 - 98, y - 11, 196, 15); }
     text(t, W / 2 - 86, y, 10, sel ? '#ffd24a' : '#b8a8c8', 'left');
     if (v !== null) text(v ? 'ON' : 'OFF', W / 2 + 86, y, 10, v ? '#8aff9a' : '#ff6a6a', 'right');
+    if (i === 1 || i === 2) { // five boxes: the lowest is low, the middle mid, the top max; none filled = off
+      const lv = i === 1 ? musicVol : sfxVol;
+      for (let k = 0; k < 5; k++) { const bx = W / 2 + 86 - 47 + k * 10; if (k < lv) { g.fillStyle = sel ? '#ffd24a' : '#8aff9a'; g.fillRect(bx, y - 8, 7, 7); } else { g.strokeStyle = sel ? '#a8884a' : '#5a4a6a'; g.strokeRect(bx + 0.5, y - 7.5, 6, 6); } }
+    }
   });
   text('ESC TO RESUME', W / 2, 226, 8, '#8878a0', 'center');
 }

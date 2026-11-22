@@ -58,5 +58,5 @@ const players = () => coop && hero2 ? [hero1, hero2] : [hero1];
 function nearestPlayer(x) { let b = null; for (const p of players()) if (!p.dead && (!b || Math.abs(p.x - x) < Math.abs(b.x - x))) b = p; return b || hero1; }
 const leadX = () => Math.max(...players().filter(p => !p.dead).map(p => p.x), hero1.x);
 function withHero(p, fn) { const real = hero; hero = p; try { return fn(); } finally { hero = real; } }
-let crtOn = true, hdOn = true, muted = false, musicOn = true, sfxOn = true;
+let musicVol = 3, sfxVol = 3, crtOn = true, hdOn = true, muted = false, musicOn = true, sfxOn = true;
 const SET_KEY = 'emberfall_settings_v1';
