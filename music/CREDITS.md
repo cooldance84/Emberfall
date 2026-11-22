@@ -10,4 +10,4 @@ They are cut, loudness-matched and re-encoded to MP3 for the game (bar-aligned l
 | `battlegrounds.mp3` | stages | Fantasy - Battlegrounds (remastered) | Doge |
 | `boss.mp3` | boss fights (looped) | Battle Theme B | see its OpenGameArt page |
 
-The story scenes, the shop, the forge and the victory screen still use the game's own procedural score (see `src/31-music.js`), which is also the fallback when a track cannot be loaded.
+The title, menus, story scenes, shop, forge and victory screen share the inn loop; game over is silent. There is no other score in the game.

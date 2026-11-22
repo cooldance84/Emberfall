@@ -8,7 +8,7 @@ function setVol(music, v) { // the pause menu's volume rows
 }
 function initAudio() {
   if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); mChain(); sfxBus = ac.createGain(); sfxBus.gain.value = SFX_MUL[sfxVol]; sfxBus.connect(ac.destination);
-    noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; } catch (e) { ac = null; } }
+  } catch (e) { ac = null; } }
   if (ac && ac.state === 'suspended') ac.resume();
 }
 function sfxTone(type, f0, f1, dur, vol) {

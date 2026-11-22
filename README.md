@@ -1,6 +1,6 @@
 # EMBERFALL: The Ashen Vow
 
-![version](https://img.shields.io/badge/version-1.54.1-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
+![version](https://img.shields.io/badge/version-1.55.0-ffb43a) ![no dependencies](https://img.shields.io/badge/dependencies-none-8aff9a) ![license](https://img.shields.io/badge/art%20%26%20audio-100%25%20original-c9a8ff)
 
 An original side-scrolling arcade brawler in the spirit of the 90s classics. The art, music and sound effects are all generated in code. There are no external assets, no dependencies and no build step.
 
@@ -79,8 +79,8 @@ Each boss arrives with a short letterboxed intro, has its own attack set and enr
 - **2-player co-op:** press **2** on the title screen.
 - **Training:** a new hero starts with a short guided arena (move, attack, jump, fight, wyrmling mount and dismount, Dragon's Wrath, shrine) that teaches the buttons for your device; ESC skips it, **5** on the title screen plays it again. Nothing in it is saved.
 - **Volume:** music and sound effects each have five steps (off, low, ... mid ... max) in the pause menu, shown as boxes; the setting is saved.
-- **Recorded music** (CC0, see `music/CREDITS.md`): an inn loop for the menus, two battle tracks for the stages and a looping boss track; the procedural score is the fallback and plays in the story, shop and forge.
-- **Procedural music**: a 16-bar piece for every stage theme, a driving boss track and a title track that ducks under the sound effects, a **pause menu**, **gamepad** and **touch** support.
+- **Music** (CC0, see `music/CREDITS.md`): an inn loop for the title, menus, story, shop and forge, two battle tracks for the stages and a looping boss track. There is no other score; the page must be served over http(s) (GitHub Pages is), a page opened from disk plays no music.
+- Heavy blows duck the music under the sound effects. Also: a **pause menu**, **gamepad** and **touch** support.
 - **CRT and bloom shader** (WebGL), per-stage lighting, fog and parallax.
 - **HD effects** (WebGL, **V** or the pause menu): razor-sharp pixels, a mild light shaft per stage, floating sparks and dust that follow the weather, bloom. They switch themselves off on a slow device.
 

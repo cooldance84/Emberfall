@@ -1,4 +1,4 @@
-/* ---------- recorded music: CC0 tracks from music/, streamed and crossfaded; the procedural score above stays as the fallback ---------- */
+/* ---------- the music: CC0 tracks from music/, streamed and crossfaded (there is no other score: a page opened from disk, a missing file or a decoding error mean silence) ---------- */
 const REC = { // cue: the tracks it plays one after the other, and the crossfade at each join (seconds)
   menu: { list: ['tower-inn'], x: 0.3 },     // a seamless loop
   stage: { list: ['battle-a', 'battlegrounds'], x: 2.5 },
@@ -6,9 +6,9 @@ const REC = { // cue: the tracks it plays one after the other, and the crossfade
 };
 const REC_DUR = { 'tower-inn': 49.95, 'battle-a': 92.05, battlegrounds: 92.75, boss: 41.5 };
 let rec = { cue: null, i: 0, cur: -1, decks: null, bus: null, ok: null, fail: false };
-function recCueOf(m, boss, menu, cur) { // which recorded cue a game state wants (null: the procedural score), 'pause' and the backpack keep what plays
+function recCueOf(m, boss, cur) { // which cue a game state wants: the pause menu and the backpack keep what plays, game over is silent, every calm screen (menus, story, shop, forge, victory) shares the inn loop
   if (m === 'pause' || m === 'inv') return cur;
-  return menu ? 'menu' : boss ? 'boss' : m === 'play' ? 'stage' : null;
+  return boss ? 'boss' : m === 'play' ? 'stage' : m === 'gameover' ? null : 'menu';
 }
 function recInit() {
   if (rec.decks) return true; if (rec.ok === false || !ac || !mGain) return false;
