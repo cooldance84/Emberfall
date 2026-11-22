@@ -2,6 +2,12 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.53.0] - 2026-11-22
+- **Recorded music** (four CC0 tracks from OpenGameArt, in `music/`, about 5 MB in all, streamed so they cost almost no memory): *The Old Tower Inn* on the title screen and in the menus, *Battle Theme A* and *Fantasy - Battlegrounds* on the stages (they follow each other with a 2.5 s crossfade, the opening one alternates by stage), *Battle Theme B* for boss fights (cut at a bar line so it loops). On a stage with no foe the music drops to a calmer level, and the pause menu keeps playing under the backpack and the pause screen.
+- The story scenes, the shop, the forge and the victory screen keep the procedural score, and so does everything if a track cannot be loaded (offline, a page opened from disk, a missing file). **M** and the pause-menu music switch work as before.
+- Credits in `music/CREDITS.md`.
+- Tests: `music.test.js` (cue choice, files and durations, crossfade and loop timing on a fake audio graph, fallback on error).
+
 ## [1.52.0] - 2026-11-22
 - **HD effects** (WebGL, drawn at screen resolution, so the game's own 480x270 drawing is untouched): the pixels are upscaled razor sharp instead of blurry, a mild **light shaft** in the colour of each stage falls from above, **floating sparks and dust** follow the weather (rising embers in the forge, falling ash, snow, drifting motes), a few soft out-of-focus lights sit in the foreground, and the glow of fire and windows is a real bloom. A soft vignette and a touch of contrast finish it.
 - **V** toggles it, or the new **HD EFFECTS** row in the pause menu (after CRT FILTER); the choice is saved. It works with or without the CRT filter. Menus get only the sharp upscale, no sparks over the text.

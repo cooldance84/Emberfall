@@ -162,11 +162,13 @@ function mSchedule(M, until) {
   }
 }
 function musicTick() {
+  if (ac && rec.decks && (!musicOn || muted)) recHalt();
   if (!ac || !mGain || !musicOn || muted || ac.state !== 'running') return;
   const boss = mode === 'play' && !!bossRef && !bossRef.dead;
   const menu = mode === 'title' || mode === 'select' || mode === 'dailyinfo' || mode === 'journey' || mode === 'board' || mode === 'name' || mode === 'cloud';
   const th = mode === 'gameover' ? -1 : menu ? MUS_TITLE : mode === 'story' && story ? story.theme : mode === 'victory' ? 4 : STAGES[stageIdx].theme;
   mGain.gain.setTargetAtTime(mode === 'pause' || mode === 'inv' ? 0.28 : boss ? 0.8 : 0.7, ac.currentTime, 0.1);
+  if (recTick(recCueOf(mode, boss, menu, rec.cue), mode === 'play' && !boss && !enemies.some(e => !e.dead && e.kind !== 'imp') ? 0.62 : 1)) return; // a recorded track carries the music
   if (th < 0) return;
   if (mode !== 'pause' && mode !== 'inv') mWant = boss ? 2 : mode === 'story' ? 0 : mode === 'play' ? (enemies.some(e => !e.dead && e.kind !== 'imp') ? 1 : 0) : 1;
   const trk = boss ? MUS_BOSS : th;
