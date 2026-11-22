@@ -4,7 +4,7 @@
    Everything (characters, stages, effects) is procedural and original.
    Pipeline: 480x270 pixel scene -> dynamic lighting -> WebGL CRT/bloom shader. */
 
-const VERSION = '1.55.0';
+const VERSION = '1.55.1';
 /* a failure must never be a silent black screen: any error is also written on the page, so it can be read and reported */
 function crash(msg) {
   try {
@@ -5271,7 +5271,7 @@ function initGL() {
       float s1=max(.5+.5*sin(ang*17.+time*.12),0.),s2=max(.5+.5*sin(ang*41.-time*.07+1.3),0.); float bm=s1*s1*s1*s1*.7+s2*s2*s2*s2*s2*s2*.5;
       float fall=(1.-smoothstep(0.,1.6,length(d)))*smoothstep(.05,.7,q.y)*(1.-smoothstep(.78,1.,q.y));
       col+=rayCol*bm*fall*rayAmt*(.85+.15*sin(time*.5));
-      vec3 sp=pts(q,17.,1.,.085,.3,0.)+pts(q,29.,1.5,.07,.24,11.)*.8+pts(q,47.,2.2,.06,.2,23.)*.6;
+      vec3 sp=pts(q,17.,1.,.085,.15,0.)+pts(q,29.,1.5,.07,.12,11.)*.8+pts(q,47.,2.2,.06,.1,23.)*.6;
       vec3 bk=pts(q,3.2,.35,.22,.35,41.)*.16*(1.-smoothstep(.1,.6,q.y));
       col+=(sp+bk)*spAmt*smoothstep(.0,.24,1.-q.y);
     }

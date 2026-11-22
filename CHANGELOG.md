@@ -2,6 +2,9 @@
 
 All notable changes to Emberfall. Versions follow [Semantic Versioning](https://semver.org).
 
+## [1.55.1] - 2026-11-22
+- The floating sparks and dust of the HD effects are halved (half as many specks on screen).
+
 ## [1.55.0] - 2026-11-22
 - **The old procedural score is gone.** It could be heard faintly under the recorded tracks (while a track was loading, at a change of music, in its long reverb tail). Now exactly one thing plays: the inn loop covers the title, menus, story, shop, forge and victory screen, the two battle tracks the stages, the looping track the bosses, and game over is silent. About 150 lines of synth code are removed.
 - A page opened straight from disk (`file://`), a missing track or a decoding error now mean silence instead of the old score; the game itself is unaffected. GitHub Pages plays the music normally.
